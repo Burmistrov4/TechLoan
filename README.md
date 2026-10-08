@@ -1,34 +1,37 @@
 # TechLoan
 
-**Sistema Web CRUD de Gestión de Reservas y Préstamos de Recursos Tecnológicos**
+**Plataforma web de gestión de reservas y préstamos de recursos tecnológicos**
 
-Aplicación web desarrollada con **Flask + SQLite3 + Jinja2 + HTML5 + CSS3 + JavaScript Vanilla**,
-como proyecto final de la asignatura **Programación III** (IUTEPI).
+Aplicación web desarrollada con **Flask + SQLite3 + Jinja2 + HTML5 + CSS3 + JavaScript
+Vanilla**, como proyecto final de la asignatura **Programación III** (IUTEPI).
+
+Sin frameworks de frontend, sin servicios externos obligatorios y **funciona sin conexión
+a internet**.
 
 ---
 
-## 1. Descripción del problema que resuelve
+## 1. El problema que resuelve
 
-En un centro de formación técnica los laboratorios de informática, redes y electrónica se
-comparten entre varios docentes y grupos de estudiantes. Cuando la asignación de esos espacios
-y del equipamiento se lleva en papel o por mensajería informal aparecen tres problemas
-recurrentes:
+En un centro de formación técnica los laboratorios y el equipamiento se comparten entre
+docentes y grupos. Cuando eso se lleva en papel o por mensajería informal aparecen tres
+problemas recurrentes:
 
-1. **Doble reserva del mismo laboratorio** en el mismo horario, porque no existe un registro
-   único y consultable.
-2. **Pérdida de trazabilidad de los equipos**: nadie sabe con certeza quién tiene prestado un
+1. **Doble reserva del mismo laboratorio**, porque no hay un registro único y consultable.
+2. **Pérdida de trazabilidad de los equipos**: nadie sabe con certeza quién tiene un
    proyector, un switch o una laptop, ni desde cuándo.
-3. **Ausencia de historial**: al no quedar registro de las operaciones, no se puede auditar
-   qué se hizo, cuándo y quién lo autorizó.
+3. **Ausencia de historial**: al no quedar registro, no se puede auditar qué se hizo,
+   cuándo y quién lo autorizó.
 
-**TechLoan** resuelve estos problemas con una aplicación web que:
+**TechLoan** resuelve los tres:
 
-- registra **prestatarios** (personas que reciben un espacio o un equipo);
+- registra **prestatarios** (quienes reciben un espacio o un equipo);
 - administra el **inventario** de laboratorios, categorías y equipos;
-- gestiona **reservas de laboratorios** por franja horaria, **impidiendo solapamientos**;
-- gestiona **préstamos individuales de equipos** y sus **devoluciones**, actualizando el
-  estado del equipo de forma automática;
-- ofrece un **historial unificado** con filtros para auditar todas las operaciones.
+- gestiona **reservas por franja horaria**, **impidiendo solapamientos** y proponiendo
+  alternativas cuando el horario está ocupado;
+- gestiona **préstamos y devoluciones**, actualizando el estado del equipo de forma
+  automática y avisando de los que llevan demasiado tiempo fuera;
+- ofrece un **panel analítico** con indicadores y gráficos, y un **registro de auditoría**
+  que responde a cualquier pregunta con nombre y fecha.
 
 ---
 
@@ -40,11 +43,14 @@ recurrentes:
 | Base de datos | SQLite3 (librería nativa `sqlite3`), consultas parametrizadas |
 | Plantillas | Jinja2 |
 | Frontend | HTML5 semántico, CSS3 (responsive, sin frameworks), JavaScript Vanilla |
-| Seguridad | Werkzeug (`generate_password_hash` / `check_password_hash`), sesiones Flask, token CSRF |
-| Pruebas | Scripts de integración en Python con el cliente de pruebas de Flask |
+| Gráficos | SVG generado en el cliente, sin librerías |
+| Iconografía | SVG en línea, sin dependencias ni peticiones de red |
+| Seguridad | Werkzeug (`scrypt`), sesiones Flask, token CSRF, permisos por rol |
+| Pruebas | Scripts de integración con el cliente de pruebas de Flask |
 
-> No se utiliza React, Vue, Angular, Bootstrap ni Tailwind: el proyecto se mantiene
-> deliberadamente en HTML, CSS y JavaScript puros, tal como exige el enunciado.
+> **No** se utiliza React, Vue, Angular, Bootstrap ni Tailwind. Tampoco Chart.js, Three.js
+> ni ninguna librería de animación: todo el movimiento y los gráficos son CSS y JavaScript
+> escritos a mano. Esto mantiene el proyecto explicable y garantiza que funcione sin red.
 
 ---
 
@@ -53,9 +59,9 @@ recurrentes:
 ```
 Proyecto Final de Python/
 │
-├── app.py equivalente → run_server.py    # Punto de entrada: inicia el servidor Flask
+├── run_server.py                         # Punto de entrada: inicia el servidor Flask
 ├── init_db.py                            # Inicializa la base de datos desde schema.sql
-├── schema.sql                            # Script SQL: tablas, índices y datos de prueba
+├── schema.sql                            # Tablas, índices y datos de prueba
 ├── requirements.txt                      # Dependencias (Flask, Werkzeug)
 ├── README.md                             # Este documento
 │
@@ -63,80 +69,86 @@ Proyecto Final de Python/
 │   └── techloan.db                       # Base de datos SQLite3 (generada)
 │
 ├── static/                               # Archivos estáticos
+│   ├── favicon.svg                       # Icono de la aplicación
 │   ├── css/
-│   │   └── estilos.css                   # Hoja de estilos personalizada y responsive
-│   └── js/
-│       └── main.js                       # Interactividad (Vanilla JS)
+│   │   ├── estilos.css                   # Sistema de diseño + interfaz de la aplicación
+│   │   └── landing.css                   # Portada pública y pantalla de acceso
+│   ├── js/
+│   │   ├── main.js                       # Interactividad de la aplicación
+│   │   ├── graficos.js                   # Gráficos SVG dibujados en el cliente
+│   │   └── landing.js                    # Animaciones 3D de la portada
+│   └── img/                              # Logotipo, iconos e ilustraciones
 │
 ├── templates/                            # Plantillas HTML procesadas por Jinja2
-│   ├── base.html                         # Plantilla base (navbar, mensajes, layout)
-│   ├── index.html                        # Vista principal (panel de inicio)
-│   ├── parciales/                        # Fragmentos reutilizables (formularios, mensajes)
+│   ├── base.html                         # Documento base (head, tema, notificaciones)
+│   ├── base_app.html                     # Shell de la aplicación (barra lateral + superior)
+│   ├── base_publico.html                 # Shell de las páginas sin sesión
+│   ├── landing.html                      # Portada pública
+│   ├── index.html                        # Panel de inicio con gráficos
+│   ├── perfil.html · ayuda.html          # Cuenta propia y guía de uso
+│   ├── parciales/                        # Fragmentos reutilizables (iconos, listados, campos)
 │   ├── auth/login.html                   # Formulario de acceso
-│   ├── prestatarios/                     # Listado + formulario
-│   ├── laboratorios/
-│   ├── categorias/
-│   ├── equipos/
-│   ├── usuarios/
-│   ├── reservas/
-│   ├── prestamos/
-│   ├── historial/
+│   ├── prestatarios/ · laboratorios/ · categorias/ · equipos/ · usuarios/
+│   ├── reservas/                         # Listado, formulario y comprobante
+│   ├── prestamos/ · historial/ · auditoria/
 │   └── errores/error.html
 │
 ├── app/                                  # Código Python (arquitectura por capas)
-│   ├── server.py                         # create_app(): registra blueprints y errores
-│   ├── config.py                         # Configuración (ruta de BD, host, puerto)
+│   ├── server.py                         # create_app(): blueprints, contexto y errores
+│   ├── config.py                         # Configuración y parámetros de negocio
 │   ├── database.py                       # Conexión SQLite3 (abrir/cerrar por operación)
 │   ├── models/entities.py                # Clases de dominio (POO)
 │   ├── services/                         # Lógica de negocio y validaciones
-│   │   ├── auth_service.py
-│   │   ├── usuario_service.py
+│   │   ├── auth_service.py               #   Autenticación y matriz de permisos
+│   │   ├── usuario_service.py            #   Usuarios y cambio de contraseña
 │   │   ├── prestatario_service.py
-│   │   ├── laboratorio_service.py
-│   │   ├── categoria_service.py
-│   │   ├── equipo_service.py
-│   │   ├── reservation_service.py        # Reservas + regla de solapamiento
-│   │   ├── prestamo_equipo_service.py    # Préstamos y devoluciones
+│   │   ├── laboratorio_service.py · categoria_service.py · equipo_service.py
+│   │   ├── reservation_service.py        #   Reservas, solapamientos y sugerencias
+│   │   ├── prestamo_equipo_service.py    #   Préstamos y devoluciones
 │   │   ├── disponibilidad_service.py
 │   │   ├── historial_service.py
-│   │   └── dashboard_service.py
+│   │   ├── dashboard_service.py          #   Indicadores, tendencias y series de gráficos
+│   │   ├── alertas_service.py            #   Avisos operativos
+│   │   └── auditoria_service.py          #   Registro de actividad
 │   ├── routes/
-│   │   ├── web_common.py                 # Blueprint web, permisos, CSRF
-│   │   ├── web_auth_routes.py            # /login, /logout, / (panel)
+│   │   ├── web_common.py                 # Blueprint web, permisos, CSRF, listados y CSV
+│   │   ├── web_auth_routes.py            # Portada, panel, acceso y búsqueda global
 │   │   ├── web_crud_routes.py            # CRUD web de las entidades
 │   │   ├── web_operations_routes.py      # Reservas, préstamos, historial
+│   │   ├── web_extra_routes.py           # Perfil, guía de uso y auditoría
 │   │   └── *_routes.py                   # API JSON (/api/...)
-│   ├── security/permissions.py           # Revalidación de sesión y permisos por rol
+│   ├── security/permissions.py           # Revalidación de sesión y permisos
 │   └── gui/                              # Interfaz Tkinter previa (prototipo, no prioritaria)
 │
+├── docs/
+│   ├── MANUAL_DE_USUARIO.md              # Manual de uso completo
+│   ├── GUIA_EXPOSICION.md                # Guion de la defensa
+│   ├── capturas/                         # Evidencia visual de la verificación
+│   └── PROJECT_CONTEXT/                  # Documentación de continuidad del proyecto
+│
 └── tests/                                # Pruebas automatizadas
-    ├── test_web_phase6.py                # Pruebas de integración de la capa web
+    ├── test_web_phase6.py                # Integración de la capa web
     ├── smoke_test.py                     # Verificación rápida de extremo a extremo
-    ├── test_crud_phase5.py
-    ├── test_validations_phase5.py
-    ├── test_security_phase5.py
-    ├── test_overlap_phase5.py
-    ├── test_roles_phase5.py
-    └── test_historial_phase4.py
+    ├── test_crud_phase5.py · test_validations_phase5.py
+    ├── test_security_phase5.py · test_overlap_phase5.py
+    ├── test_roles_phase5.py · test_historial_phase4.py
+    └── crud_test.py · security_test.py
 ```
-
----
 
 ### 3.1 Equivalencia con la estructura sugerida por el enunciado
 
-El PDF propone una arquitectura de directorios simplificada ("Se sugiere la siguiente
-arquitectura"). Se respeta su intención y se conserva, además, la organización modular del
-proyecto. Correspondencia directa:
+El PDF propone una arquitectura simplificada ("Se sugiere la siguiente arquitectura"). Se
+respeta su intención y se conserva, además, la organización modular del proyecto:
 
 | Elemento sugerido en el enunciado | Dónde está en este proyecto |
 |---|---|
-| `app.py` — Servidor principal de Flask | `run_server.py` (punto de entrada) + `app/server.py` (`create_app`) |
+| `app.py` — Servidor principal de Flask | `run_server.py` (entrada) + `app/server.py` (`create_app`) |
 | `database.db` — Archivo de la base de datos | `database/techloan.db` |
 | `schema.sql` — Script de creación de tablas | `schema.sql` (raíz) |
 | `static/css/estilos.css` | `static/css/estilos.css` |
 | `static/js/main.js` | `static/js/main.js` |
 | `templates/base.html` | `templates/base.html` |
-| `templates/index.html` — Vista principal | `templates/index.html` (panel) + `templates/<entidad>/index.html` (listados) |
+| `templates/index.html` — Vista principal | `templates/index.html` (panel) + `templates/<entidad>/index.html` |
 | `templates/crear.html` — Formulario de inserción | `templates/<entidad>/form.html` (modo alta) |
 | `templates/editar.html` — Formulario de modificación | `templates/<entidad>/form.html` (modo edición) |
 | Rutas `/`, `/crear`, `/editar/<id>`, `/eliminar/<id>` | Implementadas literalmente para Prestatarios |
@@ -153,57 +165,23 @@ misma regla se comparte entre las rutas web y la API JSON, y no puede divergir.
 - Python 3.10 o superior (probado con Python 3.12).
 - `pip` disponible.
 
-### 4.2 Arranque portable (recomendado)
-
-El proyecto **no depende de rutas absolutas de Python**. El archivo `start.py` detecta Python,
-crea un entorno virtual local `.venv` si no existe, instala las dependencias y levanta Flask.
-**No es necesario activar el entorno virtual manualmente.**
-
-Solo se necesita **Python 3.10 o superior** instalado y disponible en el PATH.
-
-**Windows — doble clic:**
-```text
-iniciar.bat
-```
-
-**Windows — PowerShell:**
-```powershell
-.\iniciar.ps1
-```
-
-**Linux / macOS:**
-```bash
-./iniciar.sh
-```
-
-También puede ejecutarse directamente:
-```bash
-python start.py
-```
-
-El lanzador calcula todas las rutas desde la carpeta del proyecto, por lo que funciona aunque
-la carpeta esté en otra unidad, tenga otro nombre o contenga espacios.
-
-> **Importante:** no copies la carpeta `.venv` de otra PC. Un entorno virtual contiene
-> referencias internas a la máquina donde fue creado. Al copiar el proyecto a otra PC,
-> elimina `.venv` y ejecuta `iniciar.bat` (o el lanzador correspondiente); se reconstruirá
-> automáticamente.
-
-### 4.3 Creación manual del entorno virtual (opcional)
+### 4.2 Crear y activar un entorno virtual
 
 **Windows (PowerShell / CMD):**
+
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
 ```
 
 **Linux / macOS:**
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 4.4 Instalar las dependencias
+### 4.3 Instalar las dependencias
 
 ```bash
 pip install -r requirements.txt
@@ -215,7 +193,7 @@ O de forma equivalente:
 pip install flask
 ```
 
-`requirements.txt` contiene:
+`requirements.txt` contiene únicamente:
 
 ```
 Flask==3.1.2
@@ -227,7 +205,7 @@ Werkzeug==3.1.3
 ## 5. Inicializar la base de datos
 
 El proyecto incluye `schema.sql`, que crea **todas las tablas, los índices y los datos de
-prueba** (incluidos los usuarios del sistema).
+prueba** (incluidos los usuarios del sistema y un registro de actividad inicial).
 
 ```bash
 python init_db.py
@@ -237,7 +215,7 @@ Salida esperada:
 
 ```
 Base de datos reconstruida: .../database/techloan.db
-----------------------------------------------
+----------------------------------------------------------
   usuarios_sistema          2 registro(s)
   prestatarios              4 registro(s)
   categorias                3 registro(s)
@@ -245,80 +223,50 @@ Base de datos reconstruida: .../database/techloan.db
   equipos                   4 registro(s)
   reservas                  3 registro(s)
   prestamos_equipos         2 registro(s)
-----------------------------------------------
+  auditoria                 5 registro(s)
+----------------------------------------------------------
   integrity_check: ok
+
+  Reservas de demostración (útiles para la exposición):
+    LAB-01  2026-10-15  08:00-09:10  (70 min)
+    ...
 ```
 
-> **Importante:** `init_db.py` **elimina y vuelve a crear** las tablas del archivo de destino.
-> No lo ejecutes sobre una base de datos con información real que quieras conservar.
-> Para reconstruir un archivo distinto (por ejemplo, una copia de prueba):
->
-> ```bash
-> python init_db.py ruta/a/otra_base.db
-> ```
+> **Importante:** `init_db.py` **elimina y vuelve a crear** las tablas del archivo de
+> destino. No lo ejecutes sobre una base de datos con información real que quieras
+> conservar. Para reconstruir un archivo distinto: `python init_db.py ruta/otra.db`.
 
-También puedes cargar el script manualmente con el cliente de SQLite:
-
-```bash
-sqlite3 database/techloan.db < schema.sql
-```
+Las fechas de los datos de prueba son **relativas al día de ejecución**
+(`date('now','localtime','+N days')`), así que las reservas de demostración **nunca quedan
+vencidas**.
 
 ---
 
 ## 6. Ejecutar el servidor
 
-Para un equipo nuevo se recomienda usar el lanzador portable:
-
-**Windows:**
-```text
-iniciar.bat
-```
-
-**PowerShell:**
-```powershell
-.\\iniciar.ps1
-```
-
-**Linux / macOS:**
-```bash
-./iniciar.sh
-```
-
-El lanzador crea o reutiliza el `.venv` local, instala las dependencias y ejecuta
-`run_server.py`. Si la base de datos todavía no existe, también ejecuta `init_db.py`.
-
-La ejecución manual sigue disponible:
-
 ```bash
 python run_server.py
 ```
 
-Salida esperada:
+Abre el navegador en **http://127.0.0.1:5000**.
 
-```
- * Running on http://127.0.0.1:5000
-```
-
-Abre el navegador en:
-
-**http://127.0.0.1:5000**
-
-Serás redirigido al formulario de acceso (`/login`).
+Verás la **portada pública** del producto. Pulsa *Iniciar sesión* o ve a `/login`. Una vez
+dentro, `/` pasa a ser el panel de control.
 
 ---
 
 ## 7. Usuarios de prueba
 
-Los usuarios los crea `schema.sql` con la contraseña almacenada **como hash** (nunca en texto plano).
+Los crea `schema.sql` con la contraseña almacenada **como hash** (nunca en texto plano).
 
 | Usuario | Contraseña | Rol | Alcance |
 |---|---|---|---|
-| `admin` | `Admin123!` | ADMINISTRADOR | Acceso total: CRUD de todas las entidades, usuarios y eliminaciones |
-| `operador` | `Operador123!` | OPERADOR | Gestión de prestatarios y operaciones; **sin** acceso a usuarios ni a eliminaciones |
+| `admin` | `Admin123!` | ADMINISTRADOR | Acceso total: CRUD de todo, usuarios, auditoría y eliminaciones |
+| `operador` | `Operador123!` | OPERADOR | Operación diaria; **sin** usuarios, auditoría ni eliminaciones |
 
-La diferencia entre ambos roles es demostrable: al entrar como `operador` desaparecen del menú
-el módulo **Usuarios** y los botones **Eliminar**, y las rutas correspondientes redirigen con un
-aviso de permisos insuficientes.
+La diferencia es demostrable: al entrar como `operador` desaparecen del menú los módulos
+*Usuarios* y *Auditoría*, y los botones *Eliminar*; las rutas correspondientes redirigen con
+un aviso de permisos insuficientes.
 
 ---
 
@@ -326,8 +274,8 @@ aviso de permisos insuficientes.
 
 ### 8.1 CRUD completo (35 % de la rúbrica)
 
-Para cada entidad se implementan las cuatro operaciones con formularios, validación en cliente
-y servidor, mensajes de resultado y confirmación JavaScript antes de eliminar:
+Para cada entidad, las cuatro operaciones con formularios, validación en cliente y
+servidor, mensajes de resultado y confirmación JavaScript antes de eliminar:
 
 | Entidad | Rutas |
 |---|---|
@@ -337,46 +285,90 @@ y servidor, mensajes de resultado y confirmación JavaScript antes de eliminar:
 | Equipos | `/equipos`, `/equipos/crear`, `/equipos/<id>/editar`, `/equipos/<id>/eliminar` |
 | Usuarios del sistema | `/usuarios`, `/usuarios/crear`, `/usuarios/<id>/editar`, `/usuarios/<id>/eliminar` |
 
-Además, la entidad principal del caso de estudio expone las **rutas limpias sugeridas por el
-enunciado**:
+Además, la entidad principal expone las **rutas limpias del enunciado**:
 
 | Ruta | Acción |
 |---|---|
-| `/` | Vista principal (panel con el listado y los indicadores) |
+| `/` | Vista principal: portada pública para visitantes, panel para usuarios con sesión |
 | `/crear` | Formulario de inserción de un prestatario |
 | `/editar/<id>` | Formulario de modificación precargado |
 | `/eliminar/<id>` | Eliminación (por `POST`, con confirmación JavaScript) |
 
-### 8.2 Operaciones de negocio
+### 8.2 Capacidades de producto
+
+Además del CRUD básico, la aplicación incorpora lo que se espera de una herramienta
+profesional:
+
+**Panel analítico.** Seis indicadores con variación respecto a la semana anterior, tres
+gráficos (reservas por día, inventario por estado, ocupación por laboratorio), próximas
+reservas y actividad reciente. Los gráficos son SVG dibujados en el cliente: se adaptan al
+tema, se imprimen con calidad y no dependen de ninguna librería.
+
+**Búsqueda global (Ctrl+K).** Una paleta de comandos que encuentra secciones, acciones y
+**registros concretos** (prestatarios, equipos, laboratorios y reservas), respetando los
+permisos del rol.
+
+**Listados profesionales.** En todos los listados: búsqueda en vivo con retardo, ordenación
+por cualquier columna, paginación y **exportación a CSV** que respeta el filtro activo y se
+abre en Excel sin ajustes.
+
+**Sugerencias inteligentes de horario.** Cuando una reserva choca con otra, el sistema no se
+limita a rechazarla: calcula los huecos reales de la jornada y ofrece las franjas libres más
+cercanas, aplicables con un clic.
+
+**Alertas operativas.** Préstamos con más de 7 días sin devolver (destacados en rojo, con
+los días transcurridos y un botón para devolverlos), reservas programadas para hoy y
+laboratorios con alta ocupación.
+
+**Registro de auditoría.** Cada acción queda anotada con su autor, fecha, detalle e IP:
+altas, modificaciones, bajas, préstamos, devoluciones, cancelaciones, accesos y
+exportaciones. Con filtros y exportación. El registro **sobrevive a la eliminación del
+usuario**, conservando su nombre como evidencia.
+
+**Comprobante imprimible.** Cada reserva genera un documento con folio, listo para imprimir
+o guardar en PDF.
+
+**Perfil propio.** Cada usuario puede cambiar su contraseña, con la actual como comprobación
+de identidad.
+
+**Tema claro y oscuro.** Conmutador en la barra superior, con la preferencia recordada y sin
+destello al cargar. Los gráficos se redibujan al cambiar.
+
+**Aplicación instalable.** Manifiesto web y favicon propios: se puede añadir a la pantalla
+de inicio.
+
+### 8.3 Operaciones de negocio
 
 **Reservas de laboratorios** (`/reservas`)
 
 - Selección de laboratorio, prestatario, fecha, hora de inicio y duración.
-- Duración **estándar de 70 minutos** (1 h 10 min), tomada automáticamente de la duración
-  configurada para el laboratorio, o **personalizada** por el usuario.
-- Cálculo de la **hora de finalización** en tiempo real (manipulación del DOM).
-- Comprobación de disponibilidad en vivo mediante `fetch()` a `/reservas/disponibilidad`.
-- **Rechazo de solapamientos**: si otro usuario ya reservó ese laboratorio en una franja que se
-  cruza, el sistema muestra un error amigable y no guarda la reserva.
-- Cancelación de reservas.
+- Duración **estándar de 70 minutos**, tomada del laboratorio, o **personalizada**.
+- Cálculo de la **hora de finalización** en vivo (manipulación del DOM).
+- **Línea de tiempo del día** que muestra de un vistazo qué franjas están ocupadas.
+- Comprobación de disponibilidad con `fetch()` a `/reservas/disponibilidad`.
+- **Rechazo de solapamientos** con mensaje claro y **alternativas sugeridas**.
+- Cancelación de reservas con liberación inmediata de la franja.
+- Comprobante imprimible por reserva.
 
 **Préstamos de equipos** (`/prestamos`)
 
 - Selección de un equipo **DISPONIBLE** y de un prestatario.
-- Al registrar el préstamo, el equipo pasa automáticamente a **PRESTADO**.
+- Al registrar el préstamo, el equipo pasa a **PRESTADO**.
 - Un equipo con préstamo activo no puede volver a prestarse.
+- Días transcurridos visibles en cada fila, con los vencidos destacados.
 
 **Devoluciones**
 
 - Desde el listado de préstamos activos, con confirmación previa.
-- El equipo vuelve a **DISPONIBLE** y se registra la fecha de devolución.
+- El equipo vuelve a **DISPONIBLE** y se registra la fecha.
 
 **Historial** (`/historial`)
 
 - Vista unificada de reservas, préstamos y devoluciones.
-- Filtros por tipo de operación, estado, prestatario, recurso (código o nombre) y rango de fechas.
+- Filtros por tipo, estado, prestatario, recurso y rango de fechas.
+- Exportación a CSV del resultado filtrado.
 
-### 8.3 Reglas de negocio garantizadas
+### 8.4 Reglas de negocio garantizadas
 
 **Solapamiento de reservas.** Dos reservas del mismo laboratorio y fecha se consideran
 solapadas si se cumple:
@@ -385,15 +377,13 @@ solapadas si se cumple:
 hora_inicio_existente < hora_fin_nueva   AND   hora_fin_existente > hora_inicio_nueva
 ```
 
-Por tanto:
-
 | Caso | Franjas | Resultado |
 |---|---|---|
 | Adyacentes | 08:00–09:10 y 09:10–10:20 | **Permitido** |
 | Solapadas | 08:00–09:10 y 09:09–10:19 | **Rechazado** |
 
-Solo bloquean las reservas en estado `CONFIRMADA` o `ACTIVA`: una reserva `CANCELADA` o
-`FINALIZADA` libera la franja.
+Solo bloquean las reservas `CONFIRMADA` o `ACTIVA`: una reserva `CANCELADA` o `FINALIZADA`
+libera la franja.
 
 **Estados de los equipos.** `DISPONIBLE → PRESTADO` al prestar; `PRESTADO → DISPONIBLE` al
 devolver.
@@ -404,56 +394,63 @@ devolver.
 
 | Riesgo | Mitigación |
 |---|---|
-| Inyección SQL | **Todas** las consultas usan parámetros (`?`). No se concatena entrada del usuario en SQL. |
+| Inyección SQL | **Todas** las consultas usan parámetros (`?`). No se concatena entrada del usuario. |
 | Contraseñas en texto plano | Se almacenan como **hash Werkzeug** (`scrypt`), en un campo `VARCHAR(255)`. |
-| Exposición de hashes | Los servicios de usuario nunca seleccionan ni devuelven `password_hash` en los listados ni en la sesión. |
-| Falsificación de identidad del operador | El usuario que registra una reserva o un préstamo se toma **siempre de la sesión del servidor**, nunca de un campo enviado por el navegador. |
-| Escalada de privilegios | El registro público no existe en la web; solo un ADMINISTRADOR puede crear usuarios y asignar roles. |
-| CSRF | Todos los `POST` web exigen un token CSRF de sesión; sin token válido responden `400`. |
+| Exposición de hashes | Los servicios nunca seleccionan ni devuelven `password_hash`. |
+| Falsificación de identidad | El usuario que registra una operación se toma **siempre de la sesión**, nunca de un campo del formulario. |
+| Escalada de privilegios | No existe registro público. Solo un ADMINISTRADOR crea usuarios y asigna roles. |
+| CSRF | Todos los `POST` web exigen un token CSRF de sesión; sin él responden `400`. |
 | Acciones destructivas por URL | Las eliminaciones usan exclusivamente `POST`; un `GET` a `/eliminar/<id>` responde `405`. |
 | Acceso sin sesión | Cada ruta comprueba sesión y permisos; el rol y el estado del usuario se **revalidan contra la base de datos en cada petición**. |
-| Fuga de información en errores | Manejadores de error propios para `400`, `403`, `404` y `500`: nunca se muestra una traza al usuario. |
-| Validación solo en el cliente | La validación de HTML5 y JavaScript es una mejora de usabilidad; la validación **definitiva** se ejecuta en el servidor antes de tocar la base de datos. |
+| Fuga de información en errores | Manejadores propios para `400`, `403`, `404` y `500`: nunca se muestra una traza. |
+| Validación solo en el cliente | La validación de HTML5 y JavaScript es una mejora de usabilidad; la **definitiva** se ejecuta en el servidor. |
+| Pérdida de rastro | Registro de auditoría con autor, fecha, detalle e IP, independiente del ciclo de vida del usuario. |
 
 ---
 
-## 10. Interfaz, diseño responsive y JavaScript
+## 10. Interfaz, diseño y accesibilidad
 
-**HTML5 semántico.** Se utilizan `header`, `nav`, `main`, `section`, `article`, `table`,
-`caption`, `form`, `label` y `output`, con `lang="es"` y `meta viewport`.
+**HTML5 semántico.** `header`, `nav`, `main`, `section`, `article`, `table`, `caption`,
+`form`, `label`, `output` y `details`, con `lang="es"` y `meta viewport`.
 
-**CSS3 propio** (`static/css/estilos.css`), sin frameworks. Enfoque *mobile-first* con
-breakpoints en **375 px** (móvil), **768 px** (tablet) y **1280 px** (escritorio). Incluye
-navbar, formularios, botones, insignias de estado, mensajes flash, estados vacíos, foco visible
-y un contraste de color razonable. En pantallas pequeñas las tablas se transforman en tarjetas
-apiladas mediante CSS, sin duplicar el HTML.
+**CSS3 propio**, sin frameworks, con un sistema de diseño basado en variables: tokens de
+color, tipografía, espaciado, radios y sombras, y **dos temas completos** (claro y oscuro)
+que comparten estructura. Enfoque *mobile-first* con puntos de ruptura en **375 px**
+(móvil), **768 px** (tablet) y **1280 px** (escritorio). En pantallas pequeñas las tablas se
+transforman en tarjetas apiladas mediante CSS, sin duplicar el HTML.
 
-**JavaScript Vanilla** (`static/js/main.js`), organizado en módulos comentados:
+**JavaScript Vanilla** (`static/js/`), organizado en módulos comentados:
 
-1. Menú de navegación móvil (con `aria-expanded`).
-2. Cierre de mensajes flash.
-3. **Confirmación antes de eliminar**, cancelar y devolver (`window.confirm`).
-4. Validación en el cliente con realimentación visual (clase `.invalido`).
-5. **Cálculo en vivo de la hora de finalización** de una reserva (manipulación del DOM).
-6. **`fetch()`** al endpoint `/reservas/disponibilidad` para avisar de solapamientos antes de
-   enviar el formulario.
-7. Protección contra el doble envío.
+| Archivo | Responsabilidad |
+|---|---|
+| `main.js` | Tema, barra lateral, menús, notificaciones, paleta de comandos, confirmaciones, validación, búsqueda con retardo, línea de tiempo y sugerencias, contadores animados |
+| `graficos.js` | Gráficos de barras, anillo y barras horizontales en SVG, con colores tomados del tema |
+| `landing.js` | Escena 3D con paralaje de ratón, revelado al desplazar, pestañas de módulos |
+
+**Accesibilidad.** Enlace «saltar al contenido», foco visible en todos los controles,
+`aria-label` en los botones de icono, `aria-live` en las notificaciones y los resultados
+dinámicos, roles ARIA en la paleta de comandos y en las pestañas, contraste cuidado y
+respeto por `prefers-reduced-motion`.
+
+**Portada pública.** Presentación del producto con escena 3D en CSS (`perspective` +
+`preserve-3d`), animaciones al desplazar, secciones de características, módulos, seguridad,
+planes y preguntas frecuentes. Todo con CSS y JavaScript propios.
 
 ---
 
 ## 11. Ejecutar las pruebas
 
-Todas las pruebas se ejecutan desde la raíz del proyecto y necesitan `PYTHONPATH=.` para que el
-paquete `app` sea importable.
+Todas se ejecutan desde la raíz del proyecto y necesitan `PYTHONPATH=.` para que el paquete
+`app` sea importable.
 
-### 11.1 Verificación rápida (smoke test)
+### 11.1 Verificación rápida
 
 ```bash
 PYTHONPATH=. python tests/smoke_test.py
 ```
 
-Comprueba el esquema, las claves foráneas, el hash de contraseñas, la regla de solapamiento y el
-arranque de la aplicación web.
+Comprueba el esquema, las claves foráneas, el hash de contraseñas, la regla de solapamiento,
+las sugerencias de horario, la auditoría y el arranque de la aplicación web.
 
 ### 11.2 Pruebas de integración de la capa web
 
@@ -461,10 +458,11 @@ arranque de la aplicación web.
 PYTHONPATH=. python tests/test_web_phase6.py
 ```
 
-Cubre autenticación, CSRF, el ciclo CRUD completo por HTTP de todas las entidades, reservas y
-solapamientos, préstamos y devoluciones, historial, permisos por rol, archivos estáticos y la
-ausencia de errores 500. **Se ejecuta sobre una base de datos temporal**, por lo que no altera
-`database/techloan.db`.
+Cubre autenticación, CSRF, portada pública, búsqueda global, listados con búsqueda/orden/
+paginación/CSV, el ciclo CRUD completo por HTTP, reservas y solapamientos, sugerencias,
+préstamos y devoluciones, historial, auditoría, perfil, comprobante, permisos por rol,
+archivos estáticos y la ausencia de errores 500. **Se ejecuta sobre una base de datos
+temporal**, por lo que no altera `database/techloan.db`.
 
 ### 11.3 Regresión del backend
 
@@ -479,25 +477,42 @@ PYTHONPATH=. python tests/test_historial_phase4.py
 
 ---
 
-## 12. Flujo sugerido para la exposición
+## 12. Documentación adicional
 
-1. `python init_db.py` → mostrar la reconstrucción de la base de datos desde `schema.sql`.
-2. `python run_server.py` → abrir `http://127.0.0.1:5000`.
-3. Iniciar sesión como `admin` → mostrar el panel con indicadores.
-4. **Prestatarios**: crear, listar, editar y **eliminar con confirmación JavaScript**.
-5. **Categorías / Laboratorios / Equipos**: crear un laboratorio y un equipo relacionándolos.
-6. **Reservas**: crear una reserva de 70 minutos y mostrar la hora de finalización calculada.
-7. **Solapamiento**: intentar una segunda reserva en la misma franja → el sistema la rechaza.
-   Mostrar también que una franja **adyacente** sí se acepta.
-8. **Préstamos**: prestar un equipo y mostrar que pasa a **PRESTADO**.
-9. **Devolución**: devolverlo y mostrar que vuelve a **DISPONIBLE**.
-10. **Historial**: mostrar la vista unificada y aplicar un filtro.
-11. **Roles**: cerrar sesión, entrar como `operador` y mostrar la restricción administrativa.
-12. Mostrar `schema.sql`, `README.md` y ejecutar las pruebas.
+| Documento | Contenido |
+|---|---|
+| `docs/MANUAL_DE_USUARIO.md` | Manual de uso completo: tareas paso a paso, atajos, reglas, roles, solución de problemas y glosario |
+| `docs/GUIA_EXPOSICION.md` | Guion de la defensa: recorrido, plan de contingencia y preguntas previsibles |
+| `docs/PROJECT_CONTEXT/` | Estado del proyecto, decisiones, criterios de aceptación y registro de trabajo |
+| `docs/capturas/` | Evidencia visual de la verificación en navegador real |
+
+La propia aplicación incluye una **Guía de uso** en el menú lateral, con la misma
+información resumida y accesible sin salir del sistema.
 
 ---
 
-## 13. Arquitectura
+## 13. Flujo sugerido para la exposición
+
+1. `python init_db.py` → mostrar la reconstrucción de la base de datos desde `schema.sql`.
+2. `python run_server.py` → abrir `http://127.0.0.1:5000` y mostrar la **portada pública**.
+3. Iniciar sesión como `admin` → **panel** con indicadores y gráficos.
+4. **Prestatarios**: crear, listar, buscar, ordenar, editar y **eliminar con confirmación**.
+5. **Catálogos**: crear categoría, laboratorio y equipo relacionándolos.
+6. **Reservas**: mostrar la línea de tiempo del día y crear una reserva de 70 minutos.
+7. **Solapamiento**: intentar una reserva en una franja ocupada → rechazo + **alternativas**;
+   demostrar que una franja **adyacente** sí se acepta.
+8. **Comprobante**: abrir el comprobante imprimible de la reserva.
+9. **Préstamos**: prestar un equipo → estado **PRESTADO**; devolverlo → **DISPONIBLE**.
+10. **Historial**: vista unificada y filtros; exportar a CSV.
+11. **Auditoría**: mostrar el rastro de todo lo anterior.
+12. **Roles**: entrar como `operador` y mostrar la restricción administrativa.
+13. **Búsqueda global**: `Ctrl`+`K` y encontrar un registro concreto.
+14. **Tema oscuro** y **responsive** (375 / 768 / 1280 px).
+15. Mostrar `schema.sql`, `README.md` y ejecutar las pruebas.
+
+---
+
+## 14. Arquitectura
 
 ```
 Navegador (HTML5 + CSS3 + JavaScript Vanilla)
@@ -506,179 +521,14 @@ Navegador (HTML5 + CSS3 + JavaScript Vanilla)
 Flask  ──►  Rutas web (Jinja2)  ──┐
         └─►  API JSON (/api/...)  ─┤
                                    ▼
-                        Servicios POO (validación + reglas de negocio)
+                     Servicios POO (validación + reglas de negocio)
                                    │
                                    ▼
-                        SQLite3 (consultas parametrizadas)
+                     SQLite3 (consultas parametrizadas)
 ```
 
-Las dos capas de entrada (web y API JSON) comparten exactamente los mismos servicios, de modo
-que las reglas de negocio y las validaciones son únicas y no pueden divergir.
-
-## 14. Despliegue en producción
-
-> **Importante:** el proyecto fue diseñado y validado principalmente como aplicación local
-> académica. El despliegue público es una guía técnica y requiere configurar correctamente
-> variables de entorno, almacenamiento y seguridad antes de usarlo con datos reales.
-
-### 14.1 Backend Flask en Render
-
-Render puede ejecutar Flask mediante un servicio web. La aplicación debe escuchar en
-`0.0.0.0` y usar el puerto proporcionado por la variable de entorno `PORT`.
-
-**Configuración recomendada del servicio:**
-
-| Campo | Valor |
-|---|---|
-| Runtime | Python |
-| Build Command | `pip install -r requirements.txt` |
-| Start Command | `gunicorn --bind 0.0.0.0:$PORT run_server:app` |
-| Python | 3.10+ |
-
-Si `gunicorn` no está incluido en `requirements.txt`, hay que añadirlo antes de desplegar:
-
-```text
-gunicorn
-```
-
-**Variables de entorno mínimas:**
-
-```text
-SECRET_KEY=<cadena-aleatoria-larga-y-secreta>
-```
-
-Nunca se debe publicar la `SECRET_KEY` en Git ni dejarla escrita directamente en el código.
-
-**Advertencia importante sobre SQLite en Render:** SQLite es un archivo local. En servicios
-con filesystem efímero, los datos pueden perderse cuando la instancia se recrea o se despliega.
-Por eso esta configuración sirve para una **demo/despliegue académico**, pero no es la opción
-adecuada para datos de producción que deban persistir.
-
-Para producción real se recomienda sustituir SQLite por PostgreSQL y adaptar solamente la capa
-de persistencia. La arquitectura por servicios facilita esa migración.
-
-Después del despliegue, Render proporcionará una URL similar a:
-
-```text
-https://techloan-xxxx.onrender.com
-```
-
-### 14.2 Frontend en GitHub Pages o Cloudflare Pages
-
-**Para este proyecto concreto no se recomienda separar el frontend Jinja2 del backend.**
-
-Las páginas HTML actuales son **server-rendered con Jinja2** y dependen de Flask para:
-- autenticación y sesiones;
-- CSRF;
-- formularios CRUD;
-- permisos;
-- renderizado de datos;
-- redirecciones;
-- operaciones de reservas y préstamos.
-
-Por ello, GitHub Pages o Cloudflare Pages **no pueden alojar directamente estos templates como
-si fueran un frontend estático independiente** sin una adaptación arquitectónica.
-
-Hay dos caminos:
-
-#### Opción A — recomendada para este proyecto académico
-
-Desplegar **todo Flask en Render**:
-
-```text
-Navegador
-   ↓
-Render
-   ├── Flask
-   ├── Jinja2
-   ├── CSS
-   ├── JavaScript
-   └── SQLite (solo demo)
-```
-
-Es la opción más sencilla y mantiene exactamente la arquitectura entregada.
-
-#### Opción B — frontend estático separado
-
-Si se quisiera usar GitHub Pages o Cloudflare Pages, habría que transformar la arquitectura:
-
-```text
-GitHub Pages / Cloudflare Pages
-        ↓ HTTPS / JSON
-API Flask en Render
-        ↓
-Base de datos
-```
-
-En ese escenario, el frontend tendría que ser HTML/CSS/JS estático independiente y consumir las
-rutas `/api/...` mediante `fetch()`. También habría que resolver:
-- CORS;
-- autenticación adecuada para una API separada;
-- almacenamiento/gestión del token o sesión;
-- CSRF según el mecanismo de autenticación;
-- URL configurable del backend;
-- errores de red;
-- política de cookies si se mantienen sesiones Flask.
-
-**No se debe simplemente subir `templates/` a GitHub Pages o Cloudflare Pages y esperar que
-Jinja2 funcione:** esos servicios sirven archivos estáticos y no ejecutan Python/Flask.
-
-### 14.3 GitHub Pages
-
-Si se crea posteriormente un frontend estático separado, el flujo general sería:
-
-```text
-frontend/
-├── index.html
-├── css/
-└── js/
-```
-
-1. Crear un repositorio para el frontend.
-2. Configurar GitHub Pages para publicar la rama/directorio elegido.
-3. Cambiar en JavaScript la URL base de la API para apuntar al backend de Render.
-4. Configurar CORS en Flask para permitir únicamente el dominio del frontend.
-5. Probar login, CRUD, reservas y demás llamadas desde HTTPS.
-
-GitHub Pages **no ejecutará Flask, Python ni Jinja2**.
-
-### 14.4 Cloudflare Pages
-
-El principio es el mismo:
-
-```text
-Cloudflare Pages
-      ↓
-frontend estático HTML/CSS/JS
-      ↓ HTTPS
-Flask API en Render
-```
-
-1. Crear un proyecto Pages conectado al repositorio del frontend.
-2. Configurar el directorio de salida según la estructura del frontend.
-3. Configurar la URL del backend como variable/configuración del frontend.
-4. Configurar CORS en Flask para el dominio de Cloudflare Pages.
-5. Verificar que las peticiones se realicen por HTTPS.
-
-Cloudflare Pages tampoco ejecuta el servidor Flask tradicional del proyecto.
-
-### 14.5 Producción real: checklist adicional
-
-Antes de considerar el sistema listo para datos reales:
-
-- [ ] Cambiar todas las credenciales de demostración.
-- [ ] Generar una `SECRET_KEY` nueva y almacenarla como variable de entorno.
-- [ ] No subir `.env`, contraseñas ni secretos al repositorio.
-- [ ] Sustituir SQLite por PostgreSQL si los datos deben persistir en un servicio cloud.
-- [ ] Configurar CORS con dominios concretos, nunca `*` para una aplicación autenticada.
-- [ ] Usar HTTPS.
-- [ ] Revisar cookies `Secure`, `HttpOnly` y `SameSite` según la arquitectura final.
-- [ ] Desactivar cualquier modo debug.
-- [ ] Configurar backups de la base de datos.
-- [ ] Revisar logs y errores del proveedor.
-- [ ] Probar autenticación, CSRF, permisos y operaciones después del despliegue.
-- [ ] No utilizar `init_db.py` sobre una base de datos de producción, porque reconstruye las tablas.
-
+Las dos capas de entrada (web y API JSON) comparten exactamente los mismos servicios, de
+modo que las reglas de negocio y las validaciones son únicas y no pueden divergir.
 
 ---
 

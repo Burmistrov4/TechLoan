@@ -1,191 +1,171 @@
 {
-  "fecha": "2026-10-08T06:32:23.923Z",
-  "total": 56,
+  "fecha": "2026-10-08T13:19:43.511Z",
+  "total": 47,
   "fallos": 0,
   "comprobaciones": [
     {
       "ok": true,
-      "mensaje": "Sin sesión, la raíz redirige al login"
+      "mensaje": "La portada muestra el titular principal"
     },
     {
       "ok": true,
-      "mensaje": "Login incorrecto muestra error: \"Credenciales inválidas.\""
+      "mensaje": "La escena del héroe tiene tarjetas flotantes"
     },
     {
       "ok": true,
-      "mensaje": "Login correcto: \"Bienvenido, Lorenzo. Sesión iniciada correctamente.\""
+      "mensaje": "La imagen 3D del héroe se carga"
     },
     {
       "ok": true,
-      "mensaje": "Listado de prestatarios con 4 registros"
+      "mensaje": "Todas las secciones se revelan al desplazar (36/36)"
     },
     {
       "ok": true,
-      "mensaje": "La ruta /crear del PDF abre el formulario de alta"
+      "mensaje": "La escena 3D responde al puntero (rotateY(4.576deg) rotateX(2.317deg)…)"
     },
     {
       "ok": true,
-      "mensaje": "Crear prestatario: \"Prestatario registrado correctamente.\""
+      "mensaje": "Las pestañas de módulos cambian de contenido"
     },
     {
       "ok": true,
-      "mensaje": "El listado pasa a 5 registros"
+      "mensaje": "La ilustración cambia con la pestaña (/static/img/mod-prestamos.jpg)"
     },
     {
       "ok": true,
-      "mensaje": "Validación del servidor: \"La cédula ya está registrada.\""
+      "mensaje": "El revelado al desplazar activa las secciones"
     },
     {
       "ok": true,
-      "mensaje": "El botón Editar abre el formulario precargado"
+      "mensaje": "El acceso muestra el panel de marca"
     },
     {
       "ok": true,
-      "mensaje": "El formulario viene precargado"
+      "mensaje": "Al entrar aparece una notificación de éxito"
     },
     {
       "ok": true,
-      "mensaje": "Editar prestatario: \"Prestatario actualizado correctamente.\""
+      "mensaje": "El panel muestra 6 indicadores (6)"
     },
     {
       "ok": true,
-      "mensaje": "El cambio se refleja en el listado"
+      "mensaje": "Los 3 gráficos se dibujan (3 contenedores)"
     },
     {
       "ok": true,
-      "mensaje": "Confirmación JavaScript antes de eliminar: \"¿Está seguro de eliminar al prestatario Valentina Elena Demostración (V-88888888)? Esta acción no se puede deshacer.\""
+      "mensaje": "El gráfico de barras dibuja 14 barras"
     },
     {
       "ok": true,
-      "mensaje": "Eliminar prestatario: \"Prestatario eliminado correctamente.\""
+      "mensaje": "Las barras horizontales de ocupación se dibujan"
     },
     {
       "ok": true,
-      "mensaje": "El listado vuelve a 4 registros"
+      "mensaje": "El gráfico de anillo genera su leyenda"
     },
     {
       "ok": true,
-      "mensaje": "Crear categoría: \"Categoría registrada correctamente.\""
+      "mensaje": "Los contadores animados terminan en un número (4)"
     },
     {
       "ok": true,
-      "mensaje": "Crear laboratorio: \"Laboratorio registrado correctamente.\""
+      "mensaje": "El botón cambia al tema oscuro"
     },
     {
       "ok": true,
-      "mensaje": "Crear equipo: \"Equipo registrado correctamente.\""
+      "mensaje": "El tema oscuro aplica fondo oscuro (rgb(6, 10, 19))"
     },
     {
       "ok": true,
-      "mensaje": "El equipo muestra su categoría relacionada"
+      "mensaje": "Los gráficos se redibujan al cambiar de tema"
     },
     {
       "ok": true,
-      "mensaje": "DOM: la hora de finalización se calcula en vivo (08:00 + 70 min = 09:10)"
+      "mensaje": "El tema elegido persiste al recargar"
     },
     {
       "ok": true,
-      "mensaje": "El botón \"Usar duración estándar\" restaura los 70 minutos del laboratorio"
+      "mensaje": "Ctrl+K abre la paleta de comandos"
     },
     {
       "ok": true,
-      "mensaje": "fetch() avisa del solapamiento: \"✖ El laboratorio tiene una reserva que se superpone. (franja 08:00 – 09:10)\""
+      "mensaje": "La paleta busca registros reales (2 resultado(s))"
     },
     {
       "ok": true,
-      "mensaje": "Reserva solapada rechazada: \"El laboratorio ya tiene una reserva que se superpone con ese horario.\""
+      "mensaje": "La búsqueda encuentra al prestatario por apellido"
     },
     {
       "ok": true,
-      "mensaje": "Reserva adyacente aceptada: \"Reserva registrada correctamente.\""
+      "mensaje": "Escape cierra la paleta"
     },
     {
       "ok": true,
-      "mensaje": "Reserva con duración personalizada (45 min): \"Reserva registrada correctamente.\""
+      "mensaje": "El listado tiene barra de herramientas"
     },
     {
       "ok": true,
-      "mensaje": "El listado muestra la duración personalizada"
+      "mensaje": "La búsqueda filtra el listado (1 fila)"
     },
     {
       "ok": true,
-      "mensaje": "Registrar préstamo: \"Préstamo registrado. El equipo figura ahora como PRESTADO.\""
+      "mensaje": "Se informa del total de resultados"
     },
     {
       "ok": true,
-      "mensaje": "El equipo aparece en los préstamos activos"
+      "mensaje": "Sin coincidencias aparece el estado vacío de filtro"
     },
     {
       "ok": true,
-      "mensaje": "El equipo pasa al estado PRESTADO"
+      "mensaje": "La cabecera ordena por columna (orden=cedula&dir=asc&pagina=1)"
     },
     {
       "ok": true,
-      "mensaje": "Confirmación JavaScript antes de devolver: \"¿Confirmar la devolución del equipo EQ-DEMO — Equipo de Demostración? El equipo volverá al estado DISPONIBLE.\""
+      "mensaje": "El botón exporta un CSV (techloan-prestatarios.csv)"
     },
     {
       "ok": true,
-      "mensaje": "Devolución registrada: \"Devolución registrada. El equipo vuelve a estar DISPONIBLE.\""
+      "mensaje": "La línea de tiempo dibuja las franjas ocupadas del día"
     },
     {
       "ok": true,
-      "mensaje": "El equipo vuelve al estado DISPONIBLE"
+      "mensaje": "La hora de finalización se calcula en vivo"
     },
     {
       "ok": true,
-      "mensaje": "Historial con 10 operaciones registradas"
+      "mensaje": "Se ofrecen franjas alternativas libres"
     },
     {
       "ok": true,
-      "mensaje": "Filtro por tipo funciona (3 préstamos de 10)"
+      "mensaje": "Al pulsar la alternativa se aplica la hora sugerida (10:20)"
     },
     {
       "ok": true,
-      "mensaje": "Mensaje amigable cuando no hay resultados"
+      "mensaje": "La auditoría muestra acciones registradas"
     },
     {
       "ok": true,
-      "mensaje": "El listado de usuarios no expone el hash de la contraseña"
+      "mensaje": "La guía de uso incluye preguntas frecuentes"
     },
     {
       "ok": true,
-      "mensaje": "Cerrar sesión devuelve al login"
+      "mensaje": "El comprobante de reserva se genera"
     },
     {
       "ok": true,
-      "mensaje": "El menú del operador NO incluye Usuarios"
+      "mensaje": "Ancho 375px: sin desbordamiento horizontal"
     },
     {
       "ok": true,
-      "mensaje": "El menú del operador SÍ incluye Prestatarios"
+      "mensaje": "Móvil: el botón de menú lateral está visible"
     },
     {
       "ok": true,
-      "mensaje": "El operador es redirigido al intentar abrir /usuarios"
+      "mensaje": "Móvil: el menú lateral se abre como cajón"
     },
     {
       "ok": true,
-      "mensaje": "Aviso de permisos: \"Tu rol no tiene permisos para realizar esa acción.\""
-    },
-    {
-      "ok": true,
-      "mensaje": "El operador no ve botones de Eliminar en prestatarios"
-    },
-    {
-      "ok": true,
-      "mensaje": "El operador sí puede crear prestatarios"
-    },
-    {
-      "ok": true,
-      "mensaje": "Móvil: botón de menú visible"
-    },
-    {
-      "ok": true,
-      "mensaje": "Móvil: menú colapsado al inicio"
-    },
-    {
-      "ok": true,
-      "mensaje": "Móvil: el menú se despliega con JavaScript"
+      "mensaje": "Móvil: pulsar fuera del menú lo cierra"
     },
     {
       "ok": true,
@@ -193,39 +173,23 @@
     },
     {
       "ok": true,
-      "mensaje": "Móvil: la página no desborda horizontalmente"
+      "mensaje": "Ancho 820px: sin desbordamiento horizontal"
     },
     {
       "ok": true,
-      "mensaje": "Ancho 375px: el formulario usa 1 columna(s) (esperadas 1)"
+      "mensaje": "Ancho 1440px: sin desbordamiento horizontal"
     },
     {
       "ok": true,
-      "mensaje": "Ancho 768px: el formulario usa 2 columna(s) (esperadas 2)"
+      "mensaje": "Sin excepciones de JavaScript en todo el recorrido"
     },
     {
       "ok": true,
-      "mensaje": "Tablet: el menú se colapsa en botón (las 9 secciones no caben a 768 px)"
+      "mensaje": "Ninguna respuesta 5xx (85 respuestas observadas)"
     },
     {
       "ok": true,
-      "mensaje": "Tablet: el menú colapsado se despliega"
-    },
-    {
-      "ok": true,
-      "mensaje": "Ancho 1280px: el formulario usa 3 columna(s) (esperadas 3)"
-    },
-    {
-      "ok": true,
-      "mensaje": "Sin excepciones de JavaScript durante todo el recorrido"
-    },
-    {
-      "ok": true,
-      "mensaje": "Ninguna respuesta 5xx durante el recorrido (148 respuestas observadas)"
-    },
-    {
-      "ok": true,
-      "mensaje": "Sin errores de consola inesperados (3 respuestas 4xx de pruebas negativas, esperadas)"
+      "mensaje": "Sin errores de consola inesperados"
     }
   ]
 }

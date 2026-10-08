@@ -1,6 +1,6 @@
 # 02 — ESTADO ACTUAL REAL
 
-> Última actualización: 2026-10-08 (sesión 3, auditoría final).
+> Última actualización: 2026-10-08 (sesión 5, verificación final de la interfaz premium).
 > **Estado: TERMINADO Y EMPAQUETADO.** Ver `WORKLOG.md` para la evidencia completa.
 
 ## Estado general
@@ -10,31 +10,48 @@ funcional construida con Flask + SQLite3 + Jinja2 + HTML5 + CSS3 + JavaScript
 Vanilla, que reutiliza íntegramente el backend, los servicios y las pruebas
 heredados. Está verificado, documentado y empaquetado para la entrega.
 
+> **Nota (sesión 4–5):** sobre esta base se construyó la **interfaz premium**
+> (portada pública, sistema de diseño con tema claro/oscuro, panel analítico con
+> gráficos SVG, paleta de comandos, auditoría, perfil y guía de uso). El detalle de
+> uso está en `docs/MANUAL_DE_USUARIO.md`; el mapa de archivos, en el `README.md`.
+> Las secciones de abajo describen la infraestructura web, que sigue siendo válida.
+
 ## Interfaz principal (web)
 
 ### Infraestructura
 
 | Elemento | Archivo |
 |---|---|
-| Blueprint web + permisos + CSRF | `app/routes/web_common.py` |
-| Login / logout / panel | `app/routes/web_auth_routes.py` |
+| Blueprint web + permisos + CSRF + listados | `app/routes/web_common.py` |
+| Portada pública, login / logout, panel, búsqueda | `app/routes/web_auth_routes.py` |
 | CRUD web de las 5 entidades | `app/routes/web_crud_routes.py` |
 | Reservas, préstamos, devoluciones, historial | `app/routes/web_operations_routes.py` |
-| Plantilla base (HTML5, navbar, mensajes) | `templates/base.html` |
-| CSS propio responsive | `static/css/estilos.css` |
-| JavaScript Vanilla | `static/js/main.js` |
+| Perfil, guía de uso y auditoría | `app/routes/web_extra_routes.py` |
+| Shell autenticado (barra lateral, cabecera, alertas) | `templates/base_app.html` |
+| Shell público (portada, acceso, error) | `templates/base_publico.html` |
+| Sistema de diseño (tema claro/oscuro, responsive) | `static/css/estilos.css` |
+| Portada pública y pantalla de acceso | `static/css/landing.css` · `templates/landing.html` |
+| Gráficos SVG del panel | `static/js/graficos.js` |
+| Interacciones (tema, menús, paleta, sugerencias) | `static/js/main.js` |
+| Animaciones de la portada | `static/js/landing.js` |
 | Configuración del servidor | `app/server.py` |
+| Parámetros de negocio (días de préstamo, umbral de saturación, franja horaria) | `app/config.py` |
 
 `app/server.py` configura `template_folder` y `static_folder` apuntando a la
-**raíz del proyecto**, tal como sugiere el PDF, y registra los manejadores de
-error `400`, `403`, `404` y `500`.
+**raíz del proyecto**, tal como sugiere el PDF, registra los manejadores de
+error `400`, `403`, `404` y `500` y expone a las plantillas el usuario en sesión,
+los permisos, las alertas y el token CSRF.
 
 ### Rutas web implementadas
 
 ```
-/                        Panel de inicio con indicadores
+/                        Portada pública; panel si hay sesión
 /login   (GET, POST)     Formulario de acceso
 /logout  (POST)          Cierre de sesión
+/perfil  (GET, POST)     Cuenta propia y cambio de contraseña
+/ayuda                   Guía de uso (exige sesión)
+/auditoria               Registro de actividad (solo ADMINISTRADOR)
+/buscar                  Búsqueda global para la paleta de comandos (JSON)
 
 /crear                   Alta de prestatario        ← ruta del PDF
 /editar/<id>             Edición de prestatario     ← ruta del PDF
@@ -50,6 +67,9 @@ error `400`, `403`, `404` y `500`.
 /reservas/disponibilidad   (JSON consumido con fetch())
 /prestamos              + /prestamos/crear + /prestamos/<id>/devolver
 /historial              (filtros por tipo, estado, prestatario, recurso y fechas)
+/reservas/<id>/comprobante   Ficha imprimible de la reserva
+/categorias|equipos|laboratorios|prestatarios|historial|auditoria /exportar   CSV
+/manifest.json           Manifiesto PWA
 ```
 
 ### Entregables académicos
@@ -100,7 +120,7 @@ adyacentes, estados que bloquean/no bloquean e historial.
 | Archivo | Alcance | Estado |
 |---|---|---|
 | `tests/smoke_test.py` | Esquema, hash, solapamiento, arranque web | ✅ |
-| `tests/test_web_phase6.py` | Integración web (113 peticiones, BD temporal) | ✅ |
+| `tests/test_web_phase6.py` | Integración web (208 peticiones, BD temporal) | ✅ |
 | `tests/test_crud_phase5.py` | CRUD backend | ✅ |
 | `tests/test_validations_phase5.py` | Validaciones | ✅ |
 | `tests/test_security_phase5.py` | Seguridad | ✅ |
@@ -109,13 +129,21 @@ adyacentes, estados que bloquean/no bloquean e historial.
 | `tests/test_historial_phase4.py` | Historial | ✅ |
 | `tests/crud_test.py`, `tests/security_test.py` | Legado | ✅ |
 
-**Resultados de la auditoría final:**
+**Resultados de la verificación final (sesión 5):**
 
 - Suite completa en el proyecto: **10 PASS / 0 FAIL**.
-- Suite completa en copia limpia con entorno virtual nuevo: **10 PASS / 0 FAIL**.
-- Navegador real (Chromium/Playwright): **56/56 comprobaciones OK**, 148
-  respuestas observadas, **cero errores 5xx**, sin excepciones de JavaScript.
-- Capturas de evidencia en `docs/capturas/` (43 imágenes).
+- `test_web_phase6`: **208 peticiones**, cero errores 500, más un **barrido de las
+  57 rutas GET sin sesión** que exige que ninguna devuelva 500.
+- Navegador real (Chromium/Playwright, interfaz premium completa): **47/47
+  comprobaciones OK**, 85 respuestas observadas, **cero errores 5xx**, sin
+  excepciones de JavaScript y sin errores de consola inesperados.
+- Capturas de evidencia en `docs/capturas/`.
+
+**Incidencia detectada y resuelta en esta sesión:**
+
+| Incidencia | Causa | Solución |
+|---|---|---|
+| `GET /ayuda` sin sesión devolvía **500** | La vista no exigía sesión, pero la plantilla hereda el shell autenticado, que necesita los datos del usuario | `@login_required` en la ruta + prueba de regresión que barre todas las rutas GET anónimas |
 
 ## Interfaz Tkinter (legado)
 

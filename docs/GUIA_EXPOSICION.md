@@ -56,7 +56,7 @@ solapamiento. Anótalos: los necesitarás en el paso 12.
 
 ---
 
-## 3. Recorrido de demostración (≈ 12–15 minutos)
+## 3. Recorrido de demostración (≈ 15–18 minutos)
 
 ### Paso 0 — Mostrar la estructura del proyecto (1 min)
 
@@ -87,7 +87,11 @@ de `schema.sql`, que incluye 21 registros de prueba."*
 python run_server.py
 ```
 
-Abrir `http://127.0.0.1:5000`. Debe redirigir a `/login`.
+Abrir `http://127.0.0.1:5000`. Aparece la **portada pública** del producto: el visitante ve
+qué es TechLoan y solo desde ahí pasa al acceso. No redirige de entrada al login.
+
+Frase útil: *"La raíz es pública: muestra la portada a quien no tiene sesión y el panel a quien
+ya la tiene. Los módulos internos sí exigen sesión."*
 
 ### Paso 3 — Demostrar que las rutas están protegidas (30 s)
 
@@ -98,7 +102,19 @@ Redirige al login con un mensaje. *"Sin sesión no se accede a ninguna ruta inte
 
 Entra con **`admin` / `Admin123!`**.
 
-Señala en el panel: las 6 tarjetas de indicadores, las próximas reservas y los préstamos activos.
+Señala en el panel: las **6 tarjetas de indicadores** con contadores animados y los **3 gráficos
+SVG** dibujados en el cliente (reservas por día, inventario por estado, ocupación por
+laboratorio), más las próximas reservas y la actividad reciente.
+
+Dos detalles que lucen y son gratis de mostrar:
+
+- Pulsa el **botón de tema** de la cabecera → la interfaz pasa a oscuro y los gráficos se
+  redibujan tomando los colores del tema. Recarga la página: **el tema elegido persiste**.
+- Pulsa **Ctrl+K** → se abre la **paleta de comandos**. Escribe `González`: encuentra al
+  prestatario buscando en los datos reales del servidor. `Escape` la cierra.
+
+Frase útil: *"Todo esto es HTML, CSS y JavaScript sin ninguna librería: los gráficos son SVG
+generados en el cliente y el estado del tema vive en `localStorage`."*
 
 ### Paso 5 — Login incorrecto (30 s, opcional)
 
@@ -169,7 +185,18 @@ Aplica el filtro *Tipo de operación = Préstamo* → se reduce la lista.
 Prueba una fecha futura (ej. `Desde 01/01/2030`) → aparece el **mensaje amigable** de
 "no hay operaciones que coincidan".
 
-### Paso 12 — Restricción administrativa (2 min) ← **seguridad y roles**
+### Paso 12 — Trazabilidad, cuenta propia y ayuda (2 min)
+
+1. **Auditoría** (solo ADMINISTRADOR): el registro muestra quién hizo qué, con fecha, detalle
+   e IP. Señala tu propio inicio de sesión, anotado hace un minuto.
+   Frase útil: *"El registro sobrevive aunque el usuario se elimine: por eso `usuario_id` no
+   tiene clave foránea a propósito."*
+2. **Mi perfil** → cambio de contraseña, con la actual como comprobación.
+3. **Guía de uso** → el manual de usuario dentro de la propia aplicación.
+4. En *Reservas*, pulsa **Comprobante** en una fila: se genera una ficha imprimible de la
+   reserva.
+
+### Paso 13 — Restricción administrativa (2 min) ← **seguridad y roles**
 
 1. *Cerrar sesión*.
 2. Entra como **`operador` / `Operador123!`**.
@@ -177,13 +204,13 @@ Prueba una fecha futura (ej. `Desde 01/01/2030`) → aparece el **mensaje amigab
 4. Intenta abrir `http://127.0.0.1:5000/usuarios` a mano → redirige con
    *"Tu rol no tiene permisos para realizar esa acción."*
 
-### Paso 13 — Responsive (1 min)
+### Paso 14 — Responsive (1 min)
 
 Reduce la ventana del navegador (o usa F12 → modo dispositivo) a ~375 px:
 - El menú se convierte en un botón que despliega con JavaScript.
 - **Las tablas se convierten en tarjetas** apiladas, sin perder información.
 
-### Paso 14 — Pruebas y cierre (1 min)
+### Paso 15 — Pruebas y cierre (1 min)
 
 ```bash
 PYTHONPATH=. python tests/test_web_phase6.py
@@ -205,7 +232,7 @@ Muestra que pasa completo. Y cierra con:
 | El navegador no abre | Prueba `http://localhost:5000` en lugar de `127.0.0.1`. |
 | `import app` falla al ejecutar pruebas | Falta `PYTHONPATH=.` delante del comando. |
 | Se cae el equipo o el proyector | Usa las capturas de `docs/capturas/`, que cubren todo el recorrido. |
-| Se acaba el tiempo | Prioriza: pasos 6 (CRUD), 9 (solapamiento) y 12 (roles). Son los de mayor peso. |
+| Se acaba el tiempo | Prioriza: pasos 6 (CRUD), 9 (solapamiento) y 13 (roles). Son los de mayor peso. |
 
 ---
 

@@ -213,3 +213,106 @@ sugerida por el enunciado y la del proyecto.
 
 **Proyecto terminado y empaquetado.** No quedan tareas técnicas pendientes.
 
+---
+
+## 2026-10-08 (sesión 4) — Interfaz premium
+
+**Agente:** Aria (WorkBuddy AI).
+
+Sobre la base web ya entregada se elevó la interfaz a un producto presentable ante
+el jurado, **sin tocar las reglas de negocio**: se reutilizaron íntegramente los
+servicios POO existentes y solo se añadieron capas de presentación y dos servicios
+de apoyo.
+
+### Qué se añadió
+
+- **Portada pública** (`templates/landing.html`, `static/css/landing.css`,
+  `static/js/landing.js`): presentación del producto con escena 3D por paralaje de
+  ratón, revelado por desplazamiento y pestañas de módulos. La raíz `/` deja de
+  redirigir al login: muestra la portada al visitante y el panel a quien tiene sesión.
+- **Sistema de diseño** (`static/css/estilos.css` reescrito, ~1.900 líneas): tema
+  claro y oscuro con persistencia en `localStorage`, tipografía y escala de
+  espaciado propias, y tres puntos de ruptura (375 / 820 / 1440 px).
+- **Shell de la aplicación** (`templates/base_app.html`, `base_publico.html`,
+  `parciales/`): barra lateral, cabecera con campana de alertas, menús emergentes y
+  un parcial de iconos SVG en línea (sin librerías externas).
+- **Panel analítico**: 6 indicadores con contadores animados y 3 gráficos SVG
+  dibujados en el cliente (`static/js/graficos.js`), que se redibujan al cambiar de
+  tema.
+- **Paleta de comandos (Ctrl+K)** sobre un endpoint de búsqueda global (`/buscar`).
+- **Listados avanzados**: búsqueda con retardo, orden por columna, paginación y
+  exportación a CSV con BOM, todo reflejado en la URL para que el estado sea
+  compartible.
+- **Reservas**: línea de tiempo de las franjas ocupadas del día y sugerencias de
+  franjas alternativas libres, más comprobante imprimible.
+- **Servicios nuevos**: `alertas_service.py` (préstamos vencidos, reservas de hoy,
+  laboratorios saturados) y `auditoria_service.py` (registro de actividad tolerante
+  a fallos, con tabla e índices propios en `schema.sql`).
+- **Módulos de auditoría, perfil y guía de uso** (`/auditoria`, `/perfil`, `/ayuda`).
+- **PWA ligera**: `manifest.json`, iconos y favicon propios.
+- **`docs/MANUAL_DE_USUARIO.md`**: manual de uso completo en 10 secciones.
+
+### Verificación
+
+| Comprobación | Resultado |
+|---|---|
+| Suite completa | **10 PASS / 0 FAIL** |
+| Navegador real (Chromium/Playwright) | **47/47 OK**, 85 respuestas, **0 errores 5xx**, sin excepciones JS |
+| Capturas | `docs/capturas/` regeneradas para la interfaz nueva |
+
+---
+
+## 2026-10-08 (sesión 5) — Verificación final del servidor y cierre
+
+**Agente:** Aria (WorkBuddy AI).
+
+La sesión anterior se interrumpió al levantar el servidor para la comprobación
+final. Se retomó el trabajo desde ahí.
+
+### Diagnóstico del "cuelgue"
+
+El servidor **no estaba roto**: se había lanzado en primer plano y `flask run` no
+termina nunca, por lo que el proceso quedaba bloqueado. Arrancado como proceso en
+segundo plano, responde correctamente en `http://127.0.0.1:5000`.
+
+### Bug real encontrado y corregido
+
+- **`GET /ayuda` sin sesión devolvía 500.** La vista no exigía sesión, pero
+  `ayuda.html` hereda `base_app.html`, el shell autenticado, que accede a
+  `usuario_actual.nombre`. Sin sesión, `current_user()` es `None` y la plantilla
+  lanzaba `UndefinedError`. No lo detectaba la suite porque solo probaba `/ayuda`
+  con sesión iniciada.
+- **Corrección:** `@login_required` en la ruta (la página pertenece al shell
+  autenticado; el enlace del pie de la página de error ya solo se muestra con sesión).
+- **Prueba de regresión:** nueva comprobación que **barre las 57 rutas GET del mapa
+  de rutas sin sesión** y exige que ninguna devuelva 500. La suite pasó de 150 a
+  **208 peticiones verificadas**.
+
+### Verificación final (evidencia)
+
+| Comprobación | Resultado |
+|---|---|
+| Servidor en marcha y `GET /health` | 200 `{"ok": true}` |
+| Rutas internas sin sesión | 302 → `/login` (antes, `/ayuda` daba 500) |
+| Suite completa | **10 PASS / 0 FAIL** |
+| Navegador real (Chromium/Playwright) | **47/47 OK**, 85 respuestas, **0 errores 5xx**, sin excepciones JS |
+| Barrido de rutas GET anónimas | **57 rutas**, ninguna 500 |
+
+### Documentación y empaquetado
+
+- `docs/GUIA_EXPOSICION.md` actualizado: el paso 2 ya no dice que la raíz redirija
+  al login (ahora muestra la portada pública) y se añadió el paso 12 con auditoría,
+  perfil, guía de uso y comprobante (recorrido renumerado a 15 pasos).
+- `docs/PROJECT_CONTEXT/02_CURRENT_STATE.md` actualizado a la interfaz premium.
+- ZIP de entrega **reconstruido**: el anterior era anterior a la interfaz premium.
+
+### Siguiente acción exacta
+
+1. Ensayar el recorrido de `docs/GUIA_EXPOSICION.md` §3 y cronometrarlo.
+2. Regenerar la base de datos con `python init_db.py` el mismo día de la exposición.
+3. Decisión abierta: si se quiere excluir `docs/PROMPT_AUTONOMOUS_AGENT.md` del ZIP.
+
+### Estado
+
+**TERMINADO.** No quedan pendientes técnicos.
+
