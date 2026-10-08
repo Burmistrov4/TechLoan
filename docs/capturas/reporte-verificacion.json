@@ -1,0 +1,126 @@
+[
+  {
+    "ok": true,
+    "mensaje": "Formulario de login presente"
+  },
+  {
+    "ok": true,
+    "mensaje": "CSS propio aplicado (botón con color de fondo)"
+  },
+  {
+    "ok": true,
+    "mensaje": "Login correcto redirige al panel"
+  },
+  {
+    "ok": true,
+    "mensaje": "Mensaje flash de bienvenida visible"
+  },
+  {
+    "ok": true,
+    "mensaje": "Panel con tarjetas de indicadores (6)"
+  },
+  {
+    "ok": true,
+    "mensaje": "Menú de navegación con 9 enlaces"
+  },
+  {
+    "ok": true,
+    "mensaje": "Listado de prestatarios con 4 registros (esperado 4)"
+  },
+  {
+    "ok": true,
+    "mensaje": "Insignias de estado renderizadas"
+  },
+  {
+    "ok": true,
+    "mensaje": "Validación HTML5: cédula obligatoria"
+  },
+  {
+    "ok": true,
+    "mensaje": "Validación HTML5: tipo email correcto"
+  },
+  {
+    "ok": true,
+    "mensaje": "La validación del cliente bloquea el envío vacío"
+  },
+  {
+    "ok": true,
+    "mensaje": "JavaScript marca el campo inválido"
+  },
+  {
+    "ok": true,
+    "mensaje": "Diálogo de confirmación JavaScript (confirm)"
+  },
+  {
+    "ok": true,
+    "mensaje": "El diálogo advierte sobre la eliminación"
+  },
+  {
+    "ok": true,
+    "mensaje": "Al pulsar Eliminar se dispara la confirmación"
+  },
+  {
+    "ok": true,
+    "mensaje": "Al cancelar el diálogo NO se elimina el registro"
+  },
+  {
+    "ok": true,
+    "mensaje": "DOM: hora de finalización calculada = 09:10 (esperado 09:10)"
+  },
+  {
+    "ok": true,
+    "mensaje": "DOM: duración personalizada calculada = 08:45"
+  },
+  {
+    "ok": true,
+    "mensaje": "fetch(): detecta la franja ocupada -> \"✖ El laboratorio tiene una reserva que se superpone. (franja 08:00 – 09:10)\""
+  },
+  {
+    "ok": true,
+    "mensaje": "fetch(): confirma franja libre -> \"✔ Laboratorio disponible. (franja 16:00 – 17:10)\""
+  },
+  {
+    "ok": true,
+    "mensaje": "GET /laboratorios -> 200"
+  },
+  {
+    "ok": true,
+    "mensaje": "GET /equipos -> 200"
+  },
+  {
+    "ok": true,
+    "mensaje": "GET /reservas -> 200"
+  },
+  {
+    "ok": true,
+    "mensaje": "GET /prestamos -> 200"
+  },
+  {
+    "ok": true,
+    "mensaje": "GET /historial -> 200"
+  },
+  {
+    "ok": true,
+    "mensaje": "GET /usuarios -> 200"
+  },
+  {
+    "ok": true,
+    "mensaje": "Móvil: botón de menú visible"
+  },
+  {
+    "ok": true,
+    "mensaje": "Móvil: menú colapsado inicialmente"
+  },
+  {
+    "ok": true,
+    "mensaje": "Móvil: el menú se despliega con JavaScript"
+  },
+  {
+    "ok": true,
+    "mensaje": "Móvil: la tabla se convierte en tarjetas (display=flex)"
+  },
+  {
+    "ok": true,
+    "mensaje": "Sin errores de JavaScript en consola"
+  }
+]
