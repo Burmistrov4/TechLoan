@@ -22,13 +22,24 @@
 
 ## 2. Comandos exactos
 
-```bash
-# 1. Entrar al proyecto y activar el entorno virtual
-python -m venv .venv            # solo la primera vez
-.venv\Scripts\activate          # Windows
-source .venv/bin/activate       # Linux / macOS
+**Opción recomendada para una PC nueva:**
 
-# 2. Instalar dependencias (solo la primera vez)
+```text
+iniciar.bat
+```
+
+No es necesario activar manualmente el entorno virtual: el lanzador portable lo crea,
+instala las dependencias y levanta Flask.
+
+**Flujo manual equivalente (si se desea mostrar el proceso al profesor):**
+
+```bash
+# 1. Crear y activar el entorno virtual solo la primera vez
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+source .venv/bin/activate         # Linux / macOS
+
+# 2. Instalar dependencias
 pip install -r requirements.txt
 
 # 3. Reconstruir la base de datos desde schema.sql

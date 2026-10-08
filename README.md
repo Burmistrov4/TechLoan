@@ -515,6 +515,171 @@ Flask  ──►  Rutas web (Jinja2)  ──┐
 Las dos capas de entrada (web y API JSON) comparten exactamente los mismos servicios, de modo
 que las reglas de negocio y las validaciones son únicas y no pueden divergir.
 
+## 14. Despliegue en producción
+
+> **Importante:** el proyecto fue diseñado y validado principalmente como aplicación local
+> académica. El despliegue público es una guía técnica y requiere configurar correctamente
+> variables de entorno, almacenamiento y seguridad antes de usarlo con datos reales.
+
+### 14.1 Backend Flask en Render
+
+Render puede ejecutar Flask mediante un servicio web. La aplicación debe escuchar en
+`0.0.0.0` y usar el puerto proporcionado por la variable de entorno `PORT`.
+
+**Configuración recomendada del servicio:**
+
+| Campo | Valor |
+|---|---|
+| Runtime | Python |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `gunicorn --bind 0.0.0.0:$PORT run_server:app` |
+| Python | 3.10+ |
+
+Si `gunicorn` no está incluido en `requirements.txt`, hay que añadirlo antes de desplegar:
+
+```text
+gunicorn
+```
+
+**Variables de entorno mínimas:**
+
+```text
+SECRET_KEY=<cadena-aleatoria-larga-y-secreta>
+```
+
+Nunca se debe publicar la `SECRET_KEY` en Git ni dejarla escrita directamente en el código.
+
+**Advertencia importante sobre SQLite en Render:** SQLite es un archivo local. En servicios
+con filesystem efímero, los datos pueden perderse cuando la instancia se recrea o se despliega.
+Por eso esta configuración sirve para una **demo/despliegue académico**, pero no es la opción
+adecuada para datos de producción que deban persistir.
+
+Para producción real se recomienda sustituir SQLite por PostgreSQL y adaptar solamente la capa
+de persistencia. La arquitectura por servicios facilita esa migración.
+
+Después del despliegue, Render proporcionará una URL similar a:
+
+```text
+https://techloan-xxxx.onrender.com
+```
+
+### 14.2 Frontend en GitHub Pages o Cloudflare Pages
+
+**Para este proyecto concreto no se recomienda separar el frontend Jinja2 del backend.**
+
+Las páginas HTML actuales son **server-rendered con Jinja2** y dependen de Flask para:
+- autenticación y sesiones;
+- CSRF;
+- formularios CRUD;
+- permisos;
+- renderizado de datos;
+- redirecciones;
+- operaciones de reservas y préstamos.
+
+Por ello, GitHub Pages o Cloudflare Pages **no pueden alojar directamente estos templates como
+si fueran un frontend estático independiente** sin una adaptación arquitectónica.
+
+Hay dos caminos:
+
+#### Opción A — recomendada para este proyecto académico
+
+Desplegar **todo Flask en Render**:
+
+```text
+Navegador
+   ↓
+Render
+   ├── Flask
+   ├── Jinja2
+   ├── CSS
+   ├── JavaScript
+   └── SQLite (solo demo)
+```
+
+Es la opción más sencilla y mantiene exactamente la arquitectura entregada.
+
+#### Opción B — frontend estático separado
+
+Si se quisiera usar GitHub Pages o Cloudflare Pages, habría que transformar la arquitectura:
+
+```text
+GitHub Pages / Cloudflare Pages
+        ↓ HTTPS / JSON
+API Flask en Render
+        ↓
+Base de datos
+```
+
+En ese escenario, el frontend tendría que ser HTML/CSS/JS estático independiente y consumir las
+rutas `/api/...` mediante `fetch()`. También habría que resolver:
+- CORS;
+- autenticación adecuada para una API separada;
+- almacenamiento/gestión del token o sesión;
+- CSRF según el mecanismo de autenticación;
+- URL configurable del backend;
+- errores de red;
+- política de cookies si se mantienen sesiones Flask.
+
+**No se debe simplemente subir `templates/` a GitHub Pages o Cloudflare Pages y esperar que
+Jinja2 funcione:** esos servicios sirven archivos estáticos y no ejecutan Python/Flask.
+
+### 14.3 GitHub Pages
+
+Si se crea posteriormente un frontend estático separado, el flujo general sería:
+
+```text
+frontend/
+├── index.html
+├── css/
+└── js/
+```
+
+1. Crear un repositorio para el frontend.
+2. Configurar GitHub Pages para publicar la rama/directorio elegido.
+3. Cambiar en JavaScript la URL base de la API para apuntar al backend de Render.
+4. Configurar CORS en Flask para permitir únicamente el dominio del frontend.
+5. Probar login, CRUD, reservas y demás llamadas desde HTTPS.
+
+GitHub Pages **no ejecutará Flask, Python ni Jinja2**.
+
+### 14.4 Cloudflare Pages
+
+El principio es el mismo:
+
+```text
+Cloudflare Pages
+      ↓
+frontend estático HTML/CSS/JS
+      ↓ HTTPS
+Flask API en Render
+```
+
+1. Crear un proyecto Pages conectado al repositorio del frontend.
+2. Configurar el directorio de salida según la estructura del frontend.
+3. Configurar la URL del backend como variable/configuración del frontend.
+4. Configurar CORS en Flask para el dominio de Cloudflare Pages.
+5. Verificar que las peticiones se realicen por HTTPS.
+
+Cloudflare Pages tampoco ejecuta el servidor Flask tradicional del proyecto.
+
+### 14.5 Producción real: checklist adicional
+
+Antes de considerar el sistema listo para datos reales:
+
+- [ ] Cambiar todas las credenciales de demostración.
+- [ ] Generar una `SECRET_KEY` nueva y almacenarla como variable de entorno.
+- [ ] No subir `.env`, contraseñas ni secretos al repositorio.
+- [ ] Sustituir SQLite por PostgreSQL si los datos deben persistir en un servicio cloud.
+- [ ] Configurar CORS con dominios concretos, nunca `*` para una aplicación autenticada.
+- [ ] Usar HTTPS.
+- [ ] Revisar cookies `Secure`, `HttpOnly` y `SameSite` según la arquitectura final.
+- [ ] Desactivar cualquier modo debug.
+- [ ] Configurar backups de la base de datos.
+- [ ] Revisar logs y errores del proveedor.
+- [ ] Probar autenticación, CSRF, permisos y operaciones después del despliegue.
+- [ ] No utilizar `init_db.py` sobre una base de datos de producción, porque reconstruye las tablas.
+
+
 ---
 
 *Proyecto final de Programación III — IUTEPI.*
