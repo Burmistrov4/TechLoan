@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% import "parciales/formulario.html" as f %}
+{% block titulo %}{{ 'Editar categoría' if modo == 'editar' else 'Nueva categoría' }}{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>{{ 'Editar categoría' if modo == 'editar' else 'Nueva categoría' }}</h1>
+    <p class="encabezado__subtitulo">Las categorías agrupan equipos del mismo tipo.</p>
+  </div>
+</section>
+
+<section class="tarjeta-formulario">
+  <form method="post" class="formulario" data-validar
+        action="{{ url_for('web.categoria_editar', id_=registro.id) if modo == 'editar' else url_for('web.categoria_crear') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+    {{ f.texto('nombre', 'Nombre de la categoría', registro.nombre, requerido=true,
+               minimo=2, maximo=60, largo_max=60, autofoco=true,
+               ayuda='Entre 2 y 60 caracteres. Debe ser único.') }}
+    {{ f.area('descripcion', 'Descripción', registro.descripcion, filas=3,
+              marcador='Equipos de cómputo, monitores y periféricos',
+              ayuda='Opcional.') }}
+
+    {{ f.acciones('Guardar categoría', url_for('web.categorias')) }}
+  </form>
+</section>
+{% endblock %}

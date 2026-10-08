@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block titulo %}Usuarios del sistema{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Usuarios del sistema</h1>
+    <p class="encabezado__subtitulo">
+      Cuentas con credenciales de acceso. Solo un <strong>ADMINISTRADOR</strong> puede
+      gestionarlas; el rol <strong>OPERADOR</strong> no tiene acceso a este módulo.
+    </p>
+  </div>
+  {% if puede('usuarios.write') %}
+  <div class="encabezado__acciones">
+    <a class="boton boton--primario" href="{{ url_for('web.usuario_crear') }}">+ Nuevo usuario</a>
+  </div>
+  {% endif %}
+</section>
+
+{% if usuarios %}
+<div class="tabla-envoltura">
+  <table class="tabla">
+    <caption class="visualmente-oculto">Listado de usuarios del sistema</caption>
+    <thead>
+      <tr>
+        <th scope="col">Nombre completo</th>
+        <th scope="col">Usuario</th>
+        <th scope="col">Correo</th>
+        <th scope="col">Rol</th>
+        <th scope="col">Estado</th>
+        <th scope="col">Registro</th>
+        <th scope="col" class="columna-acciones">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in usuarios %}
+      <tr>
+        <td data-etiqueta="Nombre completo"><strong>{{ u.nombre }} {{ u.apellido }}</strong></td>
+        <td data-etiqueta="Usuario"><span class="mono">{{ u.username }}</span></td>
+        <td data-etiqueta="Correo">{{ u.email }}</td>
+        <td data-etiqueta="Rol">
+          <span class="insignia insignia--{{ u.rol | lower }}">{{ u.rol }}</span>
+        </td>
+        <td data-etiqueta="Estado">
+          <span class="insignia insignia--{{ u.estado | lower }}">{{ u.estado }}</span>
+        </td>
+        <td data-etiqueta="Registro"><span class="dato-secundario">{{ u.fecha_registro }}</span></td>
+        <td data-etiqueta="Acciones" class="columna-acciones">
+          <div class="acciones-fila">
+            <a class="boton boton--secundario boton--pequeno"
+               href="{{ url_for('web.usuario_editar', id_=u.id) }}">Editar</a>
+            <form method="post" class="formulario-eliminar"
+                  action="{{ url_for('web.usuario_eliminar', id_=u.id) }}"
+                  data-confirmar="¿Está seguro de eliminar al usuario «{{ u.username }}»? Esta acción no se puede deshacer.">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="boton boton--peligro boton--pequeno">Eliminar</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="contador-registros">Total: <strong>{{ usuarios | length }}</strong> usuario(s).</p>
+{% else %}
+<div class="estado-vacio">
+  <p class="estado-vacio__titulo">No hay usuarios registrados</p>
+  <p class="estado-vacio__texto">Crea un usuario para poder acceder al sistema.</p>
+  <a class="boton boton--primario" href="{{ url_for('web.usuario_crear') }}">+ Crear el primero</a>
+</div>
+{% endif %}
+{% endblock %}

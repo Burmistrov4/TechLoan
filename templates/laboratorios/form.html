@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% import "parciales/formulario.html" as f %}
+{% block titulo %}{{ 'Editar laboratorio' if modo == 'editar' else 'Nuevo laboratorio' }}{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>{{ 'Editar laboratorio' if modo == 'editar' else 'Nuevo laboratorio' }}</h1>
+    <p class="encabezado__subtitulo">
+      Los campos marcados con <span class="obligatorio">*</span> son obligatorios.
+    </p>
+  </div>
+</section>
+
+<section class="tarjeta-formulario">
+  <form method="post" class="formulario" data-validar
+        action="{{ url_for('web.laboratorio_editar', id_=registro.id) if modo == 'editar' else url_for('web.laboratorio_crear') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+    <div class="rejilla-campos">
+      {{ f.texto('codigo', 'Código', registro.codigo, requerido=true,
+                 marcador='LAB-01', patron='[A-Za-z0-9._\\-]{2,20}',
+                 ayuda='Entre 2 y 20 caracteres. Debe ser único.') }}
+      {{ f.texto('nombre', 'Nombre', registro.nombre, requerido=true,
+                 largo_max=80, minimo=2) }}
+      {{ f.texto('ubicacion', 'Ubicación', registro.ubicacion, requerido=true,
+                 largo_max=100, minimo=2, marcador='Edificio A - Planta Baja') }}
+      {{ f.texto('capacidad', 'Capacidad (personas)', registro.capacidad,
+                 tipo='number', requerido=true, minimo=1, maximo=1000, paso=1) }}
+      {{ f.texto('duracion_estandar_minutos', 'Duración estándar (minutos)',
+                 registro.duracion_estandar_minutos if registro.duracion_estandar_minutos is not none else 70,
+                 tipo='number', requerido=true, minimo=1, maximo=1440, paso=1,
+                 ayuda='Valor por defecto: 70 minutos.') }}
+      {{ f.lista('estado', 'Estado', estados, registro.estado or 'DISPONIBLE', requerido=true) }}
+    </div>
+
+    {{ f.acciones('Guardar laboratorio', url_for('web.laboratorios')) }}
+  </form>
+</section>
+{% endblock %}

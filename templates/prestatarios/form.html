@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% import "parciales/formulario.html" as f %}
+{% block titulo %}{{ 'Editar prestatario' if modo == 'editar' else 'Nuevo prestatario' }}{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>{{ 'Editar prestatario' if modo == 'editar' else 'Nuevo prestatario' }}</h1>
+    <p class="encabezado__subtitulo">
+      Los campos marcados con <span class="obligatorio">*</span> son obligatorios.
+    </p>
+  </div>
+</section>
+
+<section class="tarjeta-formulario">
+  <form method="post" class="formulario" id="formulario-principal"
+        action="{{ url_for('web.prestatario_editar', id_=registro.id) if modo == 'editar' else url_for('web.prestatario_crear') }}"
+        data-validar>
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+    <div class="rejilla-campos">
+      {{ f.texto('cedula', 'Cédula', registro.cedula, requerido=true,
+                 marcador='V-12345678', patron='[A-Za-z0-9.\\-]{5,20}',
+                 ayuda='Entre 5 y 20 caracteres: letras, números, puntos o guiones.') }}
+      {{ f.lista('tipo', 'Tipo de prestatario', tipos, registro.tipo, requerido=true) }}
+      {{ f.texto('nombre', 'Nombre', registro.nombre, requerido=true,
+                 largo_max=50, autocompletar='given-name') }}
+      {{ f.texto('apellido', 'Apellido', registro.apellido, requerido=true,
+                 largo_max=50, autocompletar='family-name') }}
+      {{ f.texto('telefono', 'Teléfono', registro.telefono, tipo='tel',
+                 marcador='0414-1234567', ayuda='Opcional.') }}
+      {{ f.texto('email', 'Correo electrónico', registro.email, tipo='email',
+                 marcador='nombre@correo.com', ayuda='Opcional. Debe contener "@".') }}
+      {{ f.lista('estado', 'Estado', estados, registro.estado or 'ACTIVO', requerido=true) }}
+    </div>
+
+    {{ f.acciones('Guardar prestatario', url_for('web.prestatarios')) }}
+  </form>
+</section>
+{% endblock %}

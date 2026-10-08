@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block titulo %}Prestatarios{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Prestatarios</h1>
+    <p class="encabezado__subtitulo">
+      Personas que reciben reservas de laboratorios y préstamos de equipos.
+      No requieren cuenta en el sistema.
+    </p>
+  </div>
+  {% if puede('prestatarios.write') %}
+  <div class="encabezado__acciones">
+    <a class="boton boton--primario" href="{{ url_for('web.prestatario_crear') }}">+ Nuevo prestatario</a>
+  </div>
+  {% endif %}
+</section>
+
+{% if prestatarios %}
+<div class="tabla-envoltura">
+  <table class="tabla">
+    <caption class="visualmente-oculto">Listado de prestatarios registrados</caption>
+    <thead>
+      <tr>
+        <th scope="col">Cédula</th>
+        <th scope="col">Nombre completo</th>
+        <th scope="col">Tipo</th>
+        <th scope="col">Contacto</th>
+        <th scope="col">Estado</th>
+        <th scope="col" class="columna-acciones">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in prestatarios %}
+      <tr>
+        <td data-etiqueta="Cédula"><span class="mono">{{ p.cedula }}</span></td>
+        <td data-etiqueta="Nombre completo">
+          <strong>{{ p.nombre }} {{ p.apellido }}</strong>
+        </td>
+        <td data-etiqueta="Tipo">{{ p.tipo | capitalize }}</td>
+        <td data-etiqueta="Contacto">
+          {% if p.telefono %}<span class="dato-secundario">{{ p.telefono }}</span>{% endif %}
+          {% if p.email %}<br><span class="dato-secundario">{{ p.email }}</span>{% endif %}
+          {% if not p.telefono and not p.email %}<span class="dato-secundario">—</span>{% endif %}
+        </td>
+        <td data-etiqueta="Estado">
+          <span class="insignia insignia--{{ p.estado | lower }}">{{ p.estado }}</span>
+        </td>
+        <td data-etiqueta="Acciones" class="columna-acciones">
+          <div class="acciones-fila">
+            {% if puede('prestatarios.write') %}
+            <a class="boton boton--secundario boton--pequeno"
+               href="{{ url_for('web.prestatario_editar', id_=p.id) }}">Editar</a>
+            {% endif %}
+            {% if puede('prestatarios.delete') %}
+            <form method="post" class="formulario-eliminar"
+                  action="{{ url_for('web.prestatario_eliminar', id_=p.id) }}"
+                  data-confirmar="¿Está seguro de eliminar al prestatario {{ p.nombre }} {{ p.apellido }} ({{ p.cedula }})? Esta acción no se puede deshacer.">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="boton boton--peligro boton--pequeno">Eliminar</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="contador-registros">
+  Total: <strong>{{ prestatarios | length }}</strong> prestatario(s) registrado(s).
+</p>
+{% else %}
+<div class="estado-vacio">
+  <p class="estado-vacio__titulo">Todavía no hay prestatarios registrados</p>
+  <p class="estado-vacio__texto">
+    Registra el primer prestatario para poder crear reservas y préstamos.
+  </p>
+  {% if puede('prestatarios.write') %}
+  <a class="boton boton--primario" href="{{ url_for('web.prestatario_crear') }}">+ Registrar el primero</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

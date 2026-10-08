@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% import "parciales/formulario.html" as f %}
+{% block titulo %}{{ 'Editar usuario' if modo == 'editar' else 'Nuevo usuario' }}{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>{{ 'Editar usuario' if modo == 'editar' else 'Nuevo usuario del sistema' }}</h1>
+    <p class="encabezado__subtitulo">
+      La contraseña se almacena siempre como <strong>hash</strong> (nunca en texto plano).
+    </p>
+  </div>
+</section>
+
+<section class="tarjeta-formulario">
+  <form method="post" class="formulario" data-validar
+        action="{{ url_for('web.usuario_editar', id_=registro.id) if modo == 'editar' else url_for('web.usuario_crear') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+    <div class="rejilla-campos">
+      {{ f.texto('nombre', 'Nombre', registro.nombre, requerido=true, largo_max=50) }}
+      {{ f.texto('apellido', 'Apellido', registro.apellido, requerido=true, largo_max=50) }}
+      {{ f.texto('username', 'Nombre de usuario', registro.username, requerido=true,
+                 patron='[A-Za-z0-9_]{4,20}', largo_max=20,
+                 ayuda='Entre 4 y 20 caracteres alfanuméricos o guion bajo.') }}
+      {{ f.texto('email', 'Correo electrónico', registro.email, tipo='email',
+                 requerido=true, marcador='nombre@correo.com') }}
+      {{ f.texto('password', 'Contraseña' if modo == 'crear' else 'Nueva contraseña',
+                 '', tipo='password', requerido=(modo == 'crear'),
+                 autocompletar='new-password',
+                 ayuda='Mínimo 8 caracteres, con mayúscula, minúscula, número y carácter especial.'
+                       if modo == 'crear'
+                       else 'Déjala vacía para conservar la contraseña actual.') }}
+      {{ f.lista('rol', 'Rol', roles, registro.rol or 'OPERADOR', requerido=true,
+                 ayuda='El rol OPERADOR no puede gestionar usuarios ni eliminar registros.') }}
+      {{ f.lista('estado', 'Estado', estados, registro.estado or 'ACTIVO', requerido=true) }}
+    </div>
+
+    {{ f.acciones('Guardar usuario', url_for('web.usuarios')) }}
+  </form>
+</section>
+{% endblock %}

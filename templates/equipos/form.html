@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% import "parciales/formulario.html" as f %}
+{% block titulo %}{{ 'Editar equipo' if modo == 'editar' else 'Nuevo equipo' }}{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>{{ 'Editar equipo' if modo == 'editar' else 'Nuevo equipo' }}</h1>
+    <p class="encabezado__subtitulo">
+      Los campos marcados con <span class="obligatorio">*</span> son obligatorios.
+    </p>
+  </div>
+</section>
+
+<section class="tarjeta-formulario">
+  <form method="post" class="formulario" data-validar
+        action="{{ url_for('web.equipo_editar', id_=registro.id) if modo == 'editar' else url_for('web.equipo_crear') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+    <div class="rejilla-campos">
+      {{ f.texto('codigo', 'Código', registro.codigo, requerido=true,
+                 marcador='EQ-001', patron='[A-Za-z0-9._\\-]{2,30}',
+                 ayuda='Entre 2 y 30 caracteres. Debe ser único.') }}
+      {{ f.texto('nombre', 'Nombre del equipo', registro.nombre, requerido=true,
+                 largo_max=100, minimo=2, marcador='Laptop Dell Latitude') }}
+      {{ f.lista_objetos('categoria_id', 'Categoría', categorias, 'id', 'nombre',
+                         registro.categoria_id or '', vacio='— Sin categoría —') }}
+      {{ f.lista_objetos('laboratorio_id', 'Laboratorio', laboratorios, 'id', 'nombre',
+                         registro.laboratorio_id or '', vacio='— Sin laboratorio —',
+                         ayuda='Ubicación habitual del equipo (opcional).') }}
+      {{ f.texto('marca', 'Marca', registro.marca, largo_max=50) }}
+      {{ f.texto('modelo', 'Modelo', registro.modelo, largo_max=50) }}
+      {{ f.texto('serial', 'Serial', registro.serial,
+                 patron='[A-Za-z0-9._\\-]{3,50}',
+                 ayuda='Opcional. Si se indica, debe ser único.') }}
+      {{ f.lista('estado', 'Estado', estados, registro.estado or 'DISPONIBLE', requerido=true) }}
+    </div>
+
+    {{ f.acciones('Guardar equipo', url_for('web.equipos')) }}
+  </form>
+</section>
+{% endblock %}

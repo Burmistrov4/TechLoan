@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block titulo %}Categorías{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Categorías</h1>
+    <p class="encabezado__subtitulo">Clasificación de los equipos del inventario.</p>
+  </div>
+  {% if puede('categorias.write') %}
+  <div class="encabezado__acciones">
+    <a class="boton boton--primario" href="{{ url_for('web.categoria_crear') }}">+ Nueva categoría</a>
+  </div>
+  {% endif %}
+</section>
+
+{% if categorias %}
+<div class="tabla-envoltura">
+  <table class="tabla">
+    <caption class="visualmente-oculto">Listado de categorías</caption>
+    <thead>
+      <tr>
+        <th scope="col">#</th>
+        <th scope="col">Nombre</th>
+        <th scope="col">Descripción</th>
+        <th scope="col" class="columna-acciones">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in categorias %}
+      <tr>
+        <td data-etiqueta="#">{{ c.id }}</td>
+        <td data-etiqueta="Nombre"><strong>{{ c.nombre }}</strong></td>
+        <td data-etiqueta="Descripción">
+          {{ c.descripcion if c.descripcion else '—' }}
+        </td>
+        <td data-etiqueta="Acciones" class="columna-acciones">
+          <div class="acciones-fila">
+            {% if puede('categorias.write') %}
+            <a class="boton boton--secundario boton--pequeno"
+               href="{{ url_for('web.categoria_editar', id_=c.id) }}">Editar</a>
+            {% endif %}
+            {% if puede('categorias.delete') %}
+            <form method="post" class="formulario-eliminar"
+                  action="{{ url_for('web.categoria_eliminar', id_=c.id) }}"
+                  data-confirmar="¿Está seguro de eliminar la categoría «{{ c.nombre }}»? Esta acción no se puede deshacer.">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="boton boton--peligro boton--pequeno">Eliminar</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="contador-registros">Total: <strong>{{ categorias | length }}</strong> categoría(s).</p>
+{% else %}
+<div class="estado-vacio">
+  <p class="estado-vacio__titulo">No hay categorías registradas</p>
+  <p class="estado-vacio__texto">Crea una categoría para poder clasificar los equipos.</p>
+  {% if puede('categorias.write') %}
+  <a class="boton boton--primario" href="{{ url_for('web.categoria_crear') }}">+ Crear la primera</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

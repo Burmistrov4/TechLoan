@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block titulo %}Laboratorios{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Laboratorios</h1>
+    <p class="encabezado__subtitulo">
+      Espacios físicos reservables. La duración estándar de una reserva es de
+      <strong>70 minutos</strong> (1 h 10 min) y puede personalizarse por laboratorio.
+    </p>
+  </div>
+  {% if puede('laboratorios.write') %}
+  <div class="encabezado__acciones">
+    <a class="boton boton--primario" href="{{ url_for('web.laboratorio_crear') }}">+ Nuevo laboratorio</a>
+  </div>
+  {% endif %}
+</section>
+
+{% if laboratorios %}
+<div class="tabla-envoltura">
+  <table class="tabla">
+    <caption class="visualmente-oculto">Listado de laboratorios</caption>
+    <thead>
+      <tr>
+        <th scope="col">Código</th>
+        <th scope="col">Nombre</th>
+        <th scope="col">Ubicación</th>
+        <th scope="col">Capacidad</th>
+        <th scope="col">Duración estándar</th>
+        <th scope="col">Estado</th>
+        <th scope="col" class="columna-acciones">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in laboratorios %}
+      <tr>
+        <td data-etiqueta="Código"><span class="mono">{{ l.codigo }}</span></td>
+        <td data-etiqueta="Nombre"><strong>{{ l.nombre }}</strong></td>
+        <td data-etiqueta="Ubicación">{{ l.ubicacion }}</td>
+        <td data-etiqueta="Capacidad">{{ l.capacidad }} personas</td>
+        <td data-etiqueta="Duración estándar">{{ l.duracion_estandar_minutos }} min</td>
+        <td data-etiqueta="Estado">
+          <span class="insignia insignia--{{ l.estado | lower }}">{{ l.estado }}</span>
+        </td>
+        <td data-etiqueta="Acciones" class="columna-acciones">
+          <div class="acciones-fila">
+            {% if puede('laboratorios.write') %}
+            <a class="boton boton--secundario boton--pequeno"
+               href="{{ url_for('web.laboratorio_editar', id_=l.id) }}">Editar</a>
+            {% endif %}
+            {% if puede('laboratorios.delete') %}
+            <form method="post" class="formulario-eliminar"
+                  action="{{ url_for('web.laboratorio_eliminar', id_=l.id) }}"
+                  data-confirmar="¿Está seguro de eliminar el laboratorio {{ l.codigo }} — {{ l.nombre }}? Esta acción no se puede deshacer.">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="boton boton--peligro boton--pequeno">Eliminar</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="contador-registros">Total: <strong>{{ laboratorios | length }}</strong> laboratorio(s).</p>
+{% else %}
+<div class="estado-vacio">
+  <p class="estado-vacio__titulo">No hay laboratorios registrados</p>
+  <p class="estado-vacio__texto">Registra un laboratorio para poder crear reservas.</p>
+  {% if puede('laboratorios.write') %}
+  <a class="boton boton--primario" href="{{ url_for('web.laboratorio_crear') }}">+ Registrar el primero</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

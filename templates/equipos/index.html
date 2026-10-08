@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block titulo %}Equipos{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Equipos</h1>
+    <p class="encabezado__subtitulo">
+      Inventario de recursos prestables. Un equipo pasa a <strong>PRESTADO</strong> al
+      registrarse un préstamo y vuelve a <strong>DISPONIBLE</strong> al devolverse.
+    </p>
+  </div>
+  {% if puede('equipos.write') %}
+  <div class="encabezado__acciones">
+    <a class="boton boton--primario" href="{{ url_for('web.equipo_crear') }}">+ Nuevo equipo</a>
+  </div>
+  {% endif %}
+</section>
+
+{% if equipos %}
+<div class="tabla-envoltura">
+  <table class="tabla">
+    <caption class="visualmente-oculto">Listado de equipos</caption>
+    <thead>
+      <tr>
+        <th scope="col">Código</th>
+        <th scope="col">Equipo</th>
+        <th scope="col">Categoría</th>
+        <th scope="col">Laboratorio</th>
+        <th scope="col">Serial</th>
+        <th scope="col">Estado</th>
+        <th scope="col" class="columna-acciones">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in equipos %}
+      <tr>
+        <td data-etiqueta="Código"><span class="mono">{{ e.codigo }}</span></td>
+        <td data-etiqueta="Equipo">
+          <strong>{{ e.nombre }}</strong>
+          {% if e.marca or e.modelo %}
+          <br><span class="dato-secundario">{{ e.marca or '' }} {{ e.modelo or '' }}</span>
+          {% endif %}
+        </td>
+        <td data-etiqueta="Categoría">{{ e.categoria_nombre if e.categoria_nombre else '—' }}</td>
+        <td data-etiqueta="Laboratorio">{{ e.laboratorio_nombre if e.laboratorio_nombre else '—' }}</td>
+        <td data-etiqueta="Serial"><span class="mono">{{ e.serial if e.serial else '—' }}</span></td>
+        <td data-etiqueta="Estado">
+          <span class="insignia insignia--{{ e.estado | lower }}">{{ e.estado }}</span>
+        </td>
+        <td data-etiqueta="Acciones" class="columna-acciones">
+          <div class="acciones-fila">
+            {% if puede('equipos.write') %}
+            <a class="boton boton--secundario boton--pequeno"
+               href="{{ url_for('web.equipo_editar', id_=e.id) }}">Editar</a>
+            {% endif %}
+            {% if puede('equipos.delete') %}
+            <form method="post" class="formulario-eliminar"
+                  action="{{ url_for('web.equipo_eliminar', id_=e.id) }}"
+                  data-confirmar="¿Está seguro de eliminar el equipo {{ e.codigo }} — {{ e.nombre }}? Esta acción no se puede deshacer.">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="boton boton--peligro boton--pequeno">Eliminar</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="contador-registros">Total: <strong>{{ equipos | length }}</strong> equipo(s).</p>
+{% else %}
+<div class="estado-vacio">
+  <p class="estado-vacio__titulo">No hay equipos registrados</p>
+  <p class="estado-vacio__texto">Registra equipos para poder prestarlos a los prestatarios.</p>
+  {% if puede('equipos.write') %}
+  <a class="boton boton--primario" href="{{ url_for('web.equipo_crear') }}">+ Registrar el primero</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
