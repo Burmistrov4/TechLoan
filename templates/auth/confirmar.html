@@ -1,0 +1,55 @@
+{% extends "base_publico.html" %}
+{% import "parciales/iconos.html" as ic %}
+{% block titulo %}{{ 'Cuenta confirmada' if ok else 'No se pudo confirmar' }}{% endblock %}
+
+{% block contenido %}
+<div class="contenedor" style="padding-block:var(--e-12);max-width:660px">
+  <section class="tarjeta-formulario" style="text-align:center">
+    {% if ok %}
+    <p style="margin:0 0 var(--e-4)">
+      <span class="avatar" style="width:56px;height:56px;font-size:var(--t-xl);
+            background:var(--exito);color:#fff" aria-hidden="true">
+        {{ ic.icono('correcto', tamano=26) }}
+      </span>
+    </p>
+    <h1 style="margin:0 0 var(--e-2);font-size:var(--t-3xl);letter-spacing:-0.03em">
+      {% if ya_confirmada %}Tu cuenta ya estaba confirmada{% else %}Cuenta confirmada{% endif %}
+    </h1>
+    <p class="tarjeta-formulario__subtitulo">
+      {% if ya_confirmada %}
+      El usuario <strong>{{ username }}</strong> ya tenía el correo verificado, así que
+      no había nada que activar. Puedes entrar cuando quieras.
+      {% else %}
+      El usuario <strong>{{ username }}</strong> ya está activo. Inicia sesión con tu
+      contraseña y empieza a trabajar.
+      {% endif %}
+    </p>
+
+    <p style="margin:var(--e-6) 0 0">
+      <a class="boton boton--marca boton--grande" href="{{ url_for('web.login') }}">
+        {{ ic.icono('llave', tamano=18) }} Iniciar sesión
+      </a>
+    </p>
+    {% else %}
+    <p style="margin:0 0 var(--e-4)">
+      <span class="avatar" style="width:56px;height:56px;font-size:var(--t-xl);
+            background:var(--peligro);color:#fff" aria-hidden="true">
+        {{ ic.icono('alerta', tamano=26) }}
+      </span>
+    </p>
+    <h1 style="margin:0 0 var(--e-2);font-size:var(--t-3xl);letter-spacing:-0.03em">
+      No se pudo confirmar la cuenta
+    </h1>
+    <p class="tarjeta-formulario__subtitulo">{{ mensaje }}</p>
+
+    <p style="margin:var(--e-6) 0 0;display:flex;gap:var(--e-3);justify-content:center;
+              flex-wrap:wrap">
+      <a class="boton boton--marca" href="{{ url_for('web.reenviar') }}">
+        {{ ic.icono('refrescar', tamano=17) }} Pedir un enlace nuevo
+      </a>
+      <a class="boton boton--secundario" href="{{ url_for('web.login') }}">Ir al acceso</a>
+    </p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

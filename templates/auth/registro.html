@@ -1,0 +1,91 @@
+{% extends "base_publico.html" %}
+{% import "parciales/iconos.html" as ic %}
+{% import "parciales/formulario.html" as f %}
+{% block titulo %}Crear una cuenta{% endblock %}
+
+{% block contenido %}
+<div class="acceso">
+  {#- Columna de marca: explica qué se gana con una cuenta propia. -#}
+  <aside class="acceso__marca" aria-hidden="true">
+    <div class="acceso__marca-cuerpo">
+      <p class="insignia-heroe">
+        <span class="insignia-heroe__punto"></span>
+        Cuenta nueva
+      </p>
+      <h1>Tu cuenta, en dos minutos.</h1>
+      <p class="acceso__marca-texto">
+        Crea tu usuario con tu correo y confírmalo desde el enlace que te enviamos.
+        Entrarás como <strong>operador</strong>: reservas, préstamos y catálogo, que es
+        lo que se necesita para el trabajo diario.
+      </p>
+      <ul class="acceso__lista">
+        <li>{{ ic.icono('correcto') }} Reserva laboratorios sin dobles reservas</li>
+        <li>{{ ic.icono('correcto') }} Presta y devuelve equipos con trazabilidad</li>
+        <li>{{ ic.icono('correcto') }} Consulta el historial de lo que ocurrió</li>
+        <li>{{ ic.icono('correcto') }} Tu correo se verifica antes de activar la cuenta</li>
+      </ul>
+    </div>
+    <span class="acceso__orbe acceso__orbe--a"></span>
+    <span class="acceso__orbe acceso__orbe--b"></span>
+  </aside>
+
+  {#- Columna del formulario. -#}
+  <section class="acceso__formulario">
+    <div class="tarjeta-formulario">
+      <header class="tarjeta-formulario__cabecera">
+        <h2>Crear una cuenta</h2>
+        <p class="tarjeta-formulario__subtitulo">
+          Rellena tus datos. Te enviaremos un correo con el enlace de confirmación.
+        </p>
+      </header>
+
+      <form method="post" class="formulario" data-validar
+            action="{{ url_for('web.registro_post') }}" novalidate>
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+        <div class="rejilla-campos">
+          {{ f.texto('nombre', 'Nombre', datos.get('nombre', ''), requerido=true,
+                     largo_max=50, autofoco=true, autocompletar='given-name') }}
+          {{ f.texto('apellido', 'Apellido', datos.get('apellido', ''), requerido=true,
+                     largo_max=50, autocompletar='family-name') }}
+          {{ f.texto('username', 'Nombre de usuario', datos.get('username', ''),
+                     requerido=true, patron='[A-Za-z0-9_]{4,20}', largo_max=20,
+                     autocompletar='username',
+                     ayuda='Entre 4 y 20 caracteres alfanuméricos o guion bajo.') }}
+          {{ f.texto('email', 'Correo electrónico', datos.get('email', ''),
+                     tipo='email', requerido=true, marcador='nombre@correo.com',
+                     largo_max=120, autocompletar='email',
+                     ayuda='Aquí te llega el enlace para activar la cuenta.') }}
+          {{ f.texto('password', 'Contraseña', '', tipo='password', requerido=true,
+                     autocompletar='new-password',
+                     ayuda='Mínimo 8 caracteres, con mayúscula, minúscula, número y carácter especial.') }}
+          {{ f.texto('password_repetida', 'Repite la contraseña', '', tipo='password',
+                     requerido=true, autocompletar='new-password') }}
+        </div>
+
+        <div class="formulario__acciones">
+          <button type="submit" class="boton boton--marca boton--ancho boton--grande">
+            Crear la cuenta
+          </button>
+        </div>
+      </form>
+
+      <p class="nota-acceso">
+        {{ ic.icono('info', tamano=15) }}
+        <span>
+          {% if modo_correo == 'smtp' %}
+          El enlace de confirmación se enviará a tu correo.
+          {% else %}
+          No hay servidor de correo configurado, así que el enlace de confirmación se
+          mostrará en pantalla al terminar. Es el modo demostración.
+          {% endif %}
+        </span>
+      </p>
+
+      <p style="margin:var(--e-4) 0 0;text-align:center">
+        ¿Ya tienes cuenta? <a href="{{ url_for('web.login') }}">Inicia sesión</a>
+      </p>
+    </div>
+  </section>
+</div>
+{% endblock %}

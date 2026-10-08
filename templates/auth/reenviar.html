@@ -1,0 +1,41 @@
+{% extends "base_publico.html" %}
+{% import "parciales/iconos.html" as ic %}
+{% import "parciales/formulario.html" as f %}
+{% block titulo %}Pedir un enlace nuevo{% endblock %}
+
+{% block contenido %}
+<div class="contenedor" style="padding-block:var(--e-12);max-width:560px">
+  <section class="tarjeta-formulario">
+    <header class="tarjeta-formulario__cabecera">
+      <h1 style="margin:0 0 var(--e-2);font-size:var(--t-3xl);letter-spacing:-0.03em">
+        Pedir un enlace nuevo
+      </h1>
+      <p class="tarjeta-formulario__subtitulo">
+        Si el enlace caducó o no llegó, escribe el correo con el que te registraste y
+        te mandamos otro. El anterior dejará de funcionar.
+      </p>
+    </header>
+
+    <form method="post" class="formulario" data-validar
+          action="{{ url_for('web.reenviar') }}" novalidate>
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+      {{ f.texto('email', 'Correo electrónico', email, tipo='email', requerido=true,
+                 marcador='nombre@correo.com', largo_max=120, autofoco=true,
+                 autocompletar='email') }}
+
+      <div class="formulario__acciones">
+        <button type="submit" class="boton boton--marca boton--ancho boton--grande">
+          Enviar el enlace
+        </button>
+      </div>
+    </form>
+
+    <p style="margin:var(--e-4) 0 0;text-align:center">
+      <a href="{{ url_for('web.login') }}">← Volver al acceso</a>
+      &nbsp;·&nbsp;
+      <a href="{{ url_for('web.registro') }}">Crear una cuenta</a>
+    </p>
+  </section>
+</div>
+{% endblock %}

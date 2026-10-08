@@ -33,7 +33,23 @@ def init_database():
                 rol TEXT NOT NULL CHECK (rol IN ('ADMINISTRADOR', 'OPERADOR')),
                 estado TEXT NOT NULL DEFAULT 'ACTIVO'
                     CHECK (estado IN ('ACTIVO', 'INACTIVO')),
+                email_confirmado INTEGER NOT NULL DEFAULT 1
+                    CHECK (email_confirmado IN (0, 1)),
                 fecha_registro TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            -- Tokens de un solo uso para confirmar la cuenta o recuperar la
+            -- contraseña. Caducan y se marcan como usados; nunca dan acceso.
+            CREATE TABLE IF NOT EXISTS tokens_correo (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario_id INTEGER NOT NULL,
+                token TEXT NOT NULL UNIQUE,
+                tipo TEXT NOT NULL DEFAULT 'CONFIRMACION'
+                    CHECK (tipo IN ('CONFIRMACION', 'RECUPERACION')),
+                usado INTEGER NOT NULL DEFAULT 0 CHECK (usado IN (0, 1)),
+                fecha_creacion TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                fecha_expiracion TEXT NOT NULL,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios_sistema(id) ON DELETE CASCADE
             );
 
             CREATE TABLE IF NOT EXISTS prestatarios (
@@ -133,5 +149,29 @@ def init_database():
             CREATE INDEX IF NOT EXISTS idx_auditoria_fecha ON auditoria (fecha);
             CREATE INDEX IF NOT EXISTS idx_auditoria_entidad ON auditoria (entidad, entidad_id);
             CREATE INDEX IF NOT EXISTS idx_auditoria_usuario ON auditoria (usuario_id);
+            CREATE INDEX IF NOT EXISTS idx_tokens_token ON tokens_correo (token);
+            CREATE INDEX IF NOT EXISTS idx_tokens_usuario ON tokens_correo (usuario_id, tipo);
             """
+        )
+        _migrar(db)
+
+
+def _columnas(db, tabla):
+    """Nombres de las columnas de una tabla (vacío si la tabla no existe)."""
+    return {fila["name"] for fila in db.execute(f"PRAGMA table_info({tabla})").fetchall()}
+
+
+def _migrar(db):
+    """Pone al día una base de datos creada con una versión anterior.
+
+    ``CREATE TABLE IF NOT EXISTS`` no toca una tabla que ya existe, así que los
+    cambios de esquema posteriores hay que aplicarlos a mano. Es idempotente: se
+    puede ejecutar en cada arranque sin efectos secundarios.
+    """
+    if "email_confirmado" not in _columnas(db, "usuarios_sistema"):
+        # Las cuentas que ya existían se consideran confirmadas: se dieron de
+        # alta cuando el registro por correo todavía no existía.
+        db.execute(
+            "ALTER TABLE usuarios_sistema ADD COLUMN email_confirmado "
+            "INTEGER NOT NULL DEFAULT 1 CHECK (email_confirmado IN (0, 1))"
         )

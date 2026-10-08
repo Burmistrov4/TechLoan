@@ -22,6 +22,7 @@ DEFAULT_DB_PATH = BASE_DIR / "database" / "techloan.db"
 
 TABLAS = (
     "usuarios_sistema",
+    "tokens_correo",
     "prestatarios",
     "categorias",
     "laboratorios",

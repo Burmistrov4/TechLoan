@@ -28,16 +28,19 @@ from app.config import DIAS_PRESTAMO_LIMITE, UMBRAL_SATURACION
 from app.routes.web_common import (
     alertas_actuales,
     can,
+    form_fields,
     login_required,
     registrar_accion,
     safe_redirect_target,
     web_bp,
 )
+from app.services import correo_service
 from app.services.auth_service import AuthService
 from app.services.dashboard_service import DashboardService
 from app.services.equipo_service import EquipoService
 from app.services.laboratorio_service import LaboratorioService
 from app.services.prestatario_service import PrestatarioService
+from app.services.registro_service import RegistroService
 from app.services.reservation_service import ReservationService
 
 
@@ -133,6 +136,89 @@ def logout():
     session.clear()
     flash("Sesión cerrada correctamente.", "success")
     return redirect(url_for("web.login"))
+
+
+# ---------------------------------------------------------------------------
+# Registro de usuarios con confirmación por correo
+# ---------------------------------------------------------------------------
+@web_bp.get("/registro")
+def registro():
+    """Formulario de alta para quien todavía no tiene cuenta."""
+    if session.get("user"):
+        return redirect(url_for("web.portada"))
+    return render_template(
+        "auth/registro.html", datos={}, modo_correo=correo_service.modo()
+    )
+
+
+@web_bp.post("/registro")
+def registro_post():
+    """Crea la cuenta con el correo sin confirmar y manda el enlace."""
+    datos = form_fields(
+        "nombre", "apellido", "username", "email", "password", "password_repetida"
+    )
+
+    try:
+        resultado = RegistroService.registrar(datos)
+    except ValueError as exc:
+        registrar_accion(
+            "CREAR", "usuario", None,
+            f"Registro rechazado para «{datos.get('username', '')}»",
+        )
+        flash(str(exc), "error")
+        return (
+            render_template(
+                "auth/registro.html", datos=datos, modo_correo=correo_service.modo()
+            ),
+            400,
+        )
+
+    registrar_accion(
+        "CREAR", "usuario", resultado["usuario_id"],
+        f"Registro autoservicio de «{resultado['username']}» (pendiente de confirmar)",
+    )
+    return render_template("auth/revisar_correo.html", resultado=resultado)
+
+
+@web_bp.get("/confirmar/<token>")
+def confirmar(token):
+    """Activa la cuenta a la que pertenece el enlace del correo."""
+    try:
+        resultado = RegistroService.confirmar(token)
+    except ValueError as exc:
+        return (
+            render_template("auth/confirmar.html", ok=False, mensaje=str(exc)),
+            400,
+        )
+
+    if not resultado["ya_confirmada"]:
+        registrar_accion(
+            "ACTUALIZAR", "usuario", None,
+            f"Correo confirmado de «{resultado['username']}»",
+        )
+
+    return render_template(
+        "auth/confirmar.html",
+        ok=True,
+        ya_confirmada=resultado["ya_confirmada"],
+        username=resultado["username"],
+    )
+
+
+@web_bp.route("/reenviar", methods=["GET", "POST"])
+def reenviar():
+    """Pide un enlace de confirmación nuevo (el anterior caducó o se perdió)."""
+    if request.method == "GET":
+        return render_template("auth/reenviar.html", email="")
+
+    email = (request.form.get("email") or "").strip()
+    try:
+        resultado = RegistroService.reenviar(email)
+    except ValueError as exc:
+        flash(str(exc), "error")
+        return render_template("auth/reenviar.html", email=email), 400
+
+    return render_template("auth/revisar_correo.html", resultado=resultado)
 
 
 # ---------------------------------------------------------------------------

@@ -33,7 +33,7 @@
       <header class="tarjeta-formulario__cabecera">
         <h2>Iniciar sesión</h2>
         <p class="tarjeta-formulario__subtitulo">
-          Accede con tu usuario del sistema para gestionar reservas y préstamos.
+          Entra con tu usuario o con tu correo para gestionar reservas y préstamos.
         </p>
       </header>
 
@@ -43,11 +43,11 @@
         <input type="hidden" name="next" value="{{ siguiente }}">
 
         <div class="campo">
-          <label for="campo-username">Usuario</label>
+          <label for="campo-username">Usuario o correo</label>
           <input type="text" id="campo-username" name="username"
                  value="{{ usuario_intentado or '' }}"
                  required autofocus autocomplete="username"
-                 minlength="4" maxlength="20" placeholder="admin">
+                 maxlength="120" placeholder="admin o nombre@correo.com">
         </div>
 
         <div class="campo">
@@ -64,15 +64,27 @@
         </div>
       </form>
 
-      <aside class="nota-credenciales">
-        <h2>Usuarios de prueba</h2>
-        <ul>
-          <li><code>admin</code> / <code>Admin123!</code> — Administrador (acceso total)</li>
-          <li><code>operador</code> / <code>Operador123!</code> — Operador (sin administración)</li>
-        </ul>
-      </aside>
+      {#-
+        Las credenciales de demostración NO se muestran aquí: viven en la
+        documentación del proyecto (README.md y docs/MANUAL_DE_USUARIO.md).
+        Dejar contraseñas a la vista en la pantalla de acceso es una mala
+        práctica, aunque sean de prueba.
+      -#}
+      <p class="nota-acceso">
+        {{ ic.icono('libro', tamano=15) }}
+        <span>
+          Las credenciales de demostración están en la documentación del proyecto
+          (<code>README.md</code> y <code>docs/MANUAL_DE_USUARIO.md</code>).
+        </span>
+      </p>
 
       <p style="margin:var(--e-4) 0 0;text-align:center">
+        ¿No tienes cuenta? <a href="{{ url_for('web.registro') }}">Crea una aquí</a>
+        &nbsp;·&nbsp;
+        <a href="{{ url_for('web.reenviar') }}">No confirmé mi correo</a>
+      </p>
+
+      <p style="margin:var(--e-3) 0 0;text-align:center">
         <a href="{{ url_for('web.portada') }}">← Volver a la portada</a>
       </p>
     </div>

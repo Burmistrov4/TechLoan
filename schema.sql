@@ -29,6 +29,7 @@ PRAGMA foreign_keys = ON;
 -- independientes (padres), para respetar las restricciones de clave foránea.
 -- ----------------------------------------------------------------------------
 DROP TABLE IF EXISTS auditoria;
+DROP TABLE IF EXISTS tokens_correo;
 DROP TABLE IF EXISTS prestamos_equipos;
 DROP TABLE IF EXISTS reservas;
 DROP TABLE IF EXISTS equipos;
@@ -53,7 +54,31 @@ CREATE TABLE usuarios_sistema (
     rol             TEXT         NOT NULL CHECK (rol IN ('ADMINISTRADOR', 'OPERADOR')),
     estado          TEXT         NOT NULL DEFAULT 'ACTIVO'
                                  CHECK (estado IN ('ACTIVO', 'INACTIVO')),
+    -- Un usuario creado por un administrador ya es de confianza (1 por defecto).
+    -- El que se registra por su cuenta nace en 0 y no puede entrar hasta abrir
+    -- el enlace de confirmación que recibe por correo.
+    email_confirmado INTEGER     NOT NULL DEFAULT 1
+                                 CHECK (email_confirmado IN (0, 1)),
     fecha_registro  TEXT         NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- TOKENS DE UN SOLO USO (confirmación de cuenta y recuperación de contraseña)
+-- ----------------------------------------------------------------------------
+-- El token se guarda en claro a propósito: es un valor aleatorio de un solo uso
+-- con caducidad, y así el administrador puede auditar qué enlaces se emitieron.
+-- Nunca da acceso por sí mismo: solo confirma la titularidad del correo.
+-- ============================================================================
+CREATE TABLE tokens_correo (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id        INTEGER NOT NULL,
+    token             TEXT    NOT NULL UNIQUE,
+    tipo              TEXT    NOT NULL DEFAULT 'CONFIRMACION'
+                              CHECK (tipo IN ('CONFIRMACION', 'RECUPERACION')),
+    usado             INTEGER NOT NULL DEFAULT 0 CHECK (usado IN (0, 1)),
+    fecha_creacion    TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_expiracion  TEXT    NOT NULL,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios_sistema(id) ON DELETE CASCADE
 );
 
 -- ============================================================================
@@ -196,6 +221,8 @@ CREATE INDEX idx_equipos_laboratorio     ON equipos (laboratorio_id);
 CREATE INDEX idx_auditoria_fecha         ON auditoria (fecha);
 CREATE INDEX idx_auditoria_entidad       ON auditoria (entidad, entidad_id);
 CREATE INDEX idx_auditoria_usuario       ON auditoria (usuario_id);
+CREATE INDEX idx_tokens_token            ON tokens_correo (token);
+CREATE INDEX idx_tokens_usuario          ON tokens_correo (usuario_id, tipo);
 
 -- ============================================================================
 -- DATOS INICIALES Y DE PRUEBA

@@ -1,0 +1,66 @@
+{% extends "base_publico.html" %}
+{% import "parciales/iconos.html" as ic %}
+{% block titulo %}Revisa tu correo{% endblock %}
+
+{% block contenido %}
+<div class="contenedor" style="padding-block:var(--e-12);max-width:760px">
+  <section class="tarjeta-formulario">
+    <header class="tarjeta-formulario__cabecera">
+      <h1 style="margin:0 0 var(--e-2);font-size:var(--t-3xl);letter-spacing:-0.03em">
+        Revisa tu correo
+      </h1>
+      <p class="tarjeta-formulario__subtitulo">
+        Hemos enviado un enlace de confirmación a
+        <strong>{{ resultado.email }}</strong>.
+      </p>
+    </header>
+
+    <ol style="margin:0;padding-inline-start:var(--e-5);display:grid;gap:var(--e-3);
+               font-size:var(--t-base);color:var(--texto-suave)">
+      <li>Abre el mensaje de <strong>TechLoan</strong> en tu bandeja de entrada.</li>
+      <li>Haz clic en el botón <em>Confirmar mi cuenta</em>.</li>
+      <li>Vuelve aquí e inicia sesión con tu usuario
+        <strong>{{ resultado.username }}</strong>.</li>
+    </ol>
+
+    {% if resultado.correo.modo == 'demostracion' %}
+    {#-
+      Modo demostración: no hay servidor SMTP, así que el enlace se muestra aquí.
+      Es lo que permite enseñar el flujo completo en la defensa sin internet.
+    -#}
+    <div class="aviso aviso--info" style="margin-top:var(--e-6)">
+      <strong>Modo demostración: no hay servidor de correo configurado.</strong>
+      El mensaje no se envió, pero se guardó en el buzón local del proyecto. Puedes
+      confirmar la cuenta ahora mismo con este enlace:
+    </div>
+
+    <p style="margin:var(--e-5) 0 0;text-align:center">
+      <a class="boton boton--marca boton--grande" href="{{ resultado.enlace }}">
+        {{ ic.icono('correcto', tamano=18) }} Confirmar mi cuenta ahora
+      </a>
+    </p>
+
+    <p class="nota-acceso">
+      {{ ic.icono('libro', tamano=15) }}
+      <span>
+        El enlace también quedó guardado en
+        <code>database/buzon/</code>. Para enviar correos de verdad, configura las
+        variables <code>TECHLOAN_SMTP_*</code> (ver el README).
+      </span>
+    </p>
+    {% else %}
+    <div class="aviso aviso--exito" style="margin-top:var(--e-6)">
+      <strong>Correo enviado.</strong>
+      Si no lo ves en unos minutos, revisa la carpeta de spam o
+      <a href="{{ url_for('web.reenviar') }}">pide otro enlace</a>.
+    </div>
+    {% endif %}
+
+    <p style="margin:var(--e-5) 0 0;text-align:center;font-size:var(--t-sm)">
+      <a href="{{ url_for('web.reenviar') }}">No me llegó el enlace</a>
+      &nbsp;·&nbsp;
+      <a href="{{ url_for('web.login') }}">Ir al acceso</a>
+    </p>
+  </section>
+</div>
+{% endblock %}

@@ -3,6 +3,8 @@ __pycache__/
 *.pyc
 database/*.db
 database/*.backup-*
+# Buzón local: aquí se dejan los correos cuando no hay SMTP configurado.
+database/buzon/
 .env
 .task-flow-progress/
 .workbuddy-ai/
