@@ -1,0 +1,19 @@
+{# Mensajes flash: se muestran al usuario tras cada operación. #}
+{% with mensajes = get_flashed_messages(with_categories=true) %}
+  {% if mensajes %}
+  <div class="mensajes" role="status" aria-live="polite">
+    {% for categoria, mensaje in mensajes %}
+    <div class="mensaje mensaje--{{ categoria }}">
+      <span class="mensaje__icono" aria-hidden="true">
+        {%- if categoria == 'success' -%}&#10003;
+        {%- elif categoria == 'error' -%}&#10007;
+        {%- elif categoria == 'warning' -%}!
+        {%- else -%}i{%- endif -%}
+      </span>
+      <p class="mensaje__texto">{{ mensaje }}</p>
+      <button type="button" class="mensaje__cerrar" aria-label="Cerrar mensaje">&times;</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endwith %}

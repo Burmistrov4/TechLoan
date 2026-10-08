@@ -1,0 +1,104 @@
+{#
+  Macros de formulario.
+  Centralizan la estructura de cada campo (label asociado al input, ayudas y
+  atributos de accesibilidad) para que las plantillas de alta/edición queden
+  cortas y consistentes.
+
+  Uso:
+      {% import "parciales/formulario.html" as f %}
+      {{ f.texto('nombre', 'Nombre', registro.nombre, requerido=true) }}
+#}
+
+{#- Campo de entrada genérico (text, email, tel, number, date, time, password). -#}
+{% macro texto(nombre, etiqueta, valor='', tipo='text', requerido=false, ayuda='',
+               marcador='', patron='', minimo=none, maximo=none, largo_max=none,
+               autofoco=false, autocompletar='', paso=none) -%}
+<div class="campo">
+  <label for="campo-{{ nombre }}">
+    {{ etiqueta }}{% if requerido %} <span class="obligatorio" aria-hidden="true">*</span>{% endif %}
+  </label>
+  <input
+    type="{{ tipo }}"
+    id="campo-{{ nombre }}"
+    name="{{ nombre }}"
+    value="{{ valor if valor is not none else '' }}"
+    {%- if requerido %} required{% endif %}
+    {%- if marcador %} placeholder="{{ marcador }}"{% endif %}
+    {%- if patron %} pattern="{{ patron }}"{% endif %}
+    {%- if minimo is not none %} min="{{ minimo }}"{% endif %}
+    {%- if maximo is not none %} max="{{ maximo }}"{% endif %}
+    {%- if largo_max %} maxlength="{{ largo_max }}"{% endif %}
+    {%- if paso is not none %} step="{{ paso }}"{% endif %}
+    {%- if autofoco %} autofocus{% endif %}
+    {%- if autocompletar %} autocomplete="{{ autocompletar }}"{% endif %}
+    {%- if ayuda %} aria-describedby="ayuda-{{ nombre }}"{% endif %}>
+  {% if ayuda %}<p class="ayuda" id="ayuda-{{ nombre }}">{{ ayuda }}</p>{% endif %}
+</div>
+{%- endmacro %}
+
+
+{#- Área de texto multilínea. -#}
+{% macro area(nombre, etiqueta, valor='', filas=3, ayuda='', marcador='', largo_max=none) -%}
+<div class="campo">
+  <label for="campo-{{ nombre }}">{{ etiqueta }}</label>
+  <textarea id="campo-{{ nombre }}" name="{{ nombre }}" rows="{{ filas }}"
+            {%- if marcador %} placeholder="{{ marcador }}"{% endif %}
+            {%- if largo_max %} maxlength="{{ largo_max }}"{% endif %}
+            {%- if ayuda %} aria-describedby="ayuda-{{ nombre }}"{% endif %}>{{ valor if valor is not none else '' }}</textarea>
+  {% if ayuda %}<p class="ayuda" id="ayuda-{{ nombre }}">{{ ayuda }}</p>{% endif %}
+</div>
+{%- endmacro %}
+
+
+{#- Selección a partir de una lista simple de valores (los CHECK del esquema). -#}
+{% macro lista(nombre, etiqueta, opciones, valor='', requerido=false, ayuda='', vacio='') -%}
+<div class="campo">
+  <label for="campo-{{ nombre }}">
+    {{ etiqueta }}{% if requerido %} <span class="obligatorio" aria-hidden="true">*</span>{% endif %}
+  </label>
+  <select id="campo-{{ nombre }}" name="{{ nombre }}"
+          {%- if requerido %} required{% endif %}
+          {%- if ayuda %} aria-describedby="ayuda-{{ nombre }}"{% endif %}>
+    {% if vacio %}<option value="">{{ vacio }}</option>{% endif %}
+    {% for opcion in opciones %}
+    <option value="{{ opcion }}" {% if (valor | string) == (opcion | string) %}selected{% endif %}>
+      {{ opcion | replace('_', ' ') | capitalize }}
+    </option>
+    {% endfor %}
+  </select>
+  {% if ayuda %}<p class="ayuda" id="ayuda-{{ nombre }}">{{ ayuda }}</p>{% endif %}
+</div>
+{%- endmacro %}
+
+
+{#- Selección a partir de una lista de registros (claves foráneas). -#}
+{% macro lista_objetos(nombre, etiqueta, objetos, campo_valor, campo_texto, valor='',
+                       requerido=false, ayuda='', vacio='', seleccion_extra='') -%}
+<div class="campo">
+  <label for="campo-{{ nombre }}">
+    {{ etiqueta }}{% if requerido %} <span class="obligatorio" aria-hidden="true">*</span>{% endif %}
+  </label>
+  <select id="campo-{{ nombre }}" name="{{ nombre }}"
+          {%- if requerido %} required{% endif %}
+          {%- if ayuda %} aria-describedby="ayuda-{{ nombre }}"{% endif %}
+          {%- if seleccion_extra %} {{ seleccion_extra | safe }}{% endif %}>
+    {% if vacio %}<option value="">{{ vacio }}</option>{% endif %}
+    {% for objeto in objetos %}
+    <option value="{{ objeto[campo_valor] }}"
+            {% if (valor | string) == (objeto[campo_valor] | string) %}selected{% endif %}>
+      {{ objeto[campo_texto] }}
+    </option>
+    {% endfor %}
+  </select>
+  {% if ayuda %}<p class="ayuda" id="ayuda-{{ nombre }}">{{ ayuda }}</p>{% endif %}
+</div>
+{%- endmacro %}
+
+
+{#- Botones de acción del formulario. -#}
+{% macro acciones(etiqueta_guardar='Guardar', cancelar_url='#') -%}
+<div class="formulario__acciones">
+  <button type="submit" class="boton boton--primario">{{ etiqueta_guardar }}</button>
+  <a class="boton boton--secundario" href="{{ cancelar_url }}">Cancelar</a>
+</div>
+{%- endmacro %}

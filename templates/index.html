@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block titulo %}Panel de inicio{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Panel de inicio</h1>
+    <p class="encabezado__subtitulo">
+      Resumen general de la gestión de reservas y préstamos de recursos tecnológicos.
+    </p>
+  </div>
+  <div class="encabezado__acciones">
+    {% if puede('reservas.write') %}
+    <a class="boton boton--primario" href="{{ url_for('web.reserva_crear') }}">+ Nueva reserva</a>
+    {% endif %}
+    {% if puede('prestamos.write') %}
+    <a class="boton boton--secundario" href="{{ url_for('web.prestamo_crear') }}">+ Nuevo préstamo</a>
+    {% endif %}
+  </div>
+</section>
+
+<section aria-labelledby="titulo-indicadores">
+  <h2 id="titulo-indicadores" class="titulo-seccion">Indicadores</h2>
+  <div class="tarjetas-tablero">
+    <article class="tarjeta-dato">
+      <p class="tarjeta-dato__valor">{{ stats.prestatarios }}</p>
+      <p class="tarjeta-dato__etiqueta">Prestatarios</p>
+      <p class="tarjeta-dato__detalle">{{ stats.prestatarios_activos }} activos</p>
+    </article>
+    <article class="tarjeta-dato">
+      <p class="tarjeta-dato__valor">{{ stats.laboratorios }}</p>
+      <p class="tarjeta-dato__etiqueta">Laboratorios</p>
+      <p class="tarjeta-dato__detalle">{{ stats.laboratorios_disponibles }} disponibles</p>
+    </article>
+    <article class="tarjeta-dato">
+      <p class="tarjeta-dato__valor">{{ stats.equipos }}</p>
+      <p class="tarjeta-dato__etiqueta">Equipos</p>
+      <p class="tarjeta-dato__detalle">
+        {{ stats.equipos_disponibles }} disponibles · {{ stats.equipos_prestados }} prestados
+      </p>
+    </article>
+    <article class="tarjeta-dato">
+      <p class="tarjeta-dato__valor">{{ stats.reservas_confirmadas }}</p>
+      <p class="tarjeta-dato__etiqueta">Reservas vigentes</p>
+      <p class="tarjeta-dato__detalle">{{ stats.reservas }} en total</p>
+    </article>
+    <article class="tarjeta-dato">
+      <p class="tarjeta-dato__valor">{{ stats.prestamos_activos }}</p>
+      <p class="tarjeta-dato__etiqueta">Préstamos activos</p>
+      <p class="tarjeta-dato__detalle">Equipos sin devolver</p>
+    </article>
+    <article class="tarjeta-dato">
+      <p class="tarjeta-dato__valor">{{ stats.categorias }}</p>
+      <p class="tarjeta-dato__etiqueta">Categorías</p>
+      <p class="tarjeta-dato__detalle">{{ stats.usuarios }} usuarios del sistema</p>
+    </article>
+  </div>
+</section>
+
+<div class="rejilla-doble">
+  <section aria-labelledby="titulo-reservas">
+    <h2 id="titulo-reservas" class="titulo-seccion">Próximas reservas</h2>
+    {% if reservas_proximas %}
+    <div class="tabla-envoltura">
+      <table class="tabla">
+        <caption class="visualmente-oculto">Próximas reservas confirmadas</caption>
+        <thead>
+          <tr>
+            <th scope="col">Fecha</th>
+            <th scope="col">Horario</th>
+            <th scope="col">Laboratorio</th>
+            <th scope="col">Prestatario</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in reservas_proximas %}
+          <tr>
+            <td data-etiqueta="Fecha">{{ r.fecha }}</td>
+            <td data-etiqueta="Horario">{{ r.hora_inicio }} – {{ r.hora_fin }}</td>
+            <td data-etiqueta="Laboratorio">{{ r.laboratorio_codigo }} · {{ r.laboratorio_nombre }}</td>
+            <td data-etiqueta="Prestatario">{{ r.prestatario }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="vacio">No hay reservas confirmadas a partir de hoy.</p>
+    {% endif %}
+  </section>
+
+  <section aria-labelledby="titulo-prestamos">
+    <h2 id="titulo-prestamos" class="titulo-seccion">Préstamos activos</h2>
+    {% if prestamos_activos %}
+    <div class="tabla-envoltura">
+      <table class="tabla">
+        <caption class="visualmente-oculto">Equipos actualmente prestados</caption>
+        <thead>
+          <tr>
+            <th scope="col">Equipo</th>
+            <th scope="col">Prestatario</th>
+            <th scope="col">Desde</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in prestamos_activos %}
+          <tr>
+            <td data-etiqueta="Equipo">{{ p.equipo_codigo }} · {{ p.equipo_nombre }}</td>
+            <td data-etiqueta="Prestatario">{{ p.prestatario }}</td>
+            <td data-etiqueta="Desde">{{ p.fecha_prestamo }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="vacio">No hay préstamos activos en este momento.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section aria-labelledby="titulo-accesos">
+  <h2 id="titulo-accesos" class="titulo-seccion">Accesos rápidos</h2>
+  <div class="accesos">
+    {% if puede('prestatarios.read') %}
+    <a class="acceso" href="{{ url_for('web.prestatarios') }}">
+      <span class="acceso__titulo">Prestatarios</span>
+      <span class="acceso__texto">Personas que reciben reservas y préstamos</span>
+    </a>
+    {% endif %}
+    {% if puede('laboratorios.read') %}
+    <a class="acceso" href="{{ url_for('web.laboratorios') }}">
+      <span class="acceso__titulo">Laboratorios</span>
+      <span class="acceso__texto">Espacios reservables y su duración estándar</span>
+    </a>
+    {% endif %}
+    {% if puede('equipos.read') %}
+    <a class="acceso" href="{{ url_for('web.equipos') }}">
+      <span class="acceso__titulo">Equipos</span>
+      <span class="acceso__texto">Inventario de recursos prestables</span>
+    </a>
+    {% endif %}
+    {% if puede('historial.read') %}
+    <a class="acceso" href="{{ url_for('web.historial') }}">
+      <span class="acceso__titulo">Historial</span>
+      <span class="acceso__texto">Reservas, préstamos y devoluciones con filtros</span>
+    </a>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
