@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+database/*.db
+database/*.backup-*
+.env
+.task-flow-progress/
