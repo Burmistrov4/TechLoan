@@ -87,9 +87,12 @@ los permisos, las alertas y el token CSRF.
   funcionalidades, seguridad, pruebas y flujo de exposición.
 - `docs/GUIA_EXPOSICION.md`: recorrido paso a paso para la defensa, plan de
   contingencia y respuestas a preguntas previsibles del profesor.
-- `TechLoan_Proyecto_Final_Programacion_III.zip`: paquete de entrega (2,91 MB,
-  142 archivos), sin `.venv`, `__pycache__`, `.pyc`, respaldos ni estado interno
-  de agentes.
+- `TechLoan_Proyecto_Final_Programacion_III.zip`: paquete de entrega (**22,4 MB,
+  192 entradas**), construido desde `git archive HEAD` más la base de datos
+  `database/techloan.db`. No contiene `.venv`, `__pycache__`, `.pyc`, respaldos,
+  estado interno de agentes ni ningún otro ZIP. El grueso del tamaño son las
+  capturas a página completa de la portada (7 imágenes de 1–3 MB); el código y la
+  documentación ocupan menos de 1 MB.
 - `requirements.txt`: Flask 3.1.2, Werkzeug 3.1.3.
 
 ## Backend (conservado y ampliado)

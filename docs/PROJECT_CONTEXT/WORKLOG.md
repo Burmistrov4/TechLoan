@@ -297,6 +297,9 @@ segundo plano, responde correctamente en `http://127.0.0.1:5000`.
 | Suite completa | **10 PASS / 0 FAIL** |
 | Navegador real (Chromium/Playwright) | **47/47 OK**, 85 respuestas, **0 errores 5xx**, sin excepciones JS |
 | Barrido de rutas GET anónimas | **57 rutas**, ninguna 500 |
+| ZIP extraído + venv nuevo + `pip install` | **10 PASS / 0 FAIL** |
+| Servidor desde el ZIP | `/health` 200, `/` 200, `/ayuda` 302, `/login` 200, CSS 200 |
+| Integridad del ZIP | OK, **192 entradas**, **0 entradas prohibidas** |
 
 ### Documentación y empaquetado
 
