@@ -153,8 +153,13 @@ def test_arranque_web():
     assert respuesta.status_code == 200, "/health debe responder 200"
     assert respuesta.get_json()["ok"] is True, "/health debe devolver ok"
 
+    # La raíz sirve la portada pública a los visitantes y el panel a quien ya
+    # tiene sesión: en ambos casos debe responder 200.
     respuesta = cliente.get("/")
-    assert respuesta.status_code == 302, "Sin sesión, / debe redirigir al login"
+    assert respuesta.status_code == 200, "/ debe responder 200 (portada o panel)"
+    html = respuesta.get_data(as_text=True)
+    assert "TechLoan" in html, "La portada debe identificar el producto"
+    assert "/login" in html, "La portada debe ofrecer acceso a la aplicación"
 
     respuesta = cliente.get("/login")
     assert respuesta.status_code == 200, "El formulario de acceso debe responder 200"
@@ -162,13 +167,101 @@ def test_arranque_web():
     assert "<!DOCTYPE html>" in html, "La página debe ser HTML5"
     assert 'name="viewport"' in html, "La página debe ser responsive"
 
+    # Un módulo interno sí exige sesión.
+    respuesta = cliente.get("/prestatarios")
+    assert respuesta.status_code == 302, "Un módulo interno sin sesión debe redirigir"
+
+    # El manifiesto permite instalar la aplicación.
+    respuesta = cliente.get("/manifest.json")
+    assert respuesta.status_code == 200, "El manifiesto debe servirse"
+    assert respuesta.get_json()["short_name"] == "TechLoan", "El manifiesto debe estar bien formado"
+
     print("SMOKE_ARRANQUE_WEB_OK")
+
+
+def test_auditoria():
+    """La auditoría registra las acciones y sobrevive a la baja del usuario."""
+    app = create_app()
+    cliente = app.test_client()
+
+    with get_connection() as db:
+        antes = db.execute("SELECT COUNT(*) FROM auditoria").fetchone()[0]
+
+    # Un acceso fallido debe quedar registrado.
+    pagina = cliente.get("/login").get_data(as_text=True)
+    import re
+
+    token = re.search(r'name="_csrf_token" value="([^"]+)"', pagina).group(1)
+    cliente.post("/login", data={"_csrf_token": token, "username": "nadie", "password": "malísima"})
+
+    with get_connection() as db:
+        despues = db.execute("SELECT COUNT(*) FROM auditoria").fetchone()[0]
+        ultima = db.execute(
+            "SELECT accion, entidad FROM auditoria ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+
+    assert despues == antes + 1, "El intento de acceso fallido debe registrarse"
+    assert ultima["accion"] == "ACCEDER", "La acción registrada debe ser ACCEDER"
+
+    print("SMOKE_AUDITORIA_OK")
+
+
+def test_sugerencias_de_horario():
+    """El servicio propone franjas libres cuando la pedida está ocupada."""
+    limpiar()
+    fecha = (date.today() + timedelta(days=120)).strftime("%Y-%m-%d")
+
+    with get_connection() as db:
+        db.execute(
+            "INSERT INTO prestatarios (cedula, nombre, apellido, tipo) VALUES (?,?,?,?)",
+            (MARCA, "Prueba", "Sugerencias", "ESTUDIANTE"),
+        )
+        db.execute(
+            "INSERT INTO laboratorios (codigo, nombre, ubicacion, capacidad) VALUES (?,?,?,?)",
+            (MARCA, "Laboratorio Sugerencias", "Aula", 20),
+        )
+        prestatario_id = db.execute(
+            "SELECT id FROM prestatarios WHERE cedula=?", (MARCA,)
+        ).fetchone()["id"]
+        laboratorio_id = db.execute(
+            "SELECT id FROM laboratorios WHERE codigo=?", (MARCA,)
+        ).fetchone()["id"]
+        usuario_id = db.execute(
+            "SELECT id FROM usuarios_sistema ORDER BY id LIMIT 1"
+        ).fetchone()["id"]
+
+    # Se ocupa la franja 08:00–09:10.
+    ReservationService.create_reservation(
+        laboratorio_id, prestatario_id, usuario_id, fecha, "08:00", 70, MARCA
+    )
+
+    # Al pedir 08:30 el sistema debe ofrecer alternativas libres.
+    sugerencias = ReservationService.sugerir_horarios(laboratorio_id, fecha, 70, "08:30")
+    assert sugerencias, "Debe haber al menos una franja libre"
+    assert all(s["hora_inicio"] not in ("08:00", "08:30") for s in sugerencias), (
+        "No debe sugerir una franja ocupada"
+    )
+    # La más cercana a las 08:30 es 09:10, justo cuando termina la anterior.
+    assert sugerencias[0]["hora_inicio"] == "09:10", (
+        f"Se esperaba 09:10 como primera sugerencia, llegó {sugerencias[0]['hora_inicio']}"
+    )
+
+    # La ocupación del día refleja la reserva creada.
+    ocupacion = ReservationService.ocupacion_del_dia(laboratorio_id, fecha)
+    assert len(ocupacion) == 1 and ocupacion[0]["hora_inicio"] == "08:00", (
+        "La ocupación del día debe listar la franja reservada"
+    )
+
+    limpiar()
+    print("SMOKE_SUGERENCIAS_OK")
 
 
 def main():
     test_esquema()
     test_seguridad_password()
     test_regla_solapamiento()
+    test_sugerencias_de_horario()
+    test_auditoria()
     test_arranque_web()
     print("SMOKE_TEST_OK")
 

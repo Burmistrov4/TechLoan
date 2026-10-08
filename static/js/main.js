@@ -1,14 +1,18 @@
 /* ==========================================================================
-   TechLoan — JavaScript principal (Vanilla JS, sin dependencias)
+   TechLoan — JavaScript de la aplicación (Vanilla JS, sin dependencias)
    --------------------------------------------------------------------------
    Módulos:
-     1. Menú de navegación móvil
-     2. Mensajes flash (cierre manual)
-     3. Confirmación antes de acciones críticas (eliminar / devolver / cancelar)
-     4. Validación de formularios en el lado del cliente
-     5. Cálculo de la hora de finalización de una reserva
-     6. Comprobación de disponibilidad con fetch()
-     7. Protección contra el doble envío de formularios
+     1.  Tema claro / oscuro con persistencia
+     2.  Barra lateral (cajón en móvil, plegable en escritorio)
+     3.  Menús emergentes (usuario y alertas)
+     4.  Notificaciones emergentes (toasts)
+     5.  Paleta de comandos (Ctrl+K)
+     6.  Confirmación antes de acciones críticas
+     7.  Validación de formularios en el cliente
+     8.  Búsqueda con retardo en los listados
+     9.  Formulario de reserva: hora final, línea de tiempo y alternativas
+     10. Contadores animados
+     11. Protección contra el doble envío
 
    Todas las comprobaciones de este archivo son una MEJORA de la experiencia de
    usuario: la validación y las reglas de negocio definitivas se ejecutan
@@ -18,55 +22,289 @@
 (function () {
   "use strict";
 
+  var raiz = document.documentElement;
+  var CONFIG = window.TECHLOAN || {};
+
+  function $(selector, ambito) {
+    return (ambito || document).querySelector(selector);
+  }
+
+  function $$(selector, ambito) {
+    return Array.prototype.slice.call((ambito || document).querySelectorAll(selector));
+  }
+
   /* ========================================================================
-     1. Menú de navegación móvil
+     1. Tema claro / oscuro
      ====================================================================== */
-  function inicializarMenu() {
-    var boton = document.getElementById("menu-boton");
-    var menu = document.getElementById("menu-principal");
-    if (!boton || !menu) {
-      return;
+  function inicializarTema() {
+    var boton = $("#boton-tema");
+    if (!boton) return;
+
+    boton.addEventListener("click", function () {
+      var nuevo = raiz.getAttribute("data-tema") === "oscuro" ? "claro" : "oscuro";
+      raiz.setAttribute("data-tema", nuevo);
+      try { localStorage.setItem("techloan-tema", nuevo); } catch (e) { /* modo privado */ }
+
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", nuevo === "oscuro" ? "#060a13" : "#f4f7fc");
+
+      // Los gráficos se redibujan para adoptar los colores del nuevo tema.
+      if (window.TechLoanGraficos) window.TechLoanGraficos.redibujar();
+    });
+  }
+
+  /* ========================================================================
+     2. Barra lateral
+     ====================================================================== */
+  function inicializarLateral() {
+    var lateral = $("#lateral");
+    var boton = $("#boton-lateral");
+    var velo = $("#lateral-velo");
+    if (!lateral || !boton) return;
+
+    if (raiz.classList.contains("prefiere-lateral-oculto") && window.innerWidth >= 1024) {
+      document.body.classList.add("lateral-oculto");
+    }
+
+    function esEscritorio() { return window.innerWidth >= 1024; }
+
+    function abrirCajon(abierto) {
+      lateral.classList.toggle("abierto", abierto);
+      if (velo) velo.classList.toggle("visible", abierto);
+      boton.setAttribute("aria-expanded", abierto ? "true" : "false");
     }
 
     boton.addEventListener("click", function () {
-      var abierto = menu.classList.toggle("abierto");
-      boton.setAttribute("aria-expanded", abierto ? "true" : "false");
+      if (esEscritorio()) {
+        var oculto = document.body.classList.toggle("lateral-oculto");
+        try { localStorage.setItem("techloan-lateral", oculto ? "oculto" : "visible"); } catch (e) { /* ignorar */ }
+      } else {
+        abrirCajon(!lateral.classList.contains("abierto"));
+      }
     });
 
-    // Al pasar a escritorio el menú vuelve a su estado normal.
+    if (velo) {
+      velo.addEventListener("click", function () { abrirCajon(false); });
+    }
+
     window.addEventListener("resize", function () {
-      if (window.innerWidth >= 900) {
-        menu.classList.remove("abierto");
-        boton.setAttribute("aria-expanded", "false");
+      if (esEscritorio()) abrirCajon(false);
+    });
+  }
+
+  /* ========================================================================
+     3. Menús emergentes
+     ====================================================================== */
+  function inicializarMenus() {
+    var pares = [
+      { boton: $("#boton-usuario"), menu: $("#menu-usuario") },
+      { boton: $("#boton-alertas"), menu: $("#menu-alertas") }
+    ].filter(function (par) { return par.boton && par.menu; });
+
+    if (!pares.length) return;
+
+    function cerrarTodos(excepto) {
+      pares.forEach(function (par) {
+        if (par !== excepto) {
+          par.menu.classList.remove("abierto");
+          par.boton.setAttribute("aria-expanded", "false");
+        }
+      });
+    }
+
+    pares.forEach(function (par) {
+      par.boton.addEventListener("click", function (evento) {
+        evento.stopPropagation();
+        var abierto = par.menu.classList.toggle("abierto");
+        par.boton.setAttribute("aria-expanded", abierto ? "true" : "false");
+        cerrarTodos(par);
+      });
+    });
+
+    document.addEventListener("click", function () { cerrarTodos(null); });
+    document.addEventListener("keydown", function (evento) {
+      if (evento.key === "Escape") cerrarTodos(null);
+    });
+  }
+
+  /* ========================================================================
+     4. Notificaciones emergentes
+     ====================================================================== */
+  function cerrarNotificacion(nodo) {
+    if (!nodo || nodo.classList.contains("saliendo")) return;
+    nodo.classList.add("saliendo");
+    window.setTimeout(function () {
+      if (nodo.parentNode) nodo.parentNode.removeChild(nodo);
+    }, 260);
+  }
+
+  function inicializarNotificaciones() {
+    $$("[data-notificacion]").forEach(function (nodo) {
+      var cerrar = $(".notificacion__cerrar", nodo);
+      if (cerrar) {
+        cerrar.addEventListener("click", function () { cerrarNotificacion(nodo); });
+      }
+      // Las de éxito e información se retiran solas; los errores permanecen
+      // hasta que el usuario los lee.
+      if (!nodo.classList.contains("notificacion--error")) {
+        window.setTimeout(function () { cerrarNotificacion(nodo); }, 6500);
       }
     });
   }
 
   /* ========================================================================
-     2. Mensajes flash: botón de cierre
+     5. Paleta de comandos (Ctrl+K)
      ====================================================================== */
-  function inicializarMensajes() {
-    var botones = document.querySelectorAll(".mensaje__cerrar");
-    Array.prototype.forEach.call(botones, function (boton) {
-      boton.addEventListener("click", function () {
-        var mensaje = boton.closest(".mensaje");
-        if (mensaje && mensaje.parentNode) {
-          mensaje.parentNode.removeChild(mensaje);
-        }
+  function inicializarPaleta() {
+    var paleta = $("#paleta");
+    var entrada = $("#paleta-entrada");
+    var resultados = $("#paleta-resultados");
+    if (!paleta || !entrada || !resultados) return;
+
+    var items = [];
+    var seleccionado = 0;
+    var temporizador = null;
+
+    function pintar(grupos) {
+      resultados.innerHTML = "";
+      items = [];
+
+      if (!grupos.length) {
+        resultados.innerHTML = '<p class="paleta__vacio">Sin resultados. Prueba con otro término.</p>';
+        entrada.setAttribute("aria-expanded", "false");
+        return;
+      }
+
+      grupos.forEach(function (grupo) {
+        var titulo = document.createElement("p");
+        titulo.className = "paleta__grupo";
+        titulo.textContent = grupo.titulo;
+        resultados.appendChild(titulo);
+
+        grupo.items.forEach(function (item) {
+          var boton = document.createElement("button");
+          boton.type = "button";
+          boton.className = "paleta__item";
+          boton.setAttribute("role", "option");
+          boton.setAttribute("aria-selected", "false");
+          boton.dataset.url = item.url;
+
+          var tituloItem = document.createElement("b");
+          tituloItem.textContent = item.titulo;
+          var detalle = document.createElement("small");
+          detalle.textContent = item.subtitulo || "";
+
+          boton.appendChild(tituloItem);
+          boton.appendChild(detalle);
+          boton.addEventListener("click", function () { abrir(item.url); });
+          boton.addEventListener("mouseenter", function () {
+            seleccionado = items.indexOf(boton);
+            resaltar();
+          });
+          resultados.appendChild(boton);
+          items.push(boton);
+        });
       });
+
+      seleccionado = 0;
+      resaltar();
+      entrada.setAttribute("aria-expanded", "true");
+    }
+
+    function resaltar() {
+      items.forEach(function (item, indice) {
+        item.setAttribute("aria-selected", indice === seleccionado ? "true" : "false");
+      });
+      var actual = items[seleccionado];
+      if (actual && actual.scrollIntoView) actual.scrollIntoView({ block: "nearest" });
+    }
+
+    function abrir(url) {
+      if (!url) return;
+      if (url === "#tema") {
+        cerrar();
+        var botonTema = $("#boton-tema");
+        if (botonTema) botonTema.click();
+        return;
+      }
+      window.location.href = url;
+    }
+
+    function consultar(texto) {
+      if (!CONFIG.urlBuscar) return;
+      fetch(CONFIG.urlBuscar + "?q=" + encodeURIComponent(texto), {
+        headers: { Accept: "application/json" }
+      })
+        .then(function (respuesta) { return respuesta.ok ? respuesta.json() : { grupos: [] }; })
+        .then(function (datos) { pintar(datos.grupos || []); })
+        .catch(function () {
+          resultados.innerHTML = '<p class="paleta__vacio">No se pudo consultar el servidor.</p>';
+        });
+    }
+
+    function abrirPaleta() {
+      paleta.classList.add("abierto");
+      entrada.value = "";
+      entrada.focus();
+      consultar("");
+    }
+
+    function cerrar() {
+      paleta.classList.remove("abierto");
+    }
+
+    var disparador = $("#abrir-paleta");
+    if (disparador) disparador.addEventListener("click", abrirPaleta);
+
+    paleta.addEventListener("click", function (evento) {
+      if (evento.target === paleta) cerrar();
+    });
+
+    entrada.addEventListener("input", function () {
+      window.clearTimeout(temporizador);
+      temporizador = window.setTimeout(function () { consultar(entrada.value.trim()); }, 140);
+    });
+
+    entrada.addEventListener("keydown", function (evento) {
+      if (evento.key === "ArrowDown") {
+        evento.preventDefault();
+        seleccionado = Math.min(seleccionado + 1, items.length - 1);
+        resaltar();
+      } else if (evento.key === "ArrowUp") {
+        evento.preventDefault();
+        seleccionado = Math.max(seleccionado - 1, 0);
+        resaltar();
+      } else if (evento.key === "Enter") {
+        evento.preventDefault();
+        if (items[seleccionado]) abrir(items[seleccionado].dataset.url);
+      } else if (evento.key === "Escape") {
+        cerrar();
+      }
+    });
+
+    // Atajo global: Ctrl+K o Cmd+K abre la paleta; "/" también, salvo que el
+    // foco esté en un campo de formulario.
+    document.addEventListener("keydown", function (evento) {
+      var enCampo = /^(INPUT|TEXTAREA|SELECT)$/.test(evento.target.tagName || "");
+
+      if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === "k") {
+        evento.preventDefault();
+        if (paleta.classList.contains("abierto")) cerrar();
+        else abrirPaleta();
+      } else if (evento.key === "/" && !enCampo) {
+        evento.preventDefault();
+        abrirPaleta();
+      } else if (evento.key === "Escape" && paleta.classList.contains("abierto")) {
+        cerrar();
+      }
     });
   }
 
   /* ========================================================================
-     3. Confirmación antes de acciones críticas
-     --------------------------------------------------------------------
-     Los formularios de eliminar, cancelar y devolver llevan el atributo
-     data-confirmar con el texto a mostrar. Se usa window.confirm(), tal como
-     exige el PDF del proyecto.
+     6. Confirmación antes de acciones críticas
      ====================================================================== */
   function inicializarConfirmaciones() {
-    var formularios = document.querySelectorAll("form[data-confirmar]");
-    Array.prototype.forEach.call(formularios, function (formulario) {
+    $$("form[data-confirmar]").forEach(function (formulario) {
       formulario.addEventListener("submit", function (evento) {
         var mensaje = formulario.getAttribute("data-confirmar");
         if (mensaje && !window.confirm(mensaje)) {
@@ -79,47 +317,25 @@
   }
 
   /* ========================================================================
-     4. Validación en el lado del cliente
-     --------------------------------------------------------------------
-     Se apoya en los atributos HTML5 (required, type, min, max, pattern) y
-     añade realimentación visual mediante la clase .invalido.
+     7. Validación en el cliente
      ====================================================================== */
   function inicializarValidacion() {
-    var formularios = document.querySelectorAll("form[data-validar]");
-
-    Array.prototype.forEach.call(formularios, function (formulario) {
-      var campos = formulario.querySelectorAll("input, select, textarea");
-
-      Array.prototype.forEach.call(campos, function (campo) {
-        // El navegador dispara 'invalid' cuando el valor no cumple las reglas.
-        campo.addEventListener("invalid", function () {
-          campo.classList.add("invalido");
-        });
-
-        // Al corregir el valor, se retira el aviso.
+    $$("form[data-validar]").forEach(function (formulario) {
+      $$("input, select, textarea", formulario).forEach(function (campo) {
+        campo.addEventListener("invalid", function () { campo.classList.add("invalido"); });
         campo.addEventListener("input", function () {
-          if (campo.checkValidity()) {
-            campo.classList.remove("invalido");
-          }
+          campo.classList.toggle("invalido", !campo.checkValidity());
         });
-
         campo.addEventListener("blur", function () {
-          if (!campo.checkValidity()) {
-            campo.classList.add("invalido");
-          } else {
-            campo.classList.remove("invalido");
-          }
+          campo.classList.toggle("invalido", !campo.checkValidity());
         });
       });
 
-      // Si el envío se bloquea por validación, se enfoca el primer campo con error.
       formulario.addEventListener("submit", function (evento) {
         if (!formulario.checkValidity()) {
           evento.preventDefault();
-          var primero = formulario.querySelector(":invalid");
-          if (primero) {
-            primero.focus();
-          }
+          var primero = $(":invalid", formulario);
+          if (primero) primero.focus();
           return false;
         }
         return true;
@@ -128,99 +344,148 @@
   }
 
   /* ========================================================================
-     5. Cálculo de la hora de finalización de una reserva
-     --------------------------------------------------------------------
-     Manipulación del DOM: se lee la hora de inicio y la duración y se
-     actualiza el elemento <output> en tiempo real.
+     8. Búsqueda con retardo en los listados
      ====================================================================== */
-  function minutosAHora(totalMinutos) {
-    var horas = Math.floor(totalMinutos / 60);
-    var minutos = totalMinutos % 60;
-    return (horas < 10 ? "0" : "") + horas + ":" + (minutos < 10 ? "0" : "") + minutos;
+  function inicializarBusquedaViva() {
+    $$("form[data-buscar-auto]").forEach(function (formulario) {
+      var entrada = $('input[name="q"]', formulario);
+      if (!entrada) return;
+
+      var temporizador = null;
+      var original = entrada.value;
+
+      entrada.addEventListener("input", function () {
+        window.clearTimeout(temporizador);
+        temporizador = window.setTimeout(function () {
+          if (entrada.value.trim() !== original.trim()) formulario.submit();
+        }, 420);
+      });
+
+      entrada.addEventListener("keydown", function (evento) {
+        if (evento.key === "Escape") {
+          entrada.value = "";
+          formulario.submit();
+        }
+      });
+    });
   }
 
-  function horaAMinutos(hora) {
-    var partes = String(hora).split(":");
-    if (partes.length !== 2) {
-      return null;
-    }
+  /* ========================================================================
+     9. Formulario de reserva
+     --------------------------------------------------------------------
+     - Calcula la hora de finalización en vivo.
+     - Dibuja la línea de tiempo del día con las franjas ya ocupadas.
+     - Consulta la disponibilidad con fetch() y ofrece horarios alternativos.
+     ====================================================================== */
+  function aMinutos(hora) {
+    var partes = String(hora || "").split(":");
+    if (partes.length !== 2) return null;
     var horas = parseInt(partes[0], 10);
     var minutos = parseInt(partes[1], 10);
-    if (isNaN(horas) || isNaN(minutos)) {
-      return null;
-    }
+    if (isNaN(horas) || isNaN(minutos)) return null;
     return horas * 60 + minutos;
   }
 
+  function aHora(total) {
+    var horas = Math.floor(total / 60);
+    var minutos = total % 60;
+    return (horas < 10 ? "0" : "") + horas + ":" + (minutos < 10 ? "0" : "") + minutos;
+  }
+
   function inicializarFormularioReserva() {
-    var formulario = document.getElementById("formulario-reserva");
-    if (!formulario) {
-      return;
-    }
+    var formulario = $("#formulario-reserva");
+    if (!formulario) return;
 
-    var selectLaboratorio = document.getElementById("campo-laboratorio_id");
-    var campoFecha = document.getElementById("campo-fecha");
-    var campoHoraInicio = document.getElementById("campo-hora_inicio");
-    var campoDuracion = document.getElementById("campo-duracion_minutos");
-    var salida = document.getElementById("campo-hora_fin_calculada");
-    var botonEstandar = document.getElementById("boton-duracion-estandar");
-    var botonDisponibilidad = document.getElementById("boton-disponibilidad");
-    var resultado = document.getElementById("resultado-disponibilidad");
+    var selectLaboratorio = $("#campo-laboratorio_id");
+    var campoFecha = $("#campo-fecha");
+    var campoHora = $("#campo-hora_inicio");
+    var campoDuracion = $("#campo-duracion_minutos");
+    var salida = $("#campo-hora_fin_calculada");
+    var botonEstandar = $("#boton-duracion-estandar");
+    var botonDisponibilidad = $("#boton-disponibilidad");
+    var resultado = $("#resultado-disponibilidad");
+    var linea = $("#linea-tiempo");
+    var alternativas = $("#alternativas");
 
-    // Mapa { id_laboratorio: duración_estándar } inyectado por Flask.
     var duraciones = {};
     try {
       duraciones = JSON.parse(formulario.getAttribute("data-duraciones") || "{}");
-    } catch (error) {
+    } catch (e) {
       duraciones = {};
     }
     var urlDisponibilidad = formulario.getAttribute("data-url-disponibilidad") || "";
 
     function duracionDelLaboratorio() {
-      if (!selectLaboratorio) {
-        return null;
-      }
-      var valor = duraciones[selectLaboratorio.value];
+      var valor = duraciones[selectLaboratorio ? selectLaboratorio.value : ""];
       return typeof valor === "number" ? valor : null;
     }
 
-    function actualizarHoraFin() {
-      if (!salida || !campoHoraInicio || !campoDuracion) {
-        return;
-      }
-      var inicio = horaAMinutos(campoHoraInicio.value);
-      var duracion = parseInt(campoDuracion.value, 10);
-
-      if (inicio === null || isNaN(duracion) || duracion <= 0) {
-        salida.textContent = "—";
-        return;
-      }
-      if (inicio + duracion > 1439) {
-        salida.textContent = "Excede el día";
-        return;
-      }
-      salida.textContent = minutosAHora(inicio + duracion);
-    }
-
     function horaFinCalculada() {
-      var inicio = horaAMinutos(campoHoraInicio ? campoHoraInicio.value : "");
+      var inicio = aMinutos(campoHora ? campoHora.value : "");
       var duracion = parseInt(campoDuracion ? campoDuracion.value : "", 10);
-      if (inicio === null || isNaN(duracion)) {
-        return "";
-      }
-      return minutosAHora(inicio + duracion);
+      if (inicio === null || isNaN(duracion) || duracion <= 0) return "";
+      return aHora(inicio + duracion);
     }
 
-    // Al elegir laboratorio se propone su duración estándar.
+    function actualizarHoraFin() {
+      if (!salida) return;
+      salida.textContent = horaFinCalculada() || "—";
+    }
+
+    // --- Línea de tiempo del día ---
+    function pintarLineaTiempo(ocupacion) {
+      if (!linea) return;
+      var apertura = 7 * 60;
+      var cierre = 21 * 60;
+      var total = cierre - apertura;
+
+      if (!ocupacion || !ocupacion.length) {
+        linea.innerHTML = '<p class="ayuda">No hay reservas para ese día: la jornada está completa disponible.</p>';
+        return;
+      }
+
+      var html = '<div class="linea-tiempo__barra" role="img" aria-label="Ocupación del día">';
+      ocupacion.forEach(function (franja) {
+        var inicio = aMinutos(franja.hora_inicio);
+        var fin = aMinutos(franja.hora_fin);
+        if (inicio === null || fin === null) return;
+        var izquierda = Math.max(0, (inicio - apertura) * 100 / total);
+        var ancho = Math.max(1.5, (fin - inicio) * 100 / total);
+        html += '<span class="linea-tiempo__franja" style="left:' + izquierda.toFixed(2) +
+                "%;width:" + ancho.toFixed(2) + '%" title="' +
+                franja.hora_inicio + " – " + franja.hora_fin + '"></span>';
+      });
+      html += "</div>";
+      html += '<div class="linea-tiempo__escala"><span>07:00</span><span>11:00</span>' +
+              "<span>15:00</span><span>21:00</span></div>";
+      linea.innerHTML = html;
+    }
+
+    function consultarOcupacion() {
+      if (!urlDisponibilidad || !selectLaboratorio || !campoFecha) return;
+      var laboratorio = selectLaboratorio.value;
+      var fecha = campoFecha.value;
+      if (!laboratorio || !fecha) {
+        pintarLineaTiempo([]);
+        return;
+      }
+
+      var parametros = new URLSearchParams({ laboratorio_id: laboratorio, fecha: fecha });
+      fetch(urlDisponibilidad + "?" + parametros.toString(), { headers: { Accept: "application/json" } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (datos) { if (datos) pintarLineaTiempo(datos.ocupacion); })
+        .catch(function () { /* informativo: si falla, no se interrumpe el formulario */ });
+    }
+
     if (selectLaboratorio) {
       selectLaboratorio.addEventListener("change", function () {
         var estandar = duracionDelLaboratorio();
-        if (estandar !== null && campoDuracion) {
-          campoDuracion.value = estandar;
-        }
+        if (estandar !== null && campoDuracion) campoDuracion.value = estandar;
         actualizarHoraFin();
+        consultarOcupacion();
       });
     }
+    if (campoFecha) campoFecha.addEventListener("change", consultarOcupacion);
 
     if (botonEstandar) {
       botonEstandar.addEventListener("click", function () {
@@ -233,25 +498,24 @@
       });
     }
 
-    [campoHoraInicio, campoDuracion].forEach(function (campo) {
-      if (campo) {
-        campo.addEventListener("input", actualizarHoraFin);
-        campo.addEventListener("change", actualizarHoraFin);
-      }
+    [campoHora, campoDuracion].forEach(function (campo) {
+      if (!campo) return;
+      campo.addEventListener("input", actualizarHoraFin);
+      campo.addEventListener("change", actualizarHoraFin);
     });
 
-    // --- Comprobación de disponibilidad con fetch() -----------------------
+    // --- Verificación con fetch() y alternativas ---
     if (botonDisponibilidad && resultado) {
       botonDisponibilidad.addEventListener("click", function () {
         var laboratorio = selectLaboratorio ? selectLaboratorio.value : "";
         var fecha = campoFecha ? campoFecha.value : "";
-        var inicio = campoHoraInicio ? campoHoraInicio.value : "";
+        var inicio = campoHora ? campoHora.value : "";
         var fin = horaFinCalculada();
+        var duracion = parseInt(campoDuracion ? campoDuracion.value : "", 10);
 
         if (!laboratorio || !fecha || !inicio || !fin) {
           resultado.className = "resultado-disponibilidad es-error";
-          resultado.textContent =
-            "Completa laboratorio, fecha, hora de inicio y duración para poder verificar.";
+          resultado.textContent = "Completa laboratorio, fecha, hora de inicio y duración.";
           return;
         }
 
@@ -263,49 +527,132 @@
           fecha: fecha,
           hora_inicio: inicio,
           hora_fin: fin,
+          duracion: duracion
         });
 
-        fetch(urlDisponibilidad + "?" + parametros.toString(), {
-          headers: { "Accept": "application/json" },
-        })
-          .then(function (respuesta) {
-            if (!respuesta.ok) {
-              throw new Error("Respuesta del servidor: " + respuesta.status);
-            }
-            return respuesta.json();
+        fetch(urlDisponibilidad + "?" + parametros.toString(), { headers: { Accept: "application/json" } })
+          .then(function (r) {
+            if (!r.ok) throw new Error(String(r.status));
+            return r.json();
           })
           .then(function (datos) {
-            resultado.className =
-              "resultado-disponibilidad " + (datos.disponible ? "es-ok" : "es-error");
-            resultado.textContent =
-              (datos.disponible ? "✔ " : "✖ ") + datos.mensaje +
-              " (franja " + inicio + " – " + fin + ")";
+            pintarLineaTiempo(datos.ocupacion);
+            resultado.className = "resultado-disponibilidad " + (datos.disponible ? "es-ok" : "es-error");
+            resultado.textContent = (datos.disponible ? "✔ " : "✖ ") + datos.mensaje +
+                                    " (franja " + inicio + " – " + fin + ")";
+
+            if (!alternativas) return;
+            alternativas.innerHTML = "";
+
+            if (datos.sugerencias && datos.sugerencias.length) {
+              var titulo = document.createElement("p");
+              titulo.className = "ayuda";
+              titulo.textContent = "Franjas libres más cercanas (pulsa una para usarla):";
+              alternativas.appendChild(titulo);
+
+              var fila = document.createElement("div");
+              fila.className = "alternativas__fila";
+              datos.sugerencias.forEach(function (sugerencia) {
+                var boton = document.createElement("button");
+                boton.type = "button";
+                boton.className = "alternativa";
+                var fuerte = document.createElement("b");
+                fuerte.textContent = sugerencia.hora_inicio + " – " + sugerencia.hora_fin;
+                var pequeno = document.createElement("small");
+                pequeno.textContent = "libre hasta " + sugerencia.libre_hasta;
+                boton.appendChild(fuerte);
+                boton.appendChild(pequeno);
+                boton.addEventListener("click", function () {
+                  if (campoHora) campoHora.value = sugerencia.hora_inicio;
+                  actualizarHoraFin();
+                  resultado.className = "resultado-disponibilidad es-ok";
+                  resultado.textContent = "Franja aplicada: " + sugerencia.hora_inicio + " – " +
+                                          sugerencia.hora_fin + ". Ya puedes guardar la reserva.";
+                });
+                fila.appendChild(boton);
+              });
+              alternativas.appendChild(fila);
+            }
           })
           .catch(function () {
             resultado.className = "resultado-disponibilidad es-error";
-            resultado.textContent =
-              "No se pudo verificar la disponibilidad. Inténtalo de nuevo.";
+            resultado.textContent = "No se pudo verificar la disponibilidad. Inténtalo de nuevo.";
           });
       });
     }
 
     actualizarHoraFin();
+    consultarOcupacion();
+
+    // Las alternativas que el servidor ya dibujó (cuando rechazó una reserva por
+    // solapamiento) se comportan igual que las que llegan por fetch().
+    $$(".alternativa[data-hora]").forEach(function (boton) {
+      boton.addEventListener("click", function () {
+        if (campoHora) campoHora.value = boton.getAttribute("data-hora");
+        actualizarHoraFin();
+        if (resultado) {
+          resultado.className = "resultado-disponibilidad es-ok";
+          resultado.textContent = "Franja aplicada: " + boton.getAttribute("data-hora") +
+                                  ". Ya puedes guardar la reserva.";
+        }
+      });
+    });
   }
 
   /* ========================================================================
-     6. Protección contra el doble envío
+     10. Contadores animados
+     ====================================================================== */
+  function inicializarContadores() {
+    var nodos = $$("[data-contador]");
+    if (!nodos.length) return;
+
+    function animar(nodo) {
+      var destino = parseFloat(nodo.getAttribute("data-contador")) || 0;
+      var duracion = 750;
+      var inicio = null;
+
+      function paso(marca) {
+        if (inicio === null) inicio = marca;
+        var avance = Math.min((marca - inicio) / duracion, 1);
+        // Suavizado de salida: arranca rápido y frena al final.
+        var suave = 1 - Math.pow(1 - avance, 3);
+        nodo.textContent = Math.round(destino * suave).toLocaleString("es-VE");
+        if (avance < 1) window.requestAnimationFrame(paso);
+        else nodo.textContent = destino.toLocaleString("es-VE");
+      }
+      window.requestAnimationFrame(paso);
+    }
+
+    if (!("IntersectionObserver" in window)) {
+      nodos.forEach(animar);
+      return;
+    }
+
+    var observador = new IntersectionObserver(function (entradas) {
+      entradas.forEach(function (entrada) {
+        if (entrada.isIntersecting) {
+          animar(entrada.target);
+          observador.unobserve(entrada.target);
+        }
+      });
+    }, { threshold: 0.35 });
+
+    nodos.forEach(function (nodo) { observador.observe(nodo); });
+  }
+
+  /* ========================================================================
+     11. Protección contra el doble envío
      ====================================================================== */
   function inicializarAntiDobleEnvio() {
-    var formularios = document.querySelectorAll("form[data-validar]");
-    Array.prototype.forEach.call(formularios, function (formulario) {
+    $$("form[data-validar]").forEach(function (formulario) {
       formulario.addEventListener("submit", function () {
-        var boton = formulario.querySelector('button[type="submit"]');
-        if (boton) {
-          window.setTimeout(function () {
-            boton.disabled = true;
-            boton.textContent = "Guardando…";
-          }, 0);
-        }
+        var boton = $('button[type="submit"]', formulario);
+        if (!boton) return;
+        window.setTimeout(function () {
+          boton.disabled = true;
+          boton.classList.add("cargando");
+          boton.textContent = "Guardando…";
+        }, 0);
       });
     });
   }
@@ -314,11 +661,16 @@
      Arranque
      ====================================================================== */
   document.addEventListener("DOMContentLoaded", function () {
-    inicializarMenu();
-    inicializarMensajes();
+    inicializarTema();
+    inicializarLateral();
+    inicializarMenus();
+    inicializarNotificaciones();
+    inicializarPaleta();
     inicializarConfirmaciones();
     inicializarValidacion();
+    inicializarBusquedaViva();
     inicializarFormularioReserva();
+    inicializarContadores();
     inicializarAntiDobleEnvio();
   });
 })();

@@ -1,0 +1,87 @@
+{% extends "base_app.html" %}
+{% import "parciales/iconos.html" as ic %}
+{% import "parciales/formulario.html" as f %}
+{% block titulo %}Mi perfil{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Mi perfil</h1>
+    <p class="encabezado__subtitulo">Tus datos de acceso y el cambio de contraseña.</p>
+  </div>
+</section>
+
+<div class="rejilla-doble">
+  {#- ==================== Datos de la cuenta ==================== -#}
+  <section class="panel" aria-labelledby="titulo-datos">
+    <div class="panel__cabecera">
+      <h2 id="titulo-datos">Datos de la cuenta</h2>
+    </div>
+
+    <div class="acciones-fila" style="margin-bottom:var(--e-5)">
+      <span class="avatar" style="width:56px;height:56px;font-size:var(--t-lg)" aria-hidden="true">
+        {{ usuario.nombre[0] | upper }}{{ usuario.apellido[0] | upper }}
+      </span>
+      <span>
+        <strong style="display:block;font-size:var(--t-lg)">{{ usuario.nombre }} {{ usuario.apellido }}</strong>
+        <span class="insignia insignia--{{ usuario.rol | lower }}">{{ usuario.rol }}</span>
+      </span>
+    </div>
+
+    <dl class="comprobante__rejilla" style="margin:0">
+      <div class="comprobante__dato">
+        <dt>Nombre de usuario</dt>
+        <dd class="mono">{{ usuario.username }}</dd>
+      </div>
+      <div class="comprobante__dato">
+        <dt>Correo electrónico</dt>
+        <dd>{{ usuario.email }}</dd>
+      </div>
+      <div class="comprobante__dato">
+        <dt>Rol</dt>
+        <dd>{{ usuario.rol }}</dd>
+      </div>
+      <div class="comprobante__dato">
+        <dt>Estado</dt>
+        <dd><span class="insignia insignia--{{ usuario.estado | lower }}">{{ usuario.estado }}</span></dd>
+      </div>
+    </dl>
+
+    <p class="ayuda" style="margin-top:var(--e-5)">
+      Para cambiar tu nombre, usuario, correo o rol, un administrador debe editar tu
+      cuenta desde el módulo <strong>Usuarios</strong>.
+    </p>
+  </section>
+
+  {#- ==================== Cambio de contraseña ==================== -#}
+  <section class="panel" aria-labelledby="titulo-password">
+    <div class="panel__cabecera">
+      <h2 id="titulo-password">Cambiar contraseña</h2>
+    </div>
+
+    <form method="post" class="formulario" data-validar action="{{ url_for('web.perfil') }}">
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+      {{ f.texto('password_actual', 'Contraseña actual', '', tipo='password',
+                 requerido=true, autocompletar='current-password',
+                 ayuda='Se pide como comprobación de identidad.') }}
+      {{ f.texto('password_nueva', 'Nueva contraseña', '', tipo='password',
+                 requerido=true, autocompletar='new-password',
+                 ayuda='Mínimo 8 caracteres, con mayúscula, minúscula, número y carácter especial.') }}
+      {{ f.texto('password_repetida', 'Repite la nueva contraseña', '', tipo='password',
+                 requerido=true, autocompletar='new-password') }}
+
+      <div class="formulario__acciones">
+        <button type="submit" class="boton boton--marca">
+          {{ ic.icono('llave') }} Actualizar contraseña
+        </button>
+      </div>
+    </form>
+
+    <p class="ayuda" style="margin-top:var(--e-4)">
+      La contraseña se guarda siempre como hash; nadie —ni siquiera un administrador—
+      puede leerla.
+    </p>
+  </section>
+</div>
+{% endblock %}

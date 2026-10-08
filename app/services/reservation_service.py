@@ -1,5 +1,17 @@
 from datetime import datetime, timedelta
+from app.config import HORA_APERTURA, HORA_CIERRE
 from app.database import get_connection
+
+
+def _a_minutos(hora):
+    """Convierte 'HH:MM' en minutos desde medianoche."""
+    horas, minutos = hora.split(":")
+    return int(horas) * 60 + int(minutos)
+
+
+def _a_hora(minutos):
+    """Convierte minutos desde medianoche en 'HH:MM'."""
+    return f"{minutos // 60:02d}:{minutos % 60:02d}"
 
 
 class ReservationService:
@@ -108,6 +120,110 @@ class ReservationService:
             db.execute(
                 "UPDATE reservas SET estado='CANCELADA' WHERE id=?", (reservation_id,)
             )
+
+    @staticmethod
+    def get(reservation_id):
+        """Devuelve una reserva con sus datos relacionados (para el comprobante)."""
+        with get_connection() as db:
+            fila = db.execute(
+                """SELECT r.*,
+                          l.codigo AS laboratorio_codigo,
+                          l.nombre AS laboratorio_nombre,
+                          l.ubicacion AS laboratorio_ubicacion,
+                          p.cedula, p.nombre AS prestatario_nombre,
+                          p.apellido AS prestatario_apellido,
+                          p.email AS prestatario_email,
+                          p.telefono AS prestatario_telefono,
+                          u.username AS registrado_por,
+                          u.nombre || ' ' || u.apellido AS registrado_por_nombre
+                   FROM reservas r
+                   JOIN laboratorios l ON l.id = r.laboratorio_id
+                   JOIN prestatarios p ON p.id = r.prestatario_id
+                   JOIN usuarios_sistema u ON u.id = r.usuario_sistema_id
+                   WHERE r.id = ?""",
+                (reservation_id,),
+            ).fetchone()
+        return dict(fila) if fila else None
+
+    @staticmethod
+    def ocupacion_del_dia(laboratorio_id, fecha):
+        """Franjas ya ocupadas de un laboratorio en una fecha concreta.
+
+        Se usa para dibujar la línea de tiempo del día en el formulario de
+        reservas: el usuario ve de un vistazo qué queda libre.
+        """
+        with get_connection() as db:
+            filas = db.execute(
+                """SELECT hora_inicio, hora_fin, estado FROM reservas
+                   WHERE laboratorio_id = ? AND fecha = ?
+                     AND estado IN ('CONFIRMADA','ACTIVA')
+                   ORDER BY hora_inicio""",
+                (laboratorio_id, fecha),
+            ).fetchall()
+        return [dict(fila) for fila in filas]
+
+    @staticmethod
+    def sugerir_horarios(laboratorio_id, fecha, duracion_minutos, hora_deseada=None, limite=3):
+        """Propone las franjas libres más cercanas a la hora solicitada.
+
+        Es la parte "inteligente" del módulo de reservas: en lugar de limitarse a
+        rechazar un solapamiento, calcula los huecos reales del día y ofrece
+        alternativas ordenadas por cercanía a lo que el usuario pedía.
+        """
+        if not fecha or not duracion_minutos or duracion_minutos <= 0:
+            return []
+
+        apertura = _a_minutos(HORA_APERTURA)
+        cierre = _a_minutos(HORA_CIERRE)
+
+        ocupadas = sorted(
+            (_a_minutos(r["hora_inicio"]), _a_minutos(r["hora_fin"]))
+            for r in ReservationService.ocupacion_del_dia(laboratorio_id, fecha)
+        )
+
+        # Unir intervalos que se tocan o se superponen para obtener los bloques
+        # realmente ocupados (las franjas adyacentes cuentan como un solo bloque).
+        bloques = []
+        for inicio, fin in ocupadas:
+            if bloques and inicio <= bloques[-1][1]:
+                bloques[-1] = (bloques[-1][0], max(bloques[-1][1], fin))
+            else:
+                bloques.append((inicio, fin))
+
+        # Huecos libres dentro del horario de apertura.
+        huecos = []
+        cursor = apertura
+        for inicio, fin in bloques:
+            if inicio - cursor >= duracion_minutos:
+                huecos.append((cursor, inicio))
+            cursor = max(cursor, fin)
+        if cierre - cursor >= duracion_minutos:
+            huecos.append((cursor, cierre))
+
+        deseada = _a_minutos(hora_deseada) if hora_deseada else None
+
+        sugerencias = []
+        for inicio, fin in huecos:
+            propuesta = inicio
+            if deseada is not None and inicio <= deseada and deseada + duracion_minutos <= fin:
+                propuesta = deseada
+            referencia = deseada if deseada is not None else apertura
+            sugerencias.append(
+                {
+                    "hora_inicio": _a_hora(propuesta),
+                    "hora_fin": _a_hora(propuesta + duracion_minutos),
+                    # Hasta cuándo sigue libre el hueco: es más útil para el
+                    # usuario que un número de minutos suelto.
+                    "libre_hasta": _a_hora(fin),
+                    "holgura_minutos": fin - inicio,
+                    "_distancia": abs(propuesta - referencia),
+                }
+            )
+
+        sugerencias.sort(key=lambda s: s["_distancia"])
+        for sugerencia in sugerencias:
+            sugerencia.pop("_distancia", None)
+        return sugerencias[:limite]
 
     @staticmethod
     def list_all():

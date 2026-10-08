@@ -1,4 +1,6 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
+{% import "parciales/iconos.html" as ic %}
+{% import "parciales/listado.html" as l with context %}
 {% block titulo %}Usuarios del sistema{% endblock %}
 
 {% block contenido %}
@@ -12,30 +14,41 @@
   </div>
   {% if puede('usuarios.write') %}
   <div class="encabezado__acciones">
-    <a class="boton boton--primario" href="{{ url_for('web.usuario_crear') }}">+ Nuevo usuario</a>
+    <a class="boton boton--marca" href="{{ url_for('web.usuario_crear') }}">
+      {{ ic.icono('mas') }} Nuevo usuario
+    </a>
   </div>
   {% endif %}
 </section>
 
-{% if usuarios %}
+{{ l.barra(listado,
+           url_exportar=url_for('web.usuarios_exportar'),
+           marcador='Buscar por nombre, usuario o correo…',
+           etiqueta='Buscar usuarios') }}
+
+{% if listado.filas %}
 <div class="tabla-envoltura">
   <table class="tabla">
     <caption class="visualmente-oculto">Listado de usuarios del sistema</caption>
     <thead>
       <tr>
-        <th scope="col">Nombre completo</th>
-        <th scope="col">Usuario</th>
+        {{ l.th('nombre', 'Nombre completo', listado) }}
+        {{ l.th('username', 'Usuario', listado) }}
         <th scope="col">Correo</th>
-        <th scope="col">Rol</th>
-        <th scope="col">Estado</th>
-        <th scope="col">Registro</th>
+        {{ l.th('rol', 'Rol', listado) }}
+        {{ l.th('estado', 'Estado', listado) }}
         <th scope="col" class="columna-acciones">Acciones</th>
       </tr>
     </thead>
     <tbody>
-      {% for u in usuarios %}
+      {% for u in listado.filas %}
       <tr>
-        <td data-etiqueta="Nombre completo"><strong>{{ u.nombre }} {{ u.apellido }}</strong></td>
+        <td data-etiqueta="Nombre completo">
+          <div class="acciones-fila">
+            <span class="avatar" aria-hidden="true">{{ u.nombre[0] | upper }}{{ u.apellido[0] | upper }}</span>
+            <strong>{{ u.nombre }} {{ u.apellido }}</strong>
+          </div>
+        </td>
         <td data-etiqueta="Usuario"><span class="mono">{{ u.username }}</span></td>
         <td data-etiqueta="Correo">{{ u.email }}</td>
         <td data-etiqueta="Rol">
@@ -44,17 +57,24 @@
         <td data-etiqueta="Estado">
           <span class="insignia insignia--{{ u.estado | lower }}">{{ u.estado }}</span>
         </td>
-        <td data-etiqueta="Registro"><span class="dato-secundario">{{ u.fecha_registro }}</span></td>
         <td data-etiqueta="Acciones" class="columna-acciones">
           <div class="acciones-fila">
             <a class="boton boton--secundario boton--pequeno"
-               href="{{ url_for('web.usuario_editar', id_=u.id) }}">Editar</a>
+               href="{{ url_for('web.usuario_editar', id_=u.id) }}">
+              {{ ic.icono('editar') }} Editar
+            </a>
+            {% if u.id != usuario_actual.id %}
             <form method="post" class="formulario-eliminar"
                   action="{{ url_for('web.usuario_eliminar', id_=u.id) }}"
-                  data-confirmar="¿Está seguro de eliminar al usuario «{{ u.username }}»? Esta acción no se puede deshacer.">
+                  data-confirmar="¿Está seguro de eliminar al usuario «{{ u.username }}» ({{ u.rol }})? Esta acción no se puede deshacer.">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="boton boton--peligro boton--pequeno">Eliminar</button>
+              <button type="submit" class="boton boton--peligro boton--pequeno">
+                {{ ic.icono('eliminar') }} Eliminar
+              </button>
             </form>
+            {% else %}
+            <span class="dato-secundario">Tu cuenta</span>
+            {% endif %}
           </div>
         </td>
       </tr>
@@ -62,12 +82,13 @@
     </tbody>
   </table>
 </div>
-<p class="contador-registros">Total: <strong>{{ usuarios | length }}</strong> usuario(s).</p>
+{{ l.paginacion(listado) }}
 {% else %}
-<div class="estado-vacio">
-  <p class="estado-vacio__titulo">No hay usuarios registrados</p>
-  <p class="estado-vacio__texto">Crea un usuario para poder acceder al sistema.</p>
-  <a class="boton boton--primario" href="{{ url_for('web.usuario_crear') }}">+ Crear el primero</a>
-</div>
+{{ l.vacio(listado,
+           'No hay usuarios registrados',
+           'Crea un usuario para poder acceder al sistema.',
+           'usuarios',
+           url_for('web.usuario_crear'),
+           'Crear el primero') }}
 {% endif %}
 {% endblock %}

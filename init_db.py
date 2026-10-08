@@ -28,6 +28,7 @@ TABLAS = (
     "equipos",
     "reservas",
     "prestamos_equipos",
+    "auditoria",
 )
 
 

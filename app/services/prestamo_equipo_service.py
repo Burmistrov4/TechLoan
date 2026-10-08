@@ -51,11 +51,12 @@ class PrestamoEquipoService:
         with get_connection() as db:
             return [dict(r) for r in db.execute(
                 """SELECT p.*, e.codigo AS equipo_codigo, e.nombre AS equipo_nombre,
-                   pr.cedula, pr.nombre AS prestatario_nombre, pr.apellido AS prestatario_apellido
+                   pr.cedula, pr.nombre AS prestatario_nombre, pr.apellido AS prestatario_apellido,
+                   CAST(julianday('now','localtime') - julianday(p.fecha_prestamo) AS INTEGER) AS dias_prestado
                    FROM prestamos_equipos p
                    JOIN equipos e ON e.id=p.equipo_id
                    JOIN prestatarios pr ON pr.id=p.prestatario_id
-                   WHERE p.estado='ACTIVO' ORDER BY p.fecha_prestamo DESC"""
+                   WHERE p.estado='ACTIVO' ORDER BY dias_prestado DESC"""
             ).fetchall()]
 
     @staticmethod
@@ -63,12 +64,32 @@ class PrestamoEquipoService:
         with get_connection() as db:
             return [dict(r) for r in db.execute(
                 """SELECT p.*, e.codigo AS equipo_codigo,
-                   pr.nombre AS prestatario_nombre, pr.apellido AS prestatario_apellido
+                   pr.nombre AS prestatario_nombre, pr.apellido AS prestatario_apellido,
+                   CASE WHEN p.estado = 'ACTIVO'
+                        THEN CAST(julianday('now','localtime') - julianday(p.fecha_prestamo) AS INTEGER)
+                        ELSE NULL END AS dias_prestado
                    FROM prestamos_equipos p
                    JOIN equipos e ON e.id=p.equipo_id
                    JOIN prestatarios pr ON pr.id=p.prestatario_id
                    ORDER BY p.id DESC"""
             ).fetchall()]
+
+    @staticmethod
+    def get(prestamo_id):
+        """Devuelve un préstamo con sus datos relacionados."""
+        with get_connection() as db:
+            fila = db.execute(
+                """SELECT p.*, e.codigo AS equipo_codigo, e.nombre AS equipo_nombre,
+                          pr.cedula, pr.nombre AS prestatario_nombre, pr.apellido AS prestatario_apellido,
+                          u.username AS registrado_por
+                   FROM prestamos_equipos p
+                   JOIN equipos e ON e.id = p.equipo_id
+                   JOIN prestatarios pr ON pr.id = p.prestatario_id
+                   JOIN usuarios_sistema u ON u.id = p.usuario_sistema_id
+                   WHERE p.id = ?""",
+                (prestamo_id,),
+            ).fetchone()
+        return dict(fila) if fila else None
 
     @staticmethod
     def return_equipment(prestamo_id, observaciones=""):

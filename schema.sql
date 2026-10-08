@@ -28,6 +28,7 @@ PRAGMA foreign_keys = ON;
 -- Limpieza: se eliminan primero las tablas dependientes (hijas) y al final las
 -- independientes (padres), para respetar las restricciones de clave foránea.
 -- ----------------------------------------------------------------------------
+DROP TABLE IF EXISTS auditoria;
 DROP TABLE IF EXISTS prestamos_equipos;
 DROP TABLE IF EXISTS reservas;
 DROP TABLE IF EXISTS equipos;
@@ -160,6 +161,28 @@ CREATE TABLE prestamos_equipos (
 );
 
 -- ============================================================================
+-- 8. auditoria — Registro de actividad (quién hizo qué y cuándo)
+--
+--    Nota de diseño: ``usuario_id`` NO tiene clave foránea a propósito. Un
+--    registro de auditoría debe sobrevivir a la eliminación del usuario y
+--    conservar su nombre como evidencia histórica. Por eso se guarda también
+--    ``usuario_username`` de forma desnormalizada.
+-- ============================================================================
+CREATE TABLE auditoria (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id        INTEGER,
+    usuario_username  TEXT NOT NULL,
+    accion            TEXT NOT NULL
+                      CHECK (accion IN ('CREAR', 'ACTUALIZAR', 'ELIMINAR', 'DEVOLVER',
+                                        'CANCELAR', 'ACCEDER', 'SALIR', 'EXPORTAR')),
+    entidad           TEXT NOT NULL,
+    entidad_id        INTEGER,
+    descripcion       TEXT NOT NULL,
+    direccion_ip      TEXT,
+    fecha             TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
 -- Índices — Aceleran las consultas más frecuentes (listados, búsqueda de
 -- solapamientos, préstamos activos y filtros del historial).
 -- ============================================================================
@@ -170,6 +193,9 @@ CREATE INDEX idx_prestamos_equipo_estado ON prestamos_equipos (equipo_id, estado
 CREATE INDEX idx_prestamos_prestatario   ON prestamos_equipos (prestatario_id);
 CREATE INDEX idx_equipos_categoria       ON equipos (categoria_id);
 CREATE INDEX idx_equipos_laboratorio     ON equipos (laboratorio_id);
+CREATE INDEX idx_auditoria_fecha         ON auditoria (fecha);
+CREATE INDEX idx_auditoria_entidad       ON auditoria (entidad, entidad_id);
+CREATE INDEX idx_auditoria_usuario       ON auditoria (usuario_id);
 
 -- ============================================================================
 -- DATOS INICIALES Y DE PRUEBA
@@ -269,3 +295,17 @@ INSERT INTO prestamos_equipos
 VALUES
     (3, 3, 2, datetime('now','localtime','-1 day'),  NULL,                                    'ACTIVO',   'Préstamo para práctica de redes'),
     (2, 1, 1, datetime('now','localtime','-18 days'), datetime('now','localtime','-16 days'), 'DEVUELTO', 'Préstamo para exposición');
+
+-- ---------------------------------------------------------------------------
+-- Registro de actividad (5 registros de prueba).
+-- Reflejan las operaciones que originaron los datos anteriores, para que la
+-- página de auditoría muestre información real desde el primer arranque.
+-- ---------------------------------------------------------------------------
+INSERT INTO auditoria
+    (usuario_id, usuario_username, accion, entidad, entidad_id, descripcion, direccion_ip, fecha)
+VALUES
+    (1, 'admin', 'CREAR', 'prestatario', 1, 'Alta del prestatario V-12345678 (María González)', '127.0.0.1', datetime('now','localtime','-20 days')),
+    (1, 'admin', 'CREAR', 'laboratorio', 1, 'Alta del laboratorio LAB-01 (Laboratorio de Informática 1)', '127.0.0.1', datetime('now','localtime','-19 days')),
+    (1, 'admin', 'CREAR', 'equipo', 2, 'Alta del equipo EQ-002 (Proyector Epson)', '127.0.0.1', datetime('now','localtime','-18 days')),
+    (2, 'operador', 'DEVOLVER', 'prestamo', 2, 'Devolución del equipo EQ-002 (Proyector Epson)', '127.0.0.1', datetime('now','localtime','-16 days')),
+    (2, 'operador', 'CREAR', 'prestamo', 1, 'Préstamo del equipo EQ-003 (Switch Cisco 24 puertos) a V-34567890', '127.0.0.1', datetime('now','localtime','-1 day'));

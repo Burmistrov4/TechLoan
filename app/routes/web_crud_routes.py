@@ -3,7 +3,8 @@
 Cubre Prestatarios, Categorías, Laboratorios, Equipos y Usuarios del sistema.
 
 Convenciones:
-- ``GET  /<entidad>``                    → listado.
+- ``GET  /<entidad>``                    → listado con búsqueda, orden y paginación.
+- ``GET  /<entidad>/exportar``           → descarga del listado en CSV.
 - ``GET  /<entidad>/crear``              → formulario de alta.
 - ``POST /<entidad>/crear``              → guarda el registro.
 - ``GET  /<entidad>/<id>/editar``        → formulario de edición precargado.
@@ -16,12 +17,20 @@ las rutas limpias sugeridas por el PDF del profesor:
     /crear, /editar/<id>, /eliminar/<id>
 
 Toda la lógica de negocio y la validación viven en los servicios; estas rutas
-solo orquestan formularios, permisos y mensajes.
+solo orquestan formularios, permisos, mensajes y el registro de auditoría.
 """
 
 from flask import flash, redirect, render_template, request, url_for
 
-from app.routes.web_common import form_fields, permission_required, web_bp
+from app.routes.web_common import (
+    exportar_csv,
+    filtrar_texto,
+    form_fields,
+    permission_required,
+    preparar_listado,
+    registrar_accion,
+    web_bp,
+)
 from app.services.categoria_service import CategoriaService
 from app.services.equipo_service import EquipoService
 from app.services.laboratorio_service import LaboratorioService
@@ -35,6 +44,64 @@ ESTADOS_BASICOS = ("ACTIVO", "INACTIVO")
 ESTADOS_LABORATORIO = ("DISPONIBLE", "MANTENIMIENTO", "INACTIVO")
 ESTADOS_EQUIPO = ("DISPONIBLE", "PRESTADO", "MANTENIMIENTO", "DANADO", "INACTIVO")
 ROLES = ("ADMINISTRADOR", "OPERADOR")
+
+# Definición de columnas de cada listado: (clave, etiqueta).
+# La misma definición alimenta la cabecera ordenable de la tabla y la
+# exportación a CSV, de modo que ambas no pueden desincronizarse.
+COLUMNAS_PRESTATARIO = (
+    ("cedula", "Cédula"),
+    ("nombre", "Nombre"),
+    ("apellido", "Apellido"),
+    ("tipo", "Tipo"),
+    ("telefono", "Teléfono"),
+    ("email", "Correo"),
+    ("estado", "Estado"),
+)
+COLUMNAS_CATEGORIA = (
+    ("nombre", "Nombre"),
+    ("descripcion", "Descripción"),
+)
+COLUMNAS_LABORATORIO = (
+    ("codigo", "Código"),
+    ("nombre", "Nombre"),
+    ("ubicacion", "Ubicación"),
+    ("capacidad", "Capacidad"),
+    ("duracion_estandar_minutos", "Duración estándar (min)"),
+    ("estado", "Estado"),
+)
+COLUMNAS_EQUIPO = (
+    ("codigo", "Código"),
+    ("nombre", "Nombre"),
+    ("categoria_nombre", "Categoría"),
+    ("laboratorio_nombre", "Laboratorio"),
+    ("marca", "Marca"),
+    ("modelo", "Modelo"),
+    ("serial", "Serial"),
+    ("estado", "Estado"),
+)
+COLUMNAS_USUARIO = (
+    ("nombre", "Nombre"),
+    ("apellido", "Apellido"),
+    ("username", "Usuario"),
+    ("email", "Correo"),
+    ("rol", "Rol"),
+    ("estado", "Estado"),
+)
+
+
+def _exportar(nombre_archivo, columnas, registros, descripcion):
+    """Genera la descarga CSV (respetando la búsqueda activa) y la audita."""
+    consulta = (request.args.get("q") or "").strip()
+    registros = filtrar_texto(registros, consulta)
+    registrar_accion(
+        "EXPORTAR", "listado", None,
+        descripcion + (f' (filtro: «{consulta}»)' if consulta else ""),
+    )
+    return exportar_csv(
+        nombre_archivo,
+        [etiqueta for _, etiqueta in columnas],
+        [tuple(registro.get(clave) for clave, _ in columnas) for registro in registros],
+    )
 
 
 def _etiquetar_categorias():
@@ -59,7 +126,22 @@ def _etiquetar_laboratorios():
 @web_bp.get("/prestatarios")
 @permission_required("prestatarios.read")
 def prestatarios():
-    return render_template("prestatarios/index.html", prestatarios=PrestatarioService.list_all())
+    listado = preparar_listado(
+        PrestatarioService.list_all(),
+        columnas_ordenables=tuple(clave for clave, _ in COLUMNAS_PRESTATARIO),
+    )
+    return render_template(
+        "prestatarios/index.html", listado=listado, columnas=COLUMNAS_PRESTATARIO
+    )
+
+
+@web_bp.get("/prestatarios/exportar")
+@permission_required("prestatarios.read")
+def prestatarios_exportar():
+    return _exportar(
+        "techloan-prestatarios", COLUMNAS_PRESTATARIO,
+        PrestatarioService.list_all(), "Exportación del listado de prestatarios",
+    )
 
 
 @web_bp.route("/prestatarios/crear", methods=["GET", "POST"])
@@ -72,13 +154,15 @@ def prestatario_crear():
             empty_to_none=("telefono", "email"),
         )
         try:
-            PrestatarioService.create(data)
+            nuevo_id = PrestatarioService.create(data)
         except ValueError as exc:
             flash(str(exc), "error")
             return render_template(
                 "prestatarios/form.html", modo="crear", registro=data,
                 tipos=TIPOS_PRESTATARIO, estados=ESTADOS_BASICOS,
             ), 400
+        registrar_accion("CREAR", "prestatario", nuevo_id,
+                         f"Alta del prestatario {data['cedula']} ({data['nombre']} {data['apellido']})")
         flash("Prestatario registrado correctamente.", "success")
         return redirect(url_for("web.prestatarios"))
 
@@ -112,6 +196,8 @@ def prestatario_editar(id_):
                 "prestatarios/form.html", modo="editar", registro=data,
                 tipos=TIPOS_PRESTATARIO, estados=ESTADOS_BASICOS,
             ), 400
+        registrar_accion("ACTUALIZAR", "prestatario", id_,
+                         f"Modificación del prestatario {data['cedula']} ({data['nombre']} {data['apellido']})")
         flash("Prestatario actualizado correctamente.", "success")
         return redirect(url_for("web.prestatarios"))
 
@@ -125,8 +211,13 @@ def prestatario_editar(id_):
 @web_bp.post("/eliminar/<int:id_>")
 @permission_required("prestatarios.delete")
 def prestatario_eliminar(id_):
+    registro = PrestatarioService.get(id_)
     try:
         PrestatarioService.delete(id_)
+        if registro:
+            registrar_accion("ELIMINAR", "prestatario", id_,
+                             f"Baja del prestatario {registro['cedula']} "
+                             f"({registro['nombre']} {registro['apellido']})")
         flash("Prestatario eliminado correctamente.", "success")
     except ValueError as exc:
         flash(str(exc), "error")
@@ -139,7 +230,22 @@ def prestatario_eliminar(id_):
 @web_bp.get("/categorias")
 @permission_required("categorias.read")
 def categorias():
-    return render_template("categorias/index.html", categorias=CategoriaService.list_all())
+    listado = preparar_listado(
+        CategoriaService.list_all(),
+        columnas_ordenables=tuple(clave for clave, _ in COLUMNAS_CATEGORIA),
+    )
+    return render_template(
+        "categorias/index.html", listado=listado, columnas=COLUMNAS_CATEGORIA
+    )
+
+
+@web_bp.get("/categorias/exportar")
+@permission_required("categorias.read")
+def categorias_exportar():
+    return _exportar(
+        "techloan-categorias", COLUMNAS_CATEGORIA,
+        CategoriaService.list_all(), "Exportación del listado de categorías",
+    )
 
 
 @web_bp.route("/categorias/crear", methods=["GET", "POST"])
@@ -148,10 +254,11 @@ def categoria_crear():
     if request.method == "POST":
         data = form_fields("nombre", "descripcion", empty_to_none=("descripcion",))
         try:
-            CategoriaService.create(data)
+            nuevo_id = CategoriaService.create(data)
         except ValueError as exc:
             flash(str(exc), "error")
             return render_template("categorias/form.html", modo="crear", registro=data), 400
+        registrar_accion("CREAR", "categoria", nuevo_id, f"Alta de la categoría «{data['nombre']}»")
         flash("Categoría registrada correctamente.", "success")
         return redirect(url_for("web.categorias"))
 
@@ -174,6 +281,7 @@ def categoria_editar(id_):
             flash(str(exc), "error")
             data["id"] = id_
             return render_template("categorias/form.html", modo="editar", registro=data), 400
+        registrar_accion("ACTUALIZAR", "categoria", id_, f"Modificación de la categoría «{data['nombre']}»")
         flash("Categoría actualizada correctamente.", "success")
         return redirect(url_for("web.categorias"))
 
@@ -183,8 +291,11 @@ def categoria_editar(id_):
 @web_bp.post("/categorias/<int:id_>/eliminar")
 @permission_required("categorias.delete")
 def categoria_eliminar(id_):
+    registro = CategoriaService.get(id_)
     try:
         CategoriaService.delete(id_)
+        if registro:
+            registrar_accion("ELIMINAR", "categoria", id_, f"Baja de la categoría «{registro['nombre']}»")
         flash("Categoría eliminada correctamente.", "success")
     except ValueError as exc:
         flash(str(exc), "error")
@@ -197,7 +308,22 @@ def categoria_eliminar(id_):
 @web_bp.get("/laboratorios")
 @permission_required("laboratorios.read")
 def laboratorios():
-    return render_template("laboratorios/index.html", laboratorios=LaboratorioService.list_all())
+    listado = preparar_listado(
+        LaboratorioService.list_all(),
+        columnas_ordenables=tuple(clave for clave, _ in COLUMNAS_LABORATORIO),
+    )
+    return render_template(
+        "laboratorios/index.html", listado=listado, columnas=COLUMNAS_LABORATORIO
+    )
+
+
+@web_bp.get("/laboratorios/exportar")
+@permission_required("laboratorios.read")
+def laboratorios_exportar():
+    return _exportar(
+        "techloan-laboratorios", COLUMNAS_LABORATORIO,
+        LaboratorioService.list_all(), "Exportación del listado de laboratorios",
+    )
 
 
 @web_bp.route("/laboratorios/crear", methods=["GET", "POST"])
@@ -209,13 +335,15 @@ def laboratorio_crear():
             "duracion_estandar_minutos", "estado",
         )
         try:
-            LaboratorioService.create(data)
+            nuevo_id = LaboratorioService.create(data)
         except ValueError as exc:
             flash(str(exc), "error")
             return render_template(
                 "laboratorios/form.html", modo="crear", registro=data,
                 estados=ESTADOS_LABORATORIO,
             ), 400
+        registrar_accion("CREAR", "laboratorio", nuevo_id,
+                         f"Alta del laboratorio {data['codigo']} ({data['nombre']})")
         flash("Laboratorio registrado correctamente.", "success")
         return redirect(url_for("web.laboratorios"))
 
@@ -248,6 +376,8 @@ def laboratorio_editar(id_):
                 "laboratorios/form.html", modo="editar", registro=data,
                 estados=ESTADOS_LABORATORIO,
             ), 400
+        registrar_accion("ACTUALIZAR", "laboratorio", id_,
+                         f"Modificación del laboratorio {data['codigo']} ({data['nombre']})")
         flash("Laboratorio actualizado correctamente.", "success")
         return redirect(url_for("web.laboratorios"))
 
@@ -260,8 +390,12 @@ def laboratorio_editar(id_):
 @web_bp.post("/laboratorios/<int:id_>/eliminar")
 @permission_required("laboratorios.delete")
 def laboratorio_eliminar(id_):
+    registro = LaboratorioService.get(id_)
     try:
         LaboratorioService.delete(id_)
+        if registro:
+            registrar_accion("ELIMINAR", "laboratorio", id_,
+                             f"Baja del laboratorio {registro['codigo']} ({registro['nombre']})")
         flash("Laboratorio eliminado correctamente.", "success")
     except ValueError as exc:
         flash(str(exc), "error")
@@ -274,7 +408,20 @@ def laboratorio_eliminar(id_):
 @web_bp.get("/equipos")
 @permission_required("equipos.read")
 def equipos():
-    return render_template("equipos/index.html", equipos=EquipoService.list_all())
+    listado = preparar_listado(
+        EquipoService.list_all(),
+        columnas_ordenables=tuple(clave for clave, _ in COLUMNAS_EQUIPO),
+    )
+    return render_template("equipos/index.html", listado=listado, columnas=COLUMNAS_EQUIPO)
+
+
+@web_bp.get("/equipos/exportar")
+@permission_required("equipos.read")
+def equipos_exportar():
+    return _exportar(
+        "techloan-equipos", COLUMNAS_EQUIPO,
+        EquipoService.list_all(), "Exportación del listado de equipos",
+    )
 
 
 @web_bp.route("/equipos/crear", methods=["GET", "POST"])
@@ -287,7 +434,7 @@ def equipo_crear():
             empty_to_none=("categoria_id", "marca", "modelo", "serial", "laboratorio_id"),
         )
         try:
-            EquipoService.create(data)
+            nuevo_id = EquipoService.create(data)
         except ValueError as exc:
             flash(str(exc), "error")
             return render_template(
@@ -296,6 +443,8 @@ def equipo_crear():
                 laboratorios=_etiquetar_laboratorios(),
                 estados=ESTADOS_EQUIPO,
             ), 400
+        registrar_accion("CREAR", "equipo", nuevo_id,
+                         f"Alta del equipo {data['codigo']} ({data['nombre']})")
         flash("Equipo registrado correctamente.", "success")
         return redirect(url_for("web.equipos"))
 
@@ -332,6 +481,8 @@ def equipo_editar(id_):
                 laboratorios=_etiquetar_laboratorios(),
                 estados=ESTADOS_EQUIPO,
             ), 400
+        registrar_accion("ACTUALIZAR", "equipo", id_,
+                         f"Modificación del equipo {data['codigo']} ({data['nombre']})")
         flash("Equipo actualizado correctamente.", "success")
         return redirect(url_for("web.equipos"))
 
@@ -346,8 +497,12 @@ def equipo_editar(id_):
 @web_bp.post("/equipos/<int:id_>/eliminar")
 @permission_required("equipos.delete")
 def equipo_eliminar(id_):
+    registro = EquipoService.get(id_)
     try:
         EquipoService.delete(id_)
+        if registro:
+            registrar_accion("ELIMINAR", "equipo", id_,
+                             f"Baja del equipo {registro['codigo']} ({registro['nombre']})")
         flash("Equipo eliminado correctamente.", "success")
     except ValueError as exc:
         flash(str(exc), "error")
@@ -360,7 +515,20 @@ def equipo_eliminar(id_):
 @web_bp.get("/usuarios")
 @permission_required("usuarios.read")
 def usuarios():
-    return render_template("usuarios/index.html", usuarios=UsuarioService.list_all())
+    listado = preparar_listado(
+        UsuarioService.list_all(),
+        columnas_ordenables=tuple(clave for clave, _ in COLUMNAS_USUARIO),
+    )
+    return render_template("usuarios/index.html", listado=listado, columnas=COLUMNAS_USUARIO)
+
+
+@web_bp.get("/usuarios/exportar")
+@permission_required("usuarios.read")
+def usuarios_exportar():
+    return _exportar(
+        "techloan-usuarios", COLUMNAS_USUARIO,
+        UsuarioService.list_all(), "Exportación del listado de usuarios del sistema",
+    )
 
 
 @web_bp.route("/usuarios/crear", methods=["GET", "POST"])
@@ -369,7 +537,7 @@ def usuario_crear():
     if request.method == "POST":
         data = form_fields("nombre", "apellido", "username", "email", "password", "rol", "estado")
         try:
-            UsuarioService.create(data)
+            nuevo_id = UsuarioService.create(data)
         except ValueError as exc:
             flash(str(exc), "error")
             data.pop("password", None)  # nunca se reimprime la contraseña
@@ -377,6 +545,8 @@ def usuario_crear():
                 "usuarios/form.html", modo="crear", registro=data,
                 roles=ROLES, estados=ESTADOS_BASICOS,
             ), 400
+        registrar_accion("CREAR", "usuario", nuevo_id,
+                         f"Alta del usuario «{data['username']}» con rol {data['rol']}")
         flash("Usuario del sistema registrado correctamente.", "success")
         return redirect(url_for("web.usuarios"))
 
@@ -407,6 +577,10 @@ def usuario_editar(id_):
                 "usuarios/form.html", modo="editar", registro=data,
                 roles=ROLES, estados=ESTADOS_BASICOS,
             ), 400
+        detalle = f"Modificación del usuario «{data['username']}» (rol {data['rol']})"
+        if data.get("password"):
+            detalle += " y cambio de contraseña"
+        registrar_accion("ACTUALIZAR", "usuario", id_, detalle)
         flash("Usuario actualizado correctamente.", "success")
         return redirect(url_for("web.usuarios"))
 
@@ -419,8 +593,12 @@ def usuario_editar(id_):
 @web_bp.post("/usuarios/<int:id_>/eliminar")
 @permission_required("usuarios.delete")
 def usuario_eliminar(id_):
+    registro = UsuarioService.get(id_)
     try:
         UsuarioService.delete(id_)
+        if registro:
+            registrar_accion("ELIMINAR", "usuario", id_,
+                             f"Baja del usuario «{registro['username']}» (rol {registro['rol']})")
         flash("Usuario eliminado correctamente.", "success")
     except ValueError as exc:
         flash(str(exc), "error")

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% import "parciales/iconos.html" as ic %}
+
+{#- Shell de las páginas públicas sin sesión: acceso, recuperación y error. -#}
+
+{% block estilos %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+{% endblock %}
+
+{% block cuerpo %}
+<a class="saltar-contenido" href="#contenido">Saltar al contenido principal</a>
+
+<header class="publico__barra">
+  <div class="contenedor publico__barra-interior">
+    <a class="publico__marca" href="{{ url_for('web.portada') }}">
+      <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="32" height="32">
+      <b>TechLoan</b>
+    </a>
+    <nav class="publico__nav" aria-label="Navegación pública">
+      <a href="{{ url_for('web.portada') }}">Portada</a>
+      <a href="{{ url_for('web.portada') }}#modulos">Módulos</a>
+      <a href="{{ url_for('web.portada') }}#planes">Planes</a>
+      <a class="boton boton--marca boton--pequeno" href="{{ url_for('web.login') }}">Acceder</a>
+    </nav>
+  </div>
+</header>
+
+<main id="contenido" class="publico__contenido">
+  {% block contenido %}{% endblock %}
+</main>
+
+<footer class="publico__pie">
+  <div class="contenedor publico__pie-interior">
+    <p><strong>TechLoan</strong> · Plataforma de gestión de recursos tecnológicos</p>
+    <p class="dato-secundario">Proyecto final de Programación III · IUTEPI</p>
+  </div>
+</footer>
+{% endblock %}

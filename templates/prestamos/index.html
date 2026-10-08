@@ -1,4 +1,6 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
+{% import "parciales/iconos.html" as ic %}
+{% import "parciales/listado.html" as l with context %}
 {% block titulo %}Préstamos{% endblock %}
 
 {% block contenido %}
@@ -7,18 +9,26 @@
     <h1>Préstamos de equipos</h1>
     <p class="encabezado__subtitulo">
       Al registrar un préstamo el equipo pasa a <strong>PRESTADO</strong>; al devolverlo
-      vuelve a <strong>DISPONIBLE</strong>.
+      vuelve a <strong>DISPONIBLE</strong>. Los que superan {{ dias_limite }} días sin
+      devolverse quedan destacados.
     </p>
   </div>
   {% if puede('prestamos.write') %}
   <div class="encabezado__acciones">
-    <a class="boton boton--primario" href="{{ url_for('web.prestamo_crear') }}">+ Nuevo préstamo</a>
+    <a class="boton boton--marca" href="{{ url_for('web.prestamo_crear') }}">
+      {{ ic.icono('mas') }} Nuevo préstamo
+    </a>
   </div>
   {% endif %}
 </section>
 
-<section aria-labelledby="titulo-activos">
-  <h2 id="titulo-activos" class="titulo-seccion">Préstamos activos (sin devolver)</h2>
+{#- ==================== Préstamos activos ==================== -#}
+<section aria-labelledby="titulo-activos" style="margin-bottom:var(--e-6)">
+  <h2 id="titulo-activos" class="titulo-seccion">
+    Préstamos activos (sin devolver)
+    {% if solo_vencidos %}<span class="insignia insignia--vencido">Filtro: solo vencidos</span>{% endif %}
+  </h2>
+
   {% if activos %}
   <div class="tabla-envoltura">
     <table class="tabla">
@@ -28,13 +38,14 @@
           <th scope="col">Equipo</th>
           <th scope="col">Prestatario</th>
           <th scope="col">Fecha del préstamo</th>
+          <th scope="col">Días</th>
           <th scope="col">Observaciones</th>
           <th scope="col" class="columna-acciones">Acciones</th>
         </tr>
       </thead>
       <tbody>
         {% for p in activos %}
-        <tr>
+        <tr {% if p.vencido %}style="background:var(--peligro-tenue)"{% endif %}>
           <td data-etiqueta="Equipo">
             <strong>{{ p.equipo_codigo }}</strong><br>
             <span class="dato-secundario">{{ p.equipo_nombre }}</span>
@@ -44,6 +55,13 @@
             <span class="dato-secundario mono">{{ p.cedula }}</span>
           </td>
           <td data-etiqueta="Fecha del préstamo">{{ p.fecha_prestamo }}</td>
+          <td data-etiqueta="Días">
+            {% if p.vencido %}
+            <span class="insignia insignia--vencido">{{ p.dias_prestado }} días</span>
+            {% else %}
+            <span class="dato-secundario">{{ p.dias_prestado }} días</span>
+            {% endif %}
+          </td>
           <td data-etiqueta="Observaciones">{{ p.observaciones if p.observaciones else '—' }}</td>
           <td data-etiqueta="Acciones" class="columna-acciones">
             {% if puede('prestamos.return') %}
@@ -51,7 +69,9 @@
                   action="{{ url_for('web.prestamo_devolver', id_=p.id) }}"
                   data-confirmar="¿Confirmar la devolución del equipo {{ p.equipo_codigo }} — {{ p.equipo_nombre }}? El equipo volverá al estado DISPONIBLE.">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="boton boton--exito boton--pequeno">Devolver</button>
+              <button type="submit" class="boton boton--exito boton--pequeno">
+                {{ ic.icono('devolver') }} Devolver
+              </button>
             </form>
             {% endif %}
           </td>
@@ -61,47 +81,68 @@
     </table>
   </div>
   {% else %}
-  <p class="vacio">No hay préstamos activos. Todos los equipos prestados han sido devueltos.</p>
+  <p class="vacio">
+    {% if solo_vencidos %}
+    Ningún préstamo supera el límite de {{ dias_limite }} días. Todo al día.
+    {% else %}
+    No hay préstamos activos: todos los equipos prestados han sido devueltos.
+    {% endif %}
+  </p>
   {% endif %}
 </section>
 
+{#- ==================== Historial de préstamos ==================== -#}
 <section aria-labelledby="titulo-todos">
   <h2 id="titulo-todos" class="titulo-seccion">Historial de préstamos</h2>
-  {% if prestamos %}
+
+  {{ l.barra(listado,
+             url_exportar=url_for('web.prestamos_exportar'),
+             marcador='Buscar por equipo, prestatario o estado…',
+             etiqueta='Buscar préstamos') }}
+
+  {% if listado.filas %}
   <div class="tabla-envoltura">
     <table class="tabla">
       <caption class="visualmente-oculto">Todos los préstamos registrados</caption>
       <thead>
         <tr>
-          <th scope="col">#</th>
-          <th scope="col">Equipo</th>
-          <th scope="col">Prestatario</th>
-          <th scope="col">Prestado</th>
+          {{ l.th('id', 'Nº', listado) }}
+          {{ l.th('equipo_codigo', 'Equipo', listado) }}
+          {{ l.th('prestatario_apellido', 'Prestatario', listado) }}
+          {{ l.th('fecha_prestamo', 'Prestado', listado) }}
           <th scope="col">Devuelto</th>
-          <th scope="col">Estado</th>
+          {{ l.th('dias_prestado', 'Días', listado) }}
+          {{ l.th('estado', 'Estado', listado) }}
         </tr>
       </thead>
       <tbody>
-        {% for p in prestamos %}
+        {% for p in listado.filas %}
         <tr>
-          <td data-etiqueta="#">{{ p.id }}</td>
+          <td data-etiqueta="Nº">{{ p.id }}</td>
           <td data-etiqueta="Equipo"><span class="mono">{{ p.equipo_codigo }}</span></td>
-          <td data-etiqueta="Prestatario">
-            {{ p.prestatario_nombre }} {{ p.prestatario_apellido }}
-          </td>
+          <td data-etiqueta="Prestatario">{{ p.prestatario_nombre }} {{ p.prestatario_apellido }}</td>
           <td data-etiqueta="Prestado">{{ p.fecha_prestamo }}</td>
           <td data-etiqueta="Devuelto">{{ p.fecha_devolucion if p.fecha_devolucion else '—' }}</td>
+          <td data-etiqueta="Días">
+            {% if p.dias_prestado is not none %}{{ p.dias_prestado }}{% else %}—{% endif %}
+          </td>
           <td data-etiqueta="Estado">
             <span class="insignia insignia--{{ p.estado | lower }}">{{ p.estado }}</span>
+            {% if p.vencido %}<span class="insignia insignia--vencido">Vencido</span>{% endif %}
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-  <p class="contador-registros">Total: <strong>{{ prestamos | length }}</strong> préstamo(s).</p>
+  {{ l.paginacion(listado) }}
   {% else %}
-  <p class="vacio">Todavía no se ha registrado ningún préstamo de equipos.</p>
+  {{ l.vacio(listado,
+             'Todavía no hay préstamos registrados',
+             'Registra la salida de un equipo para empezar a llevar su trazabilidad.',
+             'prestamos',
+             url_for('web.prestamo_crear'),
+             'Registrar el primero') }}
   {% endif %}
 </section>
 {% endblock %}

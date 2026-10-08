@@ -1,4 +1,6 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
+{% import "parciales/iconos.html" as ic %}
+{% import "parciales/listado.html" as l with context %}
 {% block titulo %}Categorías{% endblock %}
 
 {% block contenido %}
@@ -9,43 +11,52 @@
   </div>
   {% if puede('categorias.write') %}
   <div class="encabezado__acciones">
-    <a class="boton boton--primario" href="{{ url_for('web.categoria_crear') }}">+ Nueva categoría</a>
+    <a class="boton boton--marca" href="{{ url_for('web.categoria_crear') }}">
+      {{ ic.icono('mas') }} Nueva categoría
+    </a>
   </div>
   {% endif %}
 </section>
 
-{% if categorias %}
+{{ l.barra(listado,
+           url_exportar=url_for('web.categorias_exportar'),
+           marcador='Buscar por nombre o descripción…',
+           etiqueta='Buscar categorías') }}
+
+{% if listado.filas %}
 <div class="tabla-envoltura">
   <table class="tabla">
     <caption class="visualmente-oculto">Listado de categorías</caption>
     <thead>
       <tr>
         <th scope="col">#</th>
-        <th scope="col">Nombre</th>
+        {{ l.th('nombre', 'Nombre', listado) }}
         <th scope="col">Descripción</th>
         <th scope="col" class="columna-acciones">Acciones</th>
       </tr>
     </thead>
     <tbody>
-      {% for c in categorias %}
+      {% for c in listado.filas %}
       <tr>
         <td data-etiqueta="#">{{ c.id }}</td>
         <td data-etiqueta="Nombre"><strong>{{ c.nombre }}</strong></td>
-        <td data-etiqueta="Descripción">
-          {{ c.descripcion if c.descripcion else '—' }}
-        </td>
+        <td data-etiqueta="Descripción">{{ c.descripcion if c.descripcion else '—' }}</td>
         <td data-etiqueta="Acciones" class="columna-acciones">
           <div class="acciones-fila">
             {% if puede('categorias.write') %}
             <a class="boton boton--secundario boton--pequeno"
-               href="{{ url_for('web.categoria_editar', id_=c.id) }}">Editar</a>
+               href="{{ url_for('web.categoria_editar', id_=c.id) }}">
+              {{ ic.icono('editar') }} Editar
+            </a>
             {% endif %}
             {% if puede('categorias.delete') %}
             <form method="post" class="formulario-eliminar"
                   action="{{ url_for('web.categoria_eliminar', id_=c.id) }}"
                   data-confirmar="¿Está seguro de eliminar la categoría «{{ c.nombre }}»? Esta acción no se puede deshacer.">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="boton boton--peligro boton--pequeno">Eliminar</button>
+              <button type="submit" class="boton boton--peligro boton--pequeno">
+                {{ ic.icono('eliminar') }} Eliminar
+              </button>
             </form>
             {% endif %}
           </div>
@@ -55,14 +66,13 @@
     </tbody>
   </table>
 </div>
-<p class="contador-registros">Total: <strong>{{ categorias | length }}</strong> categoría(s).</p>
+{{ l.paginacion(listado) }}
 {% else %}
-<div class="estado-vacio">
-  <p class="estado-vacio__titulo">No hay categorías registradas</p>
-  <p class="estado-vacio__texto">Crea una categoría para poder clasificar los equipos.</p>
-  {% if puede('categorias.write') %}
-  <a class="boton boton--primario" href="{{ url_for('web.categoria_crear') }}">+ Crear la primera</a>
-  {% endif %}
-</div>
+{{ l.vacio(listado,
+           'No hay categorías registradas',
+           'Crea una categoría para poder clasificar los equipos del inventario.',
+           'categorias',
+           url_for('web.categoria_crear'),
+           'Crear la primera') }}
 {% endif %}
 {% endblock %}

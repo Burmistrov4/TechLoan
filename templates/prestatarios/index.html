@@ -1,4 +1,6 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
+{% import "parciales/iconos.html" as ic %}
+{% import "parciales/listado.html" as l with context %}
 {% block titulo %}Prestatarios{% endblock %}
 
 {% block contenido %}
@@ -6,38 +8,43 @@
   <div>
     <h1>Prestatarios</h1>
     <p class="encabezado__subtitulo">
-      Personas que reciben reservas de laboratorios y préstamos de equipos.
-      No requieren cuenta en el sistema.
+      Personas que reciben reservas de laboratorios y préstamos de equipos. No necesitan
+      cuenta en el sistema.
     </p>
   </div>
   {% if puede('prestatarios.write') %}
   <div class="encabezado__acciones">
-    <a class="boton boton--primario" href="{{ url_for('web.prestatario_crear') }}">+ Nuevo prestatario</a>
+    <a class="boton boton--marca" href="{{ url_for('web.prestatario_crear') }}">
+      {{ ic.icono('mas') }} Nuevo prestatario
+    </a>
   </div>
   {% endif %}
 </section>
 
-{% if prestatarios %}
+{{ l.barra(listado,
+           url_exportar=url_for('web.prestatarios_exportar'),
+           marcador='Buscar por cédula, nombre, correo o teléfono…',
+           etiqueta='Buscar prestatarios') }}
+
+{% if listado.filas %}
 <div class="tabla-envoltura">
   <table class="tabla">
     <caption class="visualmente-oculto">Listado de prestatarios registrados</caption>
     <thead>
       <tr>
-        <th scope="col">Cédula</th>
-        <th scope="col">Nombre completo</th>
-        <th scope="col">Tipo</th>
+        {{ l.th('cedula', 'Cédula', listado) }}
+        {{ l.th('nombre', 'Nombre completo', listado) }}
+        {{ l.th('tipo', 'Tipo', listado) }}
         <th scope="col">Contacto</th>
-        <th scope="col">Estado</th>
+        {{ l.th('estado', 'Estado', listado) }}
         <th scope="col" class="columna-acciones">Acciones</th>
       </tr>
     </thead>
     <tbody>
-      {% for p in prestatarios %}
+      {% for p in listado.filas %}
       <tr>
         <td data-etiqueta="Cédula"><span class="mono">{{ p.cedula }}</span></td>
-        <td data-etiqueta="Nombre completo">
-          <strong>{{ p.nombre }} {{ p.apellido }}</strong>
-        </td>
+        <td data-etiqueta="Nombre completo"><strong>{{ p.nombre }} {{ p.apellido }}</strong></td>
         <td data-etiqueta="Tipo">{{ p.tipo | capitalize }}</td>
         <td data-etiqueta="Contacto">
           {% if p.telefono %}<span class="dato-secundario">{{ p.telefono }}</span>{% endif %}
@@ -51,14 +58,18 @@
           <div class="acciones-fila">
             {% if puede('prestatarios.write') %}
             <a class="boton boton--secundario boton--pequeno"
-               href="{{ url_for('web.prestatario_editar', id_=p.id) }}">Editar</a>
+               href="{{ url_for('web.prestatario_editar', id_=p.id) }}">
+              {{ ic.icono('editar') }} Editar
+            </a>
             {% endif %}
             {% if puede('prestatarios.delete') %}
             <form method="post" class="formulario-eliminar"
                   action="{{ url_for('web.prestatario_eliminar', id_=p.id) }}"
                   data-confirmar="¿Está seguro de eliminar al prestatario {{ p.nombre }} {{ p.apellido }} ({{ p.cedula }})? Esta acción no se puede deshacer.">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="boton boton--peligro boton--pequeno">Eliminar</button>
+              <button type="submit" class="boton boton--peligro boton--pequeno">
+                {{ ic.icono('eliminar') }} Eliminar
+              </button>
             </form>
             {% endif %}
           </div>
@@ -68,18 +79,13 @@
     </tbody>
   </table>
 </div>
-<p class="contador-registros">
-  Total: <strong>{{ prestatarios | length }}</strong> prestatario(s) registrado(s).
-</p>
+{{ l.paginacion(listado) }}
 {% else %}
-<div class="estado-vacio">
-  <p class="estado-vacio__titulo">Todavía no hay prestatarios registrados</p>
-  <p class="estado-vacio__texto">
-    Registra el primer prestatario para poder crear reservas y préstamos.
-  </p>
-  {% if puede('prestatarios.write') %}
-  <a class="boton boton--primario" href="{{ url_for('web.prestatario_crear') }}">+ Registrar el primero</a>
-  {% endif %}
-</div>
+{{ l.vacio(listado,
+           'Todavía no hay prestatarios registrados',
+           'Registra el primer prestatario para poder crear reservas y préstamos.',
+           'prestatarios',
+           url_for('web.prestatario_crear'),
+           'Registrar el primero') }}
 {% endif %}
 {% endblock %}

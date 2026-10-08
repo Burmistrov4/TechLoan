@@ -1,0 +1,142 @@
+{#
+  Macros para los listados: barra de herramientas con búsqueda, cabecera
+  ordenable, paginación y estado vacío.
+
+  Uso:
+      {% import "parciales/listado.html" as l with context %}
+      {{ l.barra(listado, url_exportar=url_for('web.prestatarios_exportar')) }}
+      <table class="tabla">
+        <thead><tr>{{ l.th('cedula','Cédula',listado) }} … </tr></thead>
+        <tbody>…</tbody>
+      </table>
+      {{ l.paginacion(listado) }}
+#}
+{% import "parciales/iconos.html" as ic %}
+
+
+{#- Barra de búsqueda y acciones del listado. -#}
+{% macro barra(listado, url_exportar='', marcador='Buscar en el listado…', etiqueta='Buscar') -%}
+<div class="barra-herramientas">
+  <form class="buscador" method="get" action="" role="search" data-buscar-auto>
+    {% if listado.orden %}<input type="hidden" name="orden" value="{{ listado.orden }}">{% endif %}
+    {% if listado.dir %}<input type="hidden" name="dir" value="{{ listado.dir }}">{% endif %}
+    {% if listado.por_pagina %}<input type="hidden" name="por_pagina" value="{{ listado.por_pagina }}">{% endif %}
+    {{ ic.icono('buscar') }}
+    <input type="search" name="q" value="{{ listado.q }}" placeholder="{{ marcador }}"
+           aria-label="{{ etiqueta }}" autocomplete="off">
+  </form>
+
+  {% if listado.hay_filtro %}
+  <a class="boton boton--fantasma boton--pequeno" href="{{ url_con(q=None, pagina=None) }}">
+    {{ ic.icono('equis') }} Limpiar
+  </a>
+  {% endif %}
+
+  <div class="acciones-fila" style="margin-inline-start:auto">
+    {% if url_exportar %}
+    <a class="boton boton--secundario boton--pequeno"
+       href="{{ url_exportar }}{% if listado.q %}?q={{ listado.q | urlencode }}{% endif %}"
+       title="Descargar en formato CSV (se abre en Excel)">
+      {{ ic.icono('descargar') }} Exportar CSV
+    </a>
+    {% endif %}
+  </div>
+</div>
+{%- endmacro %}
+
+
+{#- Celda de cabecera ordenable. -#}
+{% macro th(clave, etiqueta, listado) -%}
+{%- set activa = listado.orden == clave -%}
+{%- set siguiente = 'desc' if (activa and listado.dir == 'asc') else 'asc' -%}
+<th scope="col" class="ordenable"
+    {%- if activa %} aria-sort="{{ 'ascending' if listado.dir == 'asc' else 'descending' }}"{% endif %}>
+  <a href="{{ url_con(orden=clave, dir=siguiente, pagina=1) }}">
+    <span>{{ etiqueta }}</span>
+    <span class="orden-flecha" aria-hidden="true">
+      {%- if activa and listado.dir == 'desc' %}&darr;
+      {%- elif activa %}&uarr;
+      {%- else %}&#8597;{% endif -%}
+    </span>
+  </a>
+</th>
+{%- endmacro %}
+
+
+{#- Controles de paginación. -#}
+{% macro paginacion(listado) -%}
+{% if listado.total > listado.por_pagina %}
+<nav class="paginacion" aria-label="Paginación del listado">
+  <p class="paginacion__info">
+    Mostrando <strong>{{ listado.desde }}–{{ listado.hasta }}</strong>
+    de <strong>{{ listado.total }}</strong> registro(s)
+    {%- if listado.hay_filtro and listado.total_sin_filtrar != listado.total %}
+    (filtrado de {{ listado.total_sin_filtrar }})
+    {%- endif %}
+  </p>
+  <div class="paginacion__controles">
+    <a class="paginacion__enlace {% if listado.pagina <= 1 %}deshabilitado{% endif %}"
+       href="{{ url_con(pagina=listado.pagina - 1) }}" aria-label="Página anterior">
+      {{ ic.icono('chevron-izquierda', tamano=15) }}
+    </a>
+
+    {% set inicio = [1, listado.pagina - 2] | max %}
+    {% set fin = [listado.paginas, inicio + 4] | min %}
+    {% set inicio = [1, fin - 4] | max %}
+
+    {% if inicio > 1 %}
+    <a class="paginacion__enlace" href="{{ url_con(pagina=1) }}">1</a>
+    {% if inicio > 2 %}<span class="paginacion__info">&hellip;</span>{% endif %}
+    {% endif %}
+
+    {% for numero in range(inicio, fin + 1) %}
+    <a class="paginacion__enlace" href="{{ url_con(pagina=numero) }}"
+       {%- if numero == listado.pagina %} aria-current="page"{% endif %}>{{ numero }}</a>
+    {% endfor %}
+
+    {% if fin < listado.paginas %}
+    {% if fin < listado.paginas - 1 %}<span class="paginacion__info">&hellip;</span>{% endif %}
+    <a class="paginacion__enlace" href="{{ url_con(pagina=listado.paginas) }}">{{ listado.paginas }}</a>
+    {% endif %}
+
+    <a class="paginacion__enlace {% if listado.pagina >= listado.paginas %}deshabilitado{% endif %}"
+       href="{{ url_con(pagina=listado.pagina + 1) }}" aria-label="Página siguiente">
+      {{ ic.icono('chevron-derecha', tamano=15) }}
+    </a>
+  </div>
+</nav>
+{% elif listado.total %}
+<p class="contador-registros">
+  <strong>{{ listado.total }}</strong> registro(s)
+  {%- if listado.hay_filtro and listado.total_sin_filtrar != listado.total %}
+  (de {{ listado.total_sin_filtrar }} en total)
+  {%- endif %}.
+</p>
+{% endif %}
+{%- endmacro %}
+
+
+{#- Estado vacío, con un mensaje distinto si el vacío se debe a un filtro. -#}
+{% macro vacio(listado, titulo, texto, icono='sin-datos', accion_url='', accion_texto='') -%}
+<div class="estado-vacio">
+  <span class="estado-vacio__icono" aria-hidden="true">{{ ic.icono(icono, tamano=26) }}</span>
+  {% if listado.hay_filtro %}
+  <p class="estado-vacio__titulo">Sin resultados para «{{ listado.q }}»</p>
+  <p class="estado-vacio__texto">
+    No hay registros que coincidan con esa búsqueda. Prueba con otras palabras
+    o limpia el filtro.
+  </p>
+  <a class="boton boton--secundario" href="{{ url_con(q=None, pagina=None) }}">
+    {{ ic.icono('equis') }} Limpiar búsqueda
+  </a>
+  {% else %}
+  <p class="estado-vacio__titulo">{{ titulo }}</p>
+  <p class="estado-vacio__texto">{{ texto }}</p>
+  {% if accion_url %}
+  <a class="boton boton--marca" href="{{ accion_url }}">
+    {{ ic.icono('mas') }} {{ accion_texto }}
+  </a>
+  {% endif %}
+  {% endif %}
+</div>
+{%- endmacro %}

@@ -87,8 +87,15 @@ def afirmar(condicion, mensaje):
 def test_autenticacion():
     cliente = app.test_client()
 
+    # La raíz es la portada pública para visitantes; los módulos internos
+    # siguen exigiendo sesión.
     respuesta = _registrar(cliente.get("/"))
-    afirmar(respuesta.status_code == 302, "GET / sin sesión debe redirigir")
+    afirmar(respuesta.status_code == 200, "GET / sin sesión debe mostrar la portada")
+    afirmar("TechLoan" in texto(respuesta), "La portada debe identificar el producto")
+    afirmar("/login" in texto(respuesta), "La portada debe ofrecer acceso")
+
+    respuesta = _registrar(cliente.get("/prestatarios"))
+    afirmar(respuesta.status_code == 302, "Un módulo interno sin sesión debe redirigir")
     afirmar("/login" in respuesta.headers.get("Location", ""), "Debe redirigir a /login")
 
     afirmar(_registrar(cliente.get("/login")).status_code == 200, "GET /login debe responder 200")
@@ -101,6 +108,7 @@ def test_autenticacion():
 
     afirmar(entrar(cliente).status_code == 302, "Login correcto debe redirigir")
     afirmar(_registrar(cliente.get("/")).status_code == 200, "GET / con sesión debe responder 200")
+    afirmar(_registrar(cliente.get("/panel")).status_code == 200, "GET /panel debe responder 200")
 
     token = token_csrf(cliente, "/")
     afirmar(
@@ -108,17 +116,100 @@ def test_autenticacion():
         "Logout debe redirigir",
     )
     afirmar(
-        _registrar(cliente.get("/")).status_code == 302,
+        _registrar(cliente.get("/panel")).status_code == 302,
         "Tras el logout la sesión debe quedar cerrada",
     )
 
-    # Ruta protegida concreta
-    afirmar(
-        _registrar(cliente.get("/prestatarios")).status_code == 302,
-        "Una ruta protegida sin sesión debe redirigir",
-    )
-
     print("FASE6_AUTENTICACION_OK")
+
+
+# ===========================================================================
+# 1b. Portada pública, manifiesto y búsqueda global
+# ===========================================================================
+def test_portada_y_busqueda():
+    cliente = app.test_client()
+
+    portada = _registrar(cliente.get("/"))
+    afirmar(portada.status_code == 200, "La portada debe responder 200")
+    html = texto(portada)
+    for marca in ("TechLoan", "hero-3d", "landing.css", "landing.js", "Iniciar sesión"):
+        afirmar(marca in html, f"La portada debe incluir «{marca}»")
+
+    manifiesto = _registrar(cliente.get("/manifest.json"))
+    afirmar(manifiesto.status_code == 200, "El manifiesto debe servirse")
+    datos = manifiesto.get_json()
+    afirmar(datos["short_name"] == "TechLoan", "El manifiesto debe identificar la app")
+    afirmar(len(datos["icons"]) >= 2, "El manifiesto debe declarar iconos")
+
+    afirmar(_registrar(cliente.get("/static/favicon.svg")).status_code == 200,
+            "El favicon SVG debe servirse")
+
+    # La búsqueda global exige sesión y devuelve grupos de resultados.
+    afirmar(_registrar(cliente.get("/buscar?q=lab")).status_code == 302,
+            "La búsqueda global sin sesión debe redirigir")
+
+    entrar(cliente)
+    respuesta = _registrar(cliente.get("/buscar?q=lab"))
+    afirmar(respuesta.status_code == 200, "La búsqueda global debe responder 200")
+    datos = respuesta.get_json()
+    afirmar(datos["ok"] is True, "La búsqueda debe devolver ok")
+    afirmar(len(datos["grupos"]) > 0, "Debe encontrar al menos un grupo")
+    titulos = [item["titulo"] for grupo in datos["grupos"] for item in grupo["items"]]
+    afirmar(any("LAB" in t or "Laboratorio" in t for t in titulos),
+            f"Debe encontrar laboratorios: {titulos}")
+
+    # Sin texto devuelve el menú de secciones.
+    respuesta = _registrar(cliente.get("/buscar?q="))
+    afirmar(len(respuesta.get_json()["grupos"]) > 0, "Sin texto debe ofrecer las secciones")
+
+    print("FASE6_PORTADA_Y_BUSQUEDA_OK")
+
+
+# ===========================================================================
+# 1c. Listados: búsqueda, orden, paginación y exportación CSV
+# ===========================================================================
+def test_listados_avanzados():
+    cliente = app.test_client()
+    entrar(cliente)
+
+    # Búsqueda libre
+    respuesta = _registrar(cliente.get("/prestatarios?q=González"))
+    afirmar(respuesta.status_code == 200, "La búsqueda debe responder 200")
+    html = texto(respuesta)
+    afirmar("González" in html, "Debe aparecer el registro buscado")
+    afirmar("Tarazón" not in html and "V-45678901" not in html,
+            "No deben aparecer registros que no coinciden")
+
+    # Búsqueda sin resultados: mensaje específico de filtro
+    respuesta = _registrar(cliente.get("/prestatarios?q=zzzzzz"))
+    afirmar("Sin resultados" in texto(respuesta), "Debe avisar de que el filtro no encontró nada")
+
+    # Ordenación ascendente y descendente
+    asc = texto(_registrar(cliente.get("/prestatarios?orden=cedula&dir=asc")))
+    desc = texto(_registrar(cliente.get("/prestatarios?orden=cedula&dir=desc")))
+    afirmar(asc.index("V-12345678") < asc.index("V-45678901"), "El orden ascendente debe respetarse")
+    afirmar(desc.index("V-45678901") < desc.index("V-12345678"), "El orden descendente debe respetarse")
+
+    # Paginación
+    respuesta = _registrar(cliente.get("/prestatarios?por_pagina=5"))
+    afirmar(respuesta.status_code == 200, "El tamaño de página debe aceptarse")
+
+    # Exportación CSV
+    csv = _registrar(cliente.get("/prestatarios/exportar"))
+    afirmar(csv.status_code == 200, "La exportación debe responder 200")
+    afirmar("text/csv" in csv.headers.get("Content-Type", ""), "Debe servirse como CSV")
+    afirmar("attachment" in csv.headers.get("Content-Disposition", ""), "Debe descargarse")
+    cuerpo = csv.get_data(as_text=True)
+    afirmar("Cédula" in cuerpo and "V-12345678" in cuerpo, "El CSV debe contener cabecera y datos")
+    afirmar(cuerpo.startswith("\ufeff"), "El CSV debe incluir BOM para Excel")
+
+    # La exportación respeta el filtro activo
+    csv_filtrado = _registrar(cliente.get("/prestatarios/exportar?q=González"))
+    afirmar("González" in csv_filtrado.get_data(as_text=True), "La exportación debe respetar el filtro")
+    afirmar("V-45678901" not in csv_filtrado.get_data(as_text=True),
+            "La exportación filtrada no debe incluir otros registros")
+
+    print("FASE6_LISTADOS_AVANZADOS_OK")
 
 
 # ===========================================================================
@@ -530,6 +621,154 @@ def test_permisos_operador():
 
 
 # ===========================================================================
+# 8b. Auditoría, perfil, ayuda y comprobante
+# ===========================================================================
+def test_auditoria_perfil_ayuda_comprobante():
+    cliente = app.test_client()
+    entrar(cliente)
+
+    # --- Auditoría (solo administrador) ---
+    respuesta = _registrar(cliente.get("/auditoria"))
+    afirmar(respuesta.status_code == 200, "La auditoría debe responder 200")
+    html = texto(respuesta)
+    afirmar("Registro de actividad" in html, "Debe mostrarse el título del registro")
+    afirmar("ACCEDER" in html or "Inicio de sesión" in html,
+            "El acceso del propio usuario debe figurar en la auditoría")
+
+    afirmar(_registrar(cliente.get("/auditoria?accion=CREAR")).status_code == 200,
+            "El filtro por acción debe funcionar")
+    afirmar(_registrar(cliente.get("/auditoria?entidad=prestatario")).status_code == 200,
+            "El filtro por entidad debe funcionar")
+
+    csv = _registrar(cliente.get("/auditoria/exportar"))
+    afirmar(csv.status_code == 200 and "text/csv" in csv.headers.get("Content-Type", ""),
+            "La auditoría debe exportarse a CSV")
+
+    # --- Perfil ---
+    afirmar(_registrar(cliente.get("/perfil")).status_code == 200, "El perfil debe responder 200")
+
+    # Contraseña actual incorrecta → 400
+    respuesta = publicar(
+        cliente, "/perfil",
+        {"password_actual": "incorrecta", "password_nueva": "Nueva123!",
+         "password_repetida": "Nueva123!"},
+        ruta_token="/perfil", seguir=False,
+    )
+    afirmar(respuesta.status_code == 400, "Una contraseña actual incorrecta debe rechazarse")
+
+    # Confirmación que no coincide → 400
+    respuesta = publicar(
+        cliente, "/perfil",
+        {"password_actual": "Admin123!", "password_nueva": "Nueva123!",
+         "password_repetida": "Otra123!"},
+        ruta_token="/perfil", seguir=False,
+    )
+    afirmar(respuesta.status_code == 400, "La confirmación debe coincidir")
+
+    # --- Ayuda ---
+    respuesta = _registrar(cliente.get("/ayuda"))
+    afirmar(respuesta.status_code == 200, "La guía de uso debe responder 200")
+    afirmar("Atajos de teclado" in texto(respuesta), "La guía debe explicar los atajos")
+
+    # --- Comprobante de reserva ---
+    with database.get_connection() as db:
+        reserva_id = db.execute("SELECT id FROM reservas ORDER BY id LIMIT 1").fetchone()["id"]
+    respuesta = _registrar(cliente.get(f"/reservas/{reserva_id}/comprobante"))
+    afirmar(respuesta.status_code == 200, "El comprobante debe responder 200")
+    html = texto(respuesta)
+    afirmar("Comprobante de reserva" in html, "Debe identificarse como comprobante")
+    afirmar("LAB-01" in html, "Debe mostrar el laboratorio reservado")
+
+    respuesta = _registrar(cliente.get("/reservas/999999/comprobante"))
+    afirmar(respuesta.status_code == 302, "Un comprobante inexistente debe redirigir")
+
+    print("FASE6_AUDITORIA_PERFIL_AYUDA_OK")
+
+
+# ===========================================================================
+# 8c. Sugerencias inteligentes de horario
+# ===========================================================================
+def test_sugerencias_en_formulario():
+    cliente = app.test_client()
+    entrar(cliente)
+
+    with database.get_connection() as db:
+        fecha = db.execute(
+            "SELECT fecha FROM reservas WHERE laboratorio_id=1 ORDER BY hora_inicio LIMIT 1"
+        ).fetchone()["fecha"]
+
+    # El endpoint devuelve la ocupación del día y alternativas cuando hay choque.
+    respuesta = _registrar(
+        cliente.get(
+            "/reservas/disponibilidad"
+            f"?laboratorio_id=1&fecha={fecha}&hora_inicio=08:30&hora_fin=09:40&duracion=70"
+        )
+    )
+    afirmar(respuesta.status_code == 200, "El endpoint de disponibilidad debe responder 200")
+    datos = respuesta.get_json()
+    afirmar(datos["disponible"] is False, "La franja consultada debe estar ocupada")
+    afirmar(len(datos["ocupacion"]) >= 2, "Debe informar de las franjas ocupadas del día")
+    afirmar(len(datos["sugerencias"]) >= 1, "Debe proponer alternativas libres")
+    horas = [s["hora_inicio"] for s in datos["sugerencias"]]
+    afirmar("08:00" not in horas and "08:30" not in horas,
+            f"No debe sugerir franjas ocupadas: {horas}")
+    afirmar("10:20" in horas, f"Debe incluir la franja libre tras las reservas: {horas}")
+
+    # Al guardar una reserva solapada, el formulario vuelve con las alternativas.
+    respuesta = publicar(
+        cliente, "/reservas/crear",
+        {"laboratorio_id": "1", "prestatario_id": "1", "fecha": fecha,
+         "hora_inicio": "08:30", "duracion_minutos": "70"},
+        ruta_token="/reservas/crear", seguir=False,
+    )
+    afirmar(respuesta.status_code == 400, "La reserva solapada debe rechazarse")
+    html = texto(respuesta)
+    afirmar("alternativa" in html, "El formulario debe ofrecer franjas alternativas")
+    afirmar("Franjas libres más cercanas" in html, "Debe explicarse qué son las alternativas")
+
+    print("FASE6_SUGERENCIAS_OK")
+
+
+# ===========================================================================
+# 8d. Rutas internas sin sesión: nunca un error 500
+# ===========================================================================
+def test_sin_500_anonimo():
+    """Ninguna ruta GET puede reventar para un visitante sin sesión.
+
+    Comprobación que faltaba: ``/ayuda`` vive en el shell autenticado
+    (``base_app.html``), así que sin sesión debe redirigir al acceso, no devolver
+    500. Se recorre todo el mapa de rutas GET para que el fallo no reaparezca en
+    otra vista con la misma dependencia.
+    """
+    cliente = app.test_client()
+
+    # Caso concreto que motivó la prueba.
+    respuesta = _registrar(cliente.get("/ayuda"))
+    afirmar(respuesta.status_code == 302, "GET /ayuda sin sesión debe redirigir al acceso")
+    afirmar("/login" in respuesta.headers.get("Location", ""), "Debe redirigir a /login")
+
+    # Barrido general: cualquier ruta GET registrada, sin sesión.
+    revisadas = 0
+    for regla in app.url_map.iter_rules():
+        if "GET" not in regla.methods or regla.endpoint == "static":
+            continue
+        ruta = regla.rule
+        if "<" in ruta:
+            # Parámetros sustituidos por valores plausibles: lo relevante es que
+            # la vista no explote antes de validar la existencia del dato.
+            ruta = re.sub(r"<(?:int:)?\w+>", "1", ruta)
+        respuesta = _registrar(cliente.get(ruta))
+        afirmar(
+            respuesta.status_code != 500,
+            f"GET {ruta} sin sesión devolvió 500 (se esperaba 200/302/400/404)",
+        )
+        revisadas += 1
+
+    afirmar(revisadas >= 20, f"El barrido debe cubrir el mapa de rutas (revisadas: {revisadas})")
+    print(f"FASE6_SIN_500_ANONIMO_OK ({revisadas} rutas GET revisadas sin sesión)")
+
+
+# ===========================================================================
 # 9. Recursos estáticos, errores y ausencia de 500
 # ===========================================================================
 def test_estaticos_errores_y_sin_500():
@@ -569,13 +808,18 @@ def test_estaticos_errores_y_sin_500():
 def main():
     print(f"Base de datos de prueba: {database.DATABASE_PATH}")
     test_autenticacion()
+    test_portada_y_busqueda()
+    test_listados_avanzados()
     test_csrf()
     test_crud_prestatarios()
     test_crud_resto_entidades()
     test_reservas()
+    test_sugerencias_en_formulario()
     test_prestamos_y_devoluciones()
     test_historial()
+    test_auditoria_perfil_ayuda_comprobante()
     test_permisos_operador()
+    test_sin_500_anonimo()
     test_estaticos_errores_y_sin_500()
     print("FASE6_PRUEBA_WEB_COMPLETA_OK")
 

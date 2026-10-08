@@ -26,6 +26,7 @@ from app.routes.reservation_routes import reservation_bp
 # Se importan para que registren sus rutas sobre ``web_bp``.
 from app.routes import web_auth_routes  # noqa: F401
 from app.routes import web_crud_routes  # noqa: F401
+from app.routes import web_extra_routes  # noqa: F401
 from app.routes import web_operations_routes  # noqa: F401
 from app.routes.web_common import csrf_token, web_bp
 
@@ -108,13 +109,18 @@ def create_app():
     @app.context_processor
     def inject_globals():
         """Variables disponibles en todas las plantillas."""
-        from app.routes.web_common import can
+        from datetime import datetime
+
+        from app.routes.web_common import alertas_actuales, can, url_con
         from app.security.permissions import current_user
 
         return {
             "csrf_token": csrf_token,
             "usuario_actual": current_user(),
             "puede": can,
+            "alertas": alertas_actuales(),
+            "url_con": url_con,
+            "anio": datetime.now().year,
         }
 
     _register_error_handlers(app)

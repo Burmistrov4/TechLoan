@@ -1,5 +1,5 @@
 import re
-from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from app.database import get_connection
 
 ROLES = {"ADMINISTRADOR", "OPERADOR"}
@@ -100,6 +100,52 @@ class UsuarioService:
                 if "usuarios_sistema.email" in str(exc):
                     raise ValueError("El correo ya está registrado.") from exc
                 raise
+
+    @staticmethod
+    def cambiar_password(usuario_id, password_actual, password_nueva, password_repetida):
+        """Cambia la contraseña del propio usuario.
+
+        Exige la contraseña actual como comprobación de identidad: tener la
+        sesión abierta no basta para cambiarla. La nueva contraseña se valida
+        con las mismas reglas que las demás y se guarda siempre como hash.
+        """
+        if password_nueva != password_repetida:
+            raise ValueError("La nueva contraseña y su confirmación no coinciden.")
+
+        with get_connection() as db:
+            fila = db.execute(
+                "SELECT password_hash FROM usuarios_sistema WHERE id=?", (usuario_id,)
+            ).fetchone()
+            if not fila:
+                raise ValueError("El usuario no existe.")
+            if not check_password_hash(fila["password_hash"], password_actual or ""):
+                raise ValueError("La contraseña actual no es correcta.")
+
+            errores = []
+            if len(password_nueva) < 8 or len(password_nueva) > 72:
+                errores.append("La contraseña debe tener entre 8 y 72 caracteres.")
+            if not re.search(r"[A-Z]", password_nueva):
+                errores.append("La contraseña debe incluir una mayúscula.")
+            if not re.search(r"[a-z]", password_nueva):
+                errores.append("La contraseña debe incluir una minúscula.")
+            if not re.search(r"\d", password_nueva):
+                errores.append("La contraseña debe incluir un número.")
+            if not re.search(r"[^A-Za-z0-9]", password_nueva):
+                errores.append("La contraseña debe incluir un carácter especial.")
+            if errores:
+                raise ValueError(" ".join(errores))
+
+            if check_password_hash(fila["password_hash"], password_nueva):
+                raise ValueError("La nueva contraseña debe ser distinta de la actual.")
+
+            nuevo_hash = generate_password_hash(password_nueva)
+            if len(nuevo_hash) > 255:
+                raise ValueError("El hash generado excede VARCHAR(255).")
+
+            db.execute(
+                "UPDATE usuarios_sistema SET password_hash=? WHERE id=?",
+                (nuevo_hash, usuario_id),
+            )
 
     @staticmethod
     def delete(id_):

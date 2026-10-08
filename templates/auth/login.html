@@ -1,47 +1,81 @@
-{% extends "base.html" %}
+{% extends "base_publico.html" %}
+{% import "parciales/iconos.html" as ic %}
 {% block titulo %}Iniciar sesión{% endblock %}
 
 {% block contenido %}
-<div class="acceso-formulario">
-  <section class="tarjeta-formulario" aria-labelledby="titulo-login">
-    <header class="tarjeta-formulario__cabecera">
-      <h1 id="titulo-login">Iniciar sesión</h1>
-      <p class="tarjeta-formulario__subtitulo">
-        Accede con tu usuario del sistema para gestionar reservas y préstamos.
+<div class="acceso">
+  {#- Columna de marca: refuerza el producto mientras se introduce la contraseña. -#}
+  <aside class="acceso__marca" aria-hidden="true">
+    <div class="acceso__marca-cuerpo">
+      <p class="insignia-heroe">
+        <span class="insignia-heroe__punto"></span>
+        Plataforma operativa
       </p>
-    </header>
-
-    <form method="post" action="{{ url_for('web.login_post') }}" class="formulario" novalidate>
-      <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="next" value="{{ siguiente }}">
-
-      <div class="campo">
-        <label for="campo-username">Usuario</label>
-        <input type="text" id="campo-username" name="username"
-               value="{{ usuario_intentado or '' }}"
-               required autofocus autocomplete="username"
-               minlength="4" maxlength="20" placeholder="admin">
-      </div>
-
-      <div class="campo">
-        <label for="campo-password">Contraseña</label>
-        <input type="password" id="campo-password" name="password"
-               required autocomplete="current-password"
-               minlength="8" placeholder="••••••••">
-      </div>
-
-      <div class="formulario__acciones">
-        <button type="submit" class="boton boton--primario boton--ancho">Entrar</button>
-      </div>
-    </form>
-
-    <aside class="nota-credenciales">
-      <h2>Usuarios de prueba</h2>
-      <ul>
-        <li><code>admin</code> / <code>Admin123!</code> — Administrador</li>
-        <li><code>operador</code> / <code>Operador123!</code> — Operador</li>
+      <h1>Todo tu inventario y tu agenda, bajo control.</h1>
+      <p class="acceso__marca-texto">
+        Reservas sin solapamientos, préstamos trazables y un registro de actividad que
+        responde a cualquier pregunta con nombre y fecha.
+      </p>
+      <ul class="acceso__lista">
+        <li>{{ ic.icono('correcto') }} Detección de choques de horario en tiempo real</li>
+        <li>{{ ic.icono('correcto') }} Sugerencia de franjas libres alternativas</li>
+        <li>{{ ic.icono('correcto') }} Avisos de préstamos sin devolver</li>
+        <li>{{ ic.icono('correcto') }} Roles, permisos y auditoría incluidos</li>
       </ul>
-    </aside>
+    </div>
+    <span class="acceso__orbe acceso__orbe--a"></span>
+    <span class="acceso__orbe acceso__orbe--b"></span>
+  </aside>
+
+  {#- Columna del formulario. -#}
+  <section class="acceso__formulario">
+    <div class="tarjeta-formulario">
+      <header class="tarjeta-formulario__cabecera">
+        <h2>Iniciar sesión</h2>
+        <p class="tarjeta-formulario__subtitulo">
+          Accede con tu usuario del sistema para gestionar reservas y préstamos.
+        </p>
+      </header>
+
+      <form method="post" action="{{ url_for('web.login_post') }}" class="formulario" data-validar
+            novalidate>
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ siguiente }}">
+
+        <div class="campo">
+          <label for="campo-username">Usuario</label>
+          <input type="text" id="campo-username" name="username"
+                 value="{{ usuario_intentado or '' }}"
+                 required autofocus autocomplete="username"
+                 minlength="4" maxlength="20" placeholder="admin">
+        </div>
+
+        <div class="campo">
+          <label for="campo-password">Contraseña</label>
+          <input type="password" id="campo-password" name="password"
+                 required autocomplete="current-password"
+                 minlength="8" placeholder="••••••••">
+        </div>
+
+        <div class="formulario__acciones">
+          <button type="submit" class="boton boton--marca boton--ancho boton--grande">
+            Entrar
+          </button>
+        </div>
+      </form>
+
+      <aside class="nota-credenciales">
+        <h2>Usuarios de prueba</h2>
+        <ul>
+          <li><code>admin</code> / <code>Admin123!</code> — Administrador (acceso total)</li>
+          <li><code>operador</code> / <code>Operador123!</code> — Operador (sin administración)</li>
+        </ul>
+      </aside>
+
+      <p style="margin:var(--e-4) 0 0;text-align:center">
+        <a href="{{ url_for('web.portada') }}">← Volver a la portada</a>
+      </p>
+    </div>
   </section>
 </div>
 {% endblock %}

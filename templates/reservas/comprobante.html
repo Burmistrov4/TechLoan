@@ -1,0 +1,94 @@
+{% extends "base_app.html" %}
+{% import "parciales/iconos.html" as ic %}
+{% block titulo %}Comprobante de reserva{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Comprobante de reserva</h1>
+    <p class="encabezado__subtitulo">
+      Vista lista para imprimir o guardar en PDF. El botón de imprimir respeta el diseño.
+    </p>
+  </div>
+  <div class="encabezado__acciones">
+    <button type="button" class="boton boton--marca" id="boton-imprimir">
+      {{ ic.icono('imprimir') }} Imprimir
+    </button>
+    <a class="boton boton--secundario" href="{{ url_for('web.reservas') }}">
+      {{ ic.icono('chevron-izquierda') }} Volver al listado
+    </a>
+  </div>
+</section>
+
+<article class="comprobante">
+  <header class="comprobante__cabecera">
+    <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="44" height="44">
+    <div class="comprobante__titulo">
+      <h1>TechLoan</h1>
+      <p>Comprobante de reserva de laboratorio</p>
+    </div>
+    <span class="comprobante__folio">Nº {{ '%05d' % reserva.id }}</span>
+  </header>
+
+  <dl class="comprobante__rejilla">
+    <div class="comprobante__dato">
+      <dt>Laboratorio</dt>
+      <dd>{{ reserva.laboratorio_codigo }} · {{ reserva.laboratorio_nombre }}</dd>
+    </div>
+    <div class="comprobante__dato">
+      <dt>Ubicación</dt>
+      <dd>{{ reserva.laboratorio_ubicacion }}</dd>
+    </div>
+    <div class="comprobante__dato">
+      <dt>Fecha</dt>
+      <dd>{{ reserva.fecha }}</dd>
+    </div>
+    <div class="comprobante__dato">
+      <dt>Horario</dt>
+      <dd><span class="mono">{{ reserva.hora_inicio }} – {{ reserva.hora_fin }}</span>
+        ({{ reserva.duracion_minutos }} minutos)</dd>
+    </div>
+    <div class="comprobante__dato">
+      <dt>Prestatario</dt>
+      <dd>{{ reserva.prestatario_nombre }} {{ reserva.prestatario_apellido }}</dd>
+    </div>
+    <div class="comprobante__dato">
+      <dt>Cédula</dt>
+      <dd class="mono">{{ reserva.cedula }}</dd>
+    </div>
+    {% if reserva.prestatario_email or reserva.prestatario_telefono %}
+    <div class="comprobante__dato">
+      <dt>Contacto</dt>
+      <dd>
+        {% if reserva.prestatario_telefono %}{{ reserva.prestatario_telefono }}{% endif %}
+        {% if reserva.prestatario_email %}<br>{{ reserva.prestatario_email }}{% endif %}
+      </dd>
+    </div>
+    {% endif %}
+    <div class="comprobante__dato">
+      <dt>Estado</dt>
+      <dd><span class="insignia insignia--{{ reserva.estado | lower }}">{{ reserva.estado }}</span></dd>
+    </div>
+    <div class="comprobante__dato" style="grid-column:1/-1">
+      <dt>Observaciones</dt>
+      <dd>{{ reserva.observaciones if reserva.observaciones else 'Sin observaciones.' }}</dd>
+    </div>
+  </dl>
+
+  <p class="comprobante__pie">
+    Registrada por <strong>{{ reserva.registrado_por_nombre }}</strong>
+    (usuario <span class="mono">{{ reserva.registrado_por }}</span>)
+    el {{ reserva.fecha_registro }}.<br>
+    Documento generado por TechLoan. Conserve este comprobante para cualquier
+    aclaración sobre la reserva.
+  </p>
+</article>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('boton-imprimir').addEventListener('click', function () {
+    window.print();
+  });
+</script>
+{% endblock %}

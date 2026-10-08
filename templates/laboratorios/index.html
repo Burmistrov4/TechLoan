@@ -1,4 +1,6 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
+{% import "parciales/iconos.html" as ic %}
+{% import "parciales/listado.html" as l with context %}
 {% block titulo %}Laboratorios{% endblock %}
 
 {% block contenido %}
@@ -7,54 +9,72 @@
     <h1>Laboratorios</h1>
     <p class="encabezado__subtitulo">
       Espacios físicos reservables. La duración estándar de una reserva es de
-      <strong>70 minutos</strong> (1 h 10 min) y puede personalizarse por laboratorio.
+      <strong>70 minutos</strong> y puede personalizarse por laboratorio.
     </p>
   </div>
   {% if puede('laboratorios.write') %}
   <div class="encabezado__acciones">
-    <a class="boton boton--primario" href="{{ url_for('web.laboratorio_crear') }}">+ Nuevo laboratorio</a>
+    <a class="boton boton--marca" href="{{ url_for('web.laboratorio_crear') }}">
+      {{ ic.icono('mas') }} Nuevo laboratorio
+    </a>
   </div>
   {% endif %}
 </section>
 
-{% if laboratorios %}
+{{ l.barra(listado,
+           url_exportar=url_for('web.laboratorios_exportar'),
+           marcador='Buscar por código, nombre o ubicación…',
+           etiqueta='Buscar laboratorios') }}
+
+{% if listado.filas %}
 <div class="tabla-envoltura">
   <table class="tabla">
     <caption class="visualmente-oculto">Listado de laboratorios</caption>
     <thead>
       <tr>
-        <th scope="col">Código</th>
-        <th scope="col">Nombre</th>
-        <th scope="col">Ubicación</th>
-        <th scope="col">Capacidad</th>
-        <th scope="col">Duración estándar</th>
-        <th scope="col">Estado</th>
+        {{ l.th('codigo', 'Código', listado) }}
+        {{ l.th('nombre', 'Nombre', listado) }}
+        {{ l.th('ubicacion', 'Ubicación', listado) }}
+        {{ l.th('capacidad', 'Capacidad', listado) }}
+        {{ l.th('duracion_estandar_minutos', 'Duración estándar', listado) }}
+        {{ l.th('estado', 'Estado', listado) }}
         <th scope="col" class="columna-acciones">Acciones</th>
       </tr>
     </thead>
     <tbody>
-      {% for l in laboratorios %}
+      {% for lab in listado.filas %}
       <tr>
-        <td data-etiqueta="Código"><span class="mono">{{ l.codigo }}</span></td>
-        <td data-etiqueta="Nombre"><strong>{{ l.nombre }}</strong></td>
-        <td data-etiqueta="Ubicación">{{ l.ubicacion }}</td>
-        <td data-etiqueta="Capacidad">{{ l.capacidad }} personas</td>
-        <td data-etiqueta="Duración estándar">{{ l.duracion_estandar_minutos }} min</td>
+        <td data-etiqueta="Código"><span class="mono">{{ lab.codigo }}</span></td>
+        <td data-etiqueta="Nombre"><strong>{{ lab.nombre }}</strong></td>
+        <td data-etiqueta="Ubicación">{{ lab.ubicacion }}</td>
+        <td data-etiqueta="Capacidad">{{ lab.capacidad }} personas</td>
+        <td data-etiqueta="Duración estándar">{{ lab.duracion_estandar_minutos }} min</td>
         <td data-etiqueta="Estado">
-          <span class="insignia insignia--{{ l.estado | lower }}">{{ l.estado }}</span>
+          <span class="insignia insignia--{{ lab.estado | lower }}">{{ lab.estado }}</span>
         </td>
         <td data-etiqueta="Acciones" class="columna-acciones">
           <div class="acciones-fila">
+            {% if puede('reservas.write') and lab.estado == 'DISPONIBLE' %}
+            <a class="boton boton--fantasma boton--pequeno"
+               href="{{ url_for('web.reserva_crear') }}"
+               title="Crear una reserva en este laboratorio">
+              {{ ic.icono('reservas') }} Reservar
+            </a>
+            {% endif %}
             {% if puede('laboratorios.write') %}
             <a class="boton boton--secundario boton--pequeno"
-               href="{{ url_for('web.laboratorio_editar', id_=l.id) }}">Editar</a>
+               href="{{ url_for('web.laboratorio_editar', id_=lab.id) }}">
+              {{ ic.icono('editar') }} Editar
+            </a>
             {% endif %}
             {% if puede('laboratorios.delete') %}
             <form method="post" class="formulario-eliminar"
-                  action="{{ url_for('web.laboratorio_eliminar', id_=l.id) }}"
-                  data-confirmar="¿Está seguro de eliminar el laboratorio {{ l.codigo }} — {{ l.nombre }}? Esta acción no se puede deshacer.">
+                  action="{{ url_for('web.laboratorio_eliminar', id_=lab.id) }}"
+                  data-confirmar="¿Está seguro de eliminar el laboratorio {{ lab.codigo }} — {{ lab.nombre }}? Esta acción no se puede deshacer.">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="boton boton--peligro boton--pequeno">Eliminar</button>
+              <button type="submit" class="boton boton--peligro boton--pequeno">
+                {{ ic.icono('eliminar') }} Eliminar
+              </button>
             </form>
             {% endif %}
           </div>
@@ -64,14 +84,13 @@
     </tbody>
   </table>
 </div>
-<p class="contador-registros">Total: <strong>{{ laboratorios | length }}</strong> laboratorio(s).</p>
+{{ l.paginacion(listado) }}
 {% else %}
-<div class="estado-vacio">
-  <p class="estado-vacio__titulo">No hay laboratorios registrados</p>
-  <p class="estado-vacio__texto">Registra un laboratorio para poder crear reservas.</p>
-  {% if puede('laboratorios.write') %}
-  <a class="boton boton--primario" href="{{ url_for('web.laboratorio_crear') }}">+ Registrar el primero</a>
-  {% endif %}
-</div>
+{{ l.vacio(listado,
+           'No hay laboratorios registrados',
+           'Registra un laboratorio para poder crear reservas por franjas horarias.',
+           'laboratorios',
+           url_for('web.laboratorio_crear'),
+           'Registrar el primero') }}
 {% endif %}
 {% endblock %}

@@ -3,117 +3,72 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1120">
+  <title>{% block titulo %}TechLoan{% endblock %} · TechLoan</title>
+  {% block metadatos %}
   <meta name="description"
-        content="TechLoan — Sistema web de gestión de reservas y préstamos de recursos tecnológicos.">
-  <title>{% block titulo %}Inicio{% endblock %} · TechLoan</title>
+        content="TechLoan — Plataforma de gestión de reservas y préstamos de recursos tecnológicos.">
+  {% endblock %}
+
+  {#- El tema se aplica antes de pintar para evitar el destello de tema claro. -#}
+  <script>
+    (function () {
+      try {
+        var guardado = localStorage.getItem('techloan-tema');
+        var sistema = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
+        document.documentElement.setAttribute('data-tema', guardado || sistema);
+        if (localStorage.getItem('techloan-lateral') === 'oculto') {
+          document.documentElement.classList.add('prefiere-lateral-oculto');
+        }
+      } catch (e) {
+        document.documentElement.setAttribute('data-tema', 'claro');
+      }
+    })();
+  </script>
+
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="alternate icon" href="{{ url_for('static', filename='img/favicon-32.png') }}" sizes="32x32">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('web.manifest') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
-  <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#9671;</text></svg>">
+  {% block estilos %}{% endblock %}
 </head>
 <body>
-  <a class="saltar-contenido" href="#contenido">Saltar al contenido principal</a>
+  {% block cuerpo %}{% endblock %}
 
-  {% if usuario_actual %}
-  <header class="cabecera">
-    <div class="contenedor cabecera__interior">
-      <a class="marca" href="{{ url_for('web.dashboard') }}">
-        <span class="marca__icono" aria-hidden="true">&#9671;</span>
-        <span class="marca__texto">TechLoan</span>
-      </a>
-
-      <button type="button" class="menu-boton" id="menu-boton"
-              aria-expanded="false" aria-controls="menu-principal">
-        <span class="menu-boton__barras" aria-hidden="true"></span>
-        <span class="visualmente-oculto">Abrir menú de navegación</span>
-      </button>
-
-      <nav class="menu" id="menu-principal" aria-label="Navegación principal">
-        <ul class="menu__lista">
-          <li>
-            <a class="menu__enlace {% if request.endpoint == 'web.dashboard' %}activo{% endif %}"
-               href="{{ url_for('web.dashboard') }}">Inicio</a>
-          </li>
-          {% if puede('prestatarios.read') %}
-          <li>
-            <a class="menu__enlace {% if request.endpoint and request.endpoint.startswith('web.prestatario') %}activo{% endif %}"
-               href="{{ url_for('web.prestatarios') }}">Prestatarios</a>
-          </li>
-          {% endif %}
-          {% if puede('laboratorios.read') %}
-          <li>
-            <a class="menu__enlace {% if request.endpoint and request.endpoint.startswith('web.laboratorio') %}activo{% endif %}"
-               href="{{ url_for('web.laboratorios') }}">Laboratorios</a>
-          </li>
-          {% endif %}
-          {% if puede('categorias.read') %}
-          <li>
-            <a class="menu__enlace {% if request.endpoint and request.endpoint.startswith('web.categoria') %}activo{% endif %}"
-               href="{{ url_for('web.categorias') }}">Categorías</a>
-          </li>
-          {% endif %}
-          {% if puede('equipos.read') %}
-          <li>
-            <a class="menu__enlace {% if request.endpoint and request.endpoint.startswith('web.equipo') %}activo{% endif %}"
-               href="{{ url_for('web.equipos') }}">Equipos</a>
-          </li>
-          {% endif %}
-          {% if puede('reservas.read') %}
-          <li>
-            <a class="menu__enlace {% if request.endpoint and request.endpoint.startswith('web.reserva') %}activo{% endif %}"
-               href="{{ url_for('web.reservas') }}">Reservas</a>
-          </li>
-          {% endif %}
-          {% if puede('prestamos.read') %}
-          <li>
-            <a class="menu__enlace {% if request.endpoint and request.endpoint.startswith('web.prestamo') %}activo{% endif %}"
-               href="{{ url_for('web.prestamos') }}">Préstamos</a>
-          </li>
-          {% endif %}
-          {% if puede('historial.read') %}
-          <li>
-            <a class="menu__enlace {% if request.endpoint == 'web.historial' %}activo{% endif %}"
-               href="{{ url_for('web.historial') }}">Historial</a>
-          </li>
-          {% endif %}
-          {% if puede('usuarios.read') %}
-          <li>
-            <a class="menu__enlace {% if request.endpoint and request.endpoint.startswith('web.usuario') %}activo{% endif %}"
-               href="{{ url_for('web.usuarios') }}">Usuarios</a>
-          </li>
-          {% endif %}
-        </ul>
-      </nav>
-
-      <div class="sesion">
-        <span class="sesion__datos">
-          <span class="sesion__nombre">{{ usuario_actual.nombre }} {{ usuario_actual.apellido }}</span>
-          <span class="sesion__rol">{{ usuario_actual.rol }}</span>
+  {#- ================= Notificaciones (toasts) ================= -#}
+  <div class="notificaciones" id="notificaciones" role="region" aria-live="polite" aria-label="Notificaciones">
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+      {% for categoria, mensaje in mensajes %}
+      <div class="notificacion notificacion--{{ categoria }}" data-notificacion>
+        <span class="notificacion__icono" aria-hidden="true">
+          {%- if categoria == 'success' %}&#10003;
+          {%- elif categoria == 'error' %}&#10007;
+          {%- elif categoria == 'warning' %}!
+          {%- else %}i{% endif -%}
         </span>
-        <form method="post" action="{{ url_for('web.logout') }}">
-          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="boton boton--fantasma boton--pequeno">Cerrar sesión</button>
-        </form>
+        <div class="notificacion__cuerpo">
+          <p class="notificacion__titulo">
+            {%- if categoria == 'success' %}Operación completada
+            {%- elif categoria == 'error' %}No se pudo completar
+            {%- elif categoria == 'warning' %}Atención
+            {%- else %}Información{% endif -%}
+          </p>
+          <p class="notificacion__texto">{{ mensaje }}</p>
+        </div>
+        <button type="button" class="notificacion__cerrar" aria-label="Cerrar notificación">&times;</button>
+        <span class="notificacion__barra" aria-hidden="true"></span>
       </div>
-    </div>
-  </header>
-  {% endif %}
+      {% endfor %}
+    {% endwith %}
+  </div>
 
-  <main id="contenido" class="contenido">
-    <div class="contenedor">
-      {% include "parciales/mensajes.html" %}
-      {% block contenido %}{% endblock %}
-    </div>
-  </main>
-
-  <footer class="pie">
-    <div class="contenedor pie__interior">
-      <p>
-        <strong>TechLoan</strong> · Proyecto final de Programación III ·
-        Flask + SQLite3 + HTML5 + CSS3 + JavaScript Vanilla
-      </p>
-    </div>
-  </footer>
-
+  <script>
+    window.TECHLOAN = {
+      urlBuscar: "{{ url_for('web.buscar') }}",
+      csrf: "{{ csrf_token() }}"
+    };
+  </script>
   <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
   {% block scripts %}{% endblock %}
 </body>

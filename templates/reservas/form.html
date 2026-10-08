@@ -1,4 +1,5 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
+{% import "parciales/iconos.html" as ic %}
 {% import "parciales/formulario.html" as f %}
 {% block titulo %}Nueva reserva{% endblock %}
 
@@ -13,11 +14,18 @@
   </div>
 </section>
 
+{% if sugerencias %}
+<div class="aviso aviso--info">
+  <strong>Ese horario ya está ocupado.</strong>
+  Te proponemos las franjas libres más cercanas; pulsa una para aplicarla y guardar.
+</div>
+{% endif %}
+
 <section class="tarjeta-formulario">
   <form method="post" class="formulario" data-validar id="formulario-reserva"
         action="{{ url_for('web.reserva_crear') }}"
         data-duraciones='{{ duraciones | tojson }}'
-        data-url-disponibilidad="{{ url_for('web.disponibilidad_json') }}">
+        data-url-disponibilidad="{{ url_disponibilidad }}">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
 
     <div class="rejilla-campos">
@@ -47,15 +55,37 @@
       <output id="campo-hora_fin_calculada" class="salida"
               for="campo-hora_inicio campo-duracion_minutos" aria-live="polite">—</output>
       <button type="button" class="boton boton--secundario boton--pequeno"
-              id="boton-duracion-estandar">Usar duración estándar</button>
+              id="boton-duracion-estandar">
+        {{ ic.icono('refrescar') }} Usar duración estándar
+      </button>
     </div>
 
-    <div class="campo">
+    {#- Línea de tiempo del día: la dibuja JavaScript con los datos del servidor. -#}
+    <div class="campo" style="margin-bottom:var(--e-5)">
+      <label>Ocupación del día</label>
+      <div class="linea-tiempo" id="linea-tiempo" aria-live="polite">
+        <p class="ayuda">Selecciona un laboratorio y una fecha para ver la jornada.</p>
+      </div>
+    </div>
+
+    <div class="campo" style="margin-bottom:var(--e-5)">
       <button type="button" class="boton boton--secundario" id="boton-disponibilidad">
-        Verificar disponibilidad
+        {{ ic.icono('lupa-usuario') }} Verificar disponibilidad
       </button>
       <p class="resultado-disponibilidad" id="resultado-disponibilidad"
          role="status" aria-live="polite"></p>
+      <div id="alternativas"></div>
+      {% if sugerencias %}
+      <p class="ayuda">Franjas libres más cercanas (pulsa una para usarla):</p>
+      <div class="alternativas__fila">
+        {% for s in sugerencias %}
+        <button type="button" class="alternativa" data-hora="{{ s.hora_inicio }}">
+          <b>{{ s.hora_inicio }} – {{ s.hora_fin }}</b>
+          <small>libre hasta {{ s.libre_hasta }}</small>
+        </button>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
 
     {{ f.area('observaciones', 'Observaciones', registro.observaciones, filas=3,

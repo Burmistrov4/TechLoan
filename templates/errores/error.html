@@ -1,13 +1,62 @@
 {% extends "base.html" %}
+{% import "parciales/iconos.html" as ic %}
 {% block titulo %}{{ titulo }}{% endblock %}
 
-{% block contenido %}
-<section class="pagina-error">
-  <p class="pagina-error__codigo">{{ codigo }}</p>
-  <h1>{{ titulo }}</h1>
-  <p class="pagina-error__detalle">{{ detalle }}</p>
-  <p>
-    <a class="boton boton--primario" href="{{ url_for('web.dashboard') }}">Volver al inicio</a>
-  </p>
-</section>
+{% block estilos %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+{% endblock %}
+
+{#
+  Página de error autónoma: funciona igual con sesión iniciada o sin ella, así
+  que no hereda el shell de la aplicación ni el público.
+#}
+{% block cuerpo %}
+<header class="publico__barra">
+  <div class="contenedor publico__barra-interior">
+    <a class="publico__marca" href="{{ url_for('web.portada') }}">
+      <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="32" height="32">
+      <b>TechLoan</b>
+    </a>
+    <nav class="publico__nav" aria-label="Navegación">
+      {% if usuario_actual %}
+      <a href="{{ url_for('web.dashboard') }}">Volver al panel</a>
+      {% else %}
+      <a href="{{ url_for('web.portada') }}">Ir a la portada</a>
+      <a class="boton boton--marca boton--pequeno" href="{{ url_for('web.login') }}">Acceder</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+
+<main id="contenido" class="publico__contenido">
+  <div class="contenedor" style="padding-block:var(--e-16)">
+    <section class="pagina-error">
+      <p class="pagina-error__codigo">{{ codigo }}</p>
+      <h1>{{ titulo }}</h1>
+      <p class="pagina-error__detalle">{{ detalle }}</p>
+      <div class="acciones-fila" style="justify-content:center;margin-top:var(--e-6)">
+        {% if usuario_actual %}
+        <a class="boton boton--marca" href="{{ url_for('web.dashboard') }}">
+          {{ ic.icono('inicio') }} Volver al panel
+        </a>
+        <a class="boton boton--secundario" href="{{ url_for('web.ayuda') }}">
+          {{ ic.icono('ayuda') }} Guía de uso
+        </a>
+        {% else %}
+        <a class="boton boton--marca" href="{{ url_for('web.portada') }}">
+          {{ ic.icono('inicio') }} Ir a la portada
+        </a>
+        <a class="boton boton--secundario" href="{{ url_for('web.login') }}">Iniciar sesión</a>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="publico__pie">
+  <div class="contenedor publico__pie-interior">
+    <p><strong>TechLoan</strong> · Plataforma de gestión de recursos tecnológicos</p>
+    <p class="dato-secundario">Proyecto final de Programación III · IUTEPI</p>
+  </div>
+</footer>
 {% endblock %}

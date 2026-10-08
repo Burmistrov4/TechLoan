@@ -1,0 +1,675 @@
+{% extends "base.html" %}
+{% import "parciales/iconos.html" as ic %}
+
+{% block titulo %}Gestión inteligente de laboratorios y equipos{% endblock %}
+{% block metadatos %}
+<meta name="description"
+      content="TechLoan es la plataforma que ordena las reservas de laboratorios y los préstamos de equipos: sin dobles reservas, sin equipos perdidos y con trazabilidad completa.">
+<meta property="og:title" content="TechLoan — Gestión inteligente de recursos tecnológicos">
+<meta property="og:description"
+      content="Reservas sin solapamientos, préstamos trazables, roles y auditoría. Código abierto, listo para tu institución.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="{{ url_for('static', filename='img/hero-3d.jpg', _external=True) }}">
+{% endblock %}
+
+{% block estilos %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+<noscript>
+  {#- Sin JavaScript no hay revelado al desplazar: se muestra todo directamente. -#}
+  <style>.revelar { opacity: 1 !important; transform: none !important; }</style>
+</noscript>
+{% endblock %}
+
+{% block cuerpo %}
+<div class="portada">
+
+  {#- ==================== Lienzo oscuro: nav + héroe + cinta ==================== -#}
+  <div class="portada__lienzo">
+    <span class="portada__orbe portada__orbe--a" aria-hidden="true"></span>
+    <span class="portada__orbe portada__orbe--b" aria-hidden="true"></span>
+    <span class="portada__orbe portada__orbe--c" aria-hidden="true"></span>
+
+    <div class="contenedor">
+      <nav class="portada__nav" aria-label="Navegación de la portada">
+        <a class="portada__marca" href="{{ url_for('web.portada') }}">
+          <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="34" height="34">
+          <b>TechLoan</b>
+        </a>
+        <div class="portada__enlaces">
+          <a href="#caracteristicas">Características</a>
+          <a href="#modulos">Módulos</a>
+          <a href="#seguridad">Seguridad</a>
+          <a href="#planes">Planes</a>
+          <a href="#preguntas">Preguntas</a>
+        </div>
+        <div class="portada__acciones">
+          <a class="boton boton--cristal boton--pequeno" href="{{ url_for('web.login') }}">Iniciar sesión</a>
+          <a class="boton boton--marca boton--pequeno" href="{{ url_for('web.login') }}">
+            Ver la demo {{ ic.icono('flecha-derecha', tamano=15) }}
+          </a>
+        </div>
+      </nav>
+
+      <section class="heroe">
+        <div class="heroe__texto">
+          <p class="insignia-heroe">
+            <span class="insignia-heroe__punto" aria-hidden="true"></span>
+            Código abierto · Flask + SQLite3 · Funciona sin internet
+          </p>
+
+          <h1>
+            Tus laboratorios,<br>
+            <span class="texto-degradado">sin dobles reservas</span><br>
+            y sin equipos perdidos.
+          </h1>
+
+          <p class="heroe__entradilla">
+            TechLoan reúne en un solo panel la agenda de los laboratorios, el inventario de
+            equipos y los préstamos con su devolución. Detecta los choques de horario
+            <strong>antes</strong> de que ocurran, avisa de lo que lleva demasiado tiempo
+            prestado y deja constancia de cada movimiento.
+          </p>
+
+          <div class="heroe__acciones">
+            <a class="boton boton--marca boton--grande" href="{{ url_for('web.login') }}">
+              {{ ic.icono('rayo', tamano=18) }} Probar la aplicación
+            </a>
+            <a class="boton boton--cristal boton--grande" href="#modulos">
+              Ver los módulos
+            </a>
+          </div>
+
+          <ul class="heroe__garantias">
+            <li>{{ ic.icono('correcto') }} Sin instalar nada en la nube</li>
+            <li>{{ ic.icono('correcto') }} Datos en tu propio equipo</li>
+            <li>{{ ic.icono('correcto') }} Roles y auditoría incluidos</li>
+          </ul>
+        </div>
+
+        <div class="heroe__escena" id="escena-3d">
+          <div class="heroe__marco" id="marco-3d">
+            <picture>
+              <source srcset="{{ url_for('static', filename='img/hero-3d.webp') }}" type="image/webp">
+              <img src="{{ url_for('static', filename='img/hero-3d.jpg') }}"
+                   alt="Panel de control de TechLoan con indicadores de reservas, equipos y préstamos"
+                   width="1536" height="1024" fetchpriority="high">
+            </picture>
+          </div>
+
+          <div class="flotante flotante--1">
+            <span class="flotante__icono">{{ ic.icono('correcto') }}</span>
+            <span><b>Reserva confirmada</b><small>LAB-01 · 08:00 – 09:10</small></span>
+          </div>
+          <div class="flotante flotante--2">
+            <span class="flotante__icono">{{ ic.icono('alerta') }}</span>
+            <span><b>Choque de horario</b><small>Se propone otra franja libre</small></span>
+          </div>
+          <div class="flotante flotante--3">
+            <span class="flotante__icono">{{ ic.icono('prestamos') }}</span>
+            <span><b>Equipo devuelto</b><small>Vuelve a estar disponible</small></span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="contenedor">
+      <div class="cinta">
+        <p class="cinta__titulo">Pensado para centros de formación, laboratorios y departamentos de TI</p>
+        <div class="cinta__pista" aria-hidden="true">
+          {% for _ in range(2) %}
+          <span class="cinta__item">{{ ic.icono('laboratorios', tamano=20) }} Laboratorios de informática</span>
+          <span class="cinta__item">{{ ic.icono('equipos', tamano=20) }} Inventario de equipos</span>
+          <span class="cinta__item">{{ ic.icono('reservas', tamano=20) }} Agenda por franjas</span>
+          <span class="cinta__item">{{ ic.icono('escudo-ok', tamano=20) }} Control de acceso</span>
+          <span class="cinta__item">{{ ic.icono('auditoria', tamano=20) }} Trazabilidad</span>
+          <span class="cinta__item">{{ ic.icono('grafico', tamano=20) }} Indicadores</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {#- ==================== Cifras ==================== -#}
+  <section class="seccion">
+    <div class="contenedor">
+      <div class="tarjetas-tablero" style="margin-bottom:0">
+        <article class="tarjeta-dato revelar">
+          <p class="tarjeta-dato__valor" data-contador="{{ metricas.laboratorios }}">0</p>
+          <p class="tarjeta-dato__etiqueta">Laboratorios</p>
+          <p class="tarjeta-dato__detalle">Espacios reservables por franja</p>
+        </article>
+        <article class="tarjeta-dato revelar revelar--1">
+          <p class="tarjeta-dato__valor" data-contador="{{ metricas.equipos }}">0</p>
+          <p class="tarjeta-dato__etiqueta">Equipos</p>
+          <p class="tarjeta-dato__detalle">Inventario con estado en vivo</p>
+        </article>
+        <article class="tarjeta-dato revelar revelar--2">
+          <p class="tarjeta-dato__valor" data-contador="{{ metricas.prestatarios }}">0</p>
+          <p class="tarjeta-dato__etiqueta">Prestatarios</p>
+          <p class="tarjeta-dato__detalle">Docentes, estudiantes y personal</p>
+        </article>
+        <article class="tarjeta-dato revelar revelar--3">
+          <p class="tarjeta-dato__valor" data-contador="{{ metricas.reservas }}">0</p>
+          <p class="tarjeta-dato__etiqueta">Reservas</p>
+          <p class="tarjeta-dato__detalle">Registradas y auditadas</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  {#- ==================== Características ==================== -#}
+  <section class="seccion seccion--alterna" id="caracteristicas">
+    <div class="contenedor">
+      <header class="seccion__cabecera revelar">
+        <span class="seccion__etiqueta">Por qué TechLoan</span>
+        <h2>Todo lo que hoy resolvéis con papel y mensajes sueltos</h2>
+        <p>
+          Seis capacidades que convierten la gestión de recursos en un proceso
+          ordenado, verificable y sin sorpresas.
+        </p>
+      </header>
+
+      <div class="caracteristicas">
+        <article class="caracteristica revelar">
+          <span class="caracteristica__icono">{{ ic.icono('reservas') }}</span>
+          <h3>Agenda sin solapamientos</h3>
+          <p>
+            Dos reservas del mismo laboratorio nunca se cruzan. El sistema compara los
+            intervalos reales y bloquea el choque antes de guardarlo.
+          </p>
+          <span class="caracteristica__detalle">{{ ic.icono('correcto', tamano=14) }} Franjas adyacentes permitidas</span>
+        </article>
+
+        <article class="caracteristica revelar revelar--1">
+          <span class="caracteristica__icono">{{ ic.icono('destello') }}</span>
+          <h3>Alternativas inteligentes</h3>
+          <p>
+            Cuando pides una hora ocupada, no recibes un simple «no»: TechLoan calcula los
+            huecos libres del día y te propone los más cercanos a lo que pediste.
+          </p>
+          <span class="caracteristica__detalle">{{ ic.icono('rayo', tamano=14) }} Un clic para aplicarla</span>
+        </article>
+
+        <article class="caracteristica revelar revelar--2">
+          <span class="caracteristica__icono">{{ ic.icono('prestamos') }}</span>
+          <h3>Préstamos trazables</h3>
+          <p>
+            Al prestar, el equipo pasa a <strong>PRESTADO</strong>; al devolverlo, vuelve a
+            <strong>DISPONIBLE</strong>. Siempre se sabe quién lo tiene y desde cuándo.
+          </p>
+          <span class="caracteristica__detalle">{{ ic.icono('reloj', tamano=14) }} Aviso a los {{ dias_limite }} días</span>
+        </article>
+
+        <article class="caracteristica revelar">
+          <span class="caracteristica__icono">{{ ic.icono('grafico') }}</span>
+          <h3>Indicadores, no intuiciones</h3>
+          <p>
+            Ocupación por día, reparto del inventario por estado y laboratorios más
+            solicitados. Los gráficos se dibujan al vuelo, sin librerías externas.
+          </p>
+          <span class="caracteristica__detalle">{{ ic.icono('correcto', tamano=14) }} Se imprimen con calidad</span>
+        </article>
+
+        <article class="caracteristica revelar revelar--1">
+          <span class="caracteristica__icono">{{ ic.icono('escudo-ok') }}</span>
+          <h3>Roles y permisos reales</h3>
+          <p>
+            El <strong>ADMINISTRADOR</strong> gobierna el sistema; el
+            <strong>OPERADOR</strong> trabaja el día a día sin poder tocar usuarios ni
+            eliminar catálogo.
+          </p>
+          <span class="caracteristica__detalle">{{ ic.icono('candado', tamano=14) }} Sesión revalidada en cada acción</span>
+        </article>
+
+        <article class="caracteristica revelar revelar--2">
+          <span class="caracteristica__icono">{{ ic.icono('auditoria') }}</span>
+          <h3>Registro de actividad</h3>
+          <p>
+            Cada alta, modificación, baja, préstamo y devolución queda anotada con su
+            autor, su fecha y su detalle. Exportable a CSV para revisarla donde quieras.
+          </p>
+          <span class="caracteristica__detalle">{{ ic.icono('descargar', tamano=14) }} Filtros y exportación</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  {#- ==================== Cómo funciona ==================== -#}
+  <section class="seccion">
+    <div class="contenedor">
+      <header class="seccion__cabecera revelar">
+        <span class="seccion__etiqueta">Cómo funciona</span>
+        <h2>Operativo en tres pasos</h2>
+        <p>Sin infraestructura que contratar ni configuraciones eternas.</p>
+      </header>
+
+      <div class="pasos">
+        <article class="paso revelar">
+          <h3>Prepara la base de datos</h3>
+          <p>
+            Un solo comando reconstruye el esquema completo a partir de
+            <code>schema.sql</code>, con tablas, relaciones, índices y datos de ejemplo.
+          </p>
+        </article>
+        <article class="paso revelar revelar--1">
+          <h3>Arranca y accede</h3>
+          <p>
+            El servidor local se levanta en segundos. Entras con tu usuario y el panel
+            aparece con los indicadores del día ya calculados.
+          </p>
+        </article>
+        <article class="paso revelar revelar--2">
+          <h3>Gestiona y consulta</h3>
+          <p>
+            Reserva laboratorios, presta equipos, devuélvelos y revisa el historial. Todo
+            queda registrado y disponible para exportar.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  {#- ==================== Módulos ==================== -#}
+  <section class="seccion seccion--alterna" id="modulos">
+    <div class="contenedor">
+      <header class="seccion__cabecera revelar">
+        <span class="seccion__etiqueta">Módulos</span>
+        <h2>Cuatro piezas que encajan</h2>
+        <p>Cada módulo resuelve una parte del problema y comparte los mismos datos.</p>
+      </header>
+
+      <div class="modulos">
+        <div class="revelar">
+          <div class="modulos__pestanas" role="tablist" aria-label="Módulos de TechLoan">
+            <button class="pestana" role="tab" aria-selected="true" data-modulo="reservas">
+              {{ ic.icono('reservas') }} Reservas
+            </button>
+            <button class="pestana" role="tab" aria-selected="false" data-modulo="prestamos">
+              {{ ic.icono('prestamos') }} Préstamos
+            </button>
+            <button class="pestana" role="tab" aria-selected="false" data-modulo="analitica">
+              {{ ic.icono('grafico') }} Analítica
+            </button>
+            <button class="pestana" role="tab" aria-selected="false" data-modulo="seguridad">
+              {{ ic.icono('escudo') }} Seguridad
+            </button>
+          </div>
+
+          <div class="modulo activo" id="modulo-reservas" role="tabpanel">
+            <h3>Reservas de laboratorios</h3>
+            <p>
+              Franjas horarias con duración estándar de 70 minutos o personalizada. La hora
+              de finalización se calcula en vivo mientras escribes, y la jornada del
+              laboratorio se dibuja como una línea de tiempo para ver de un vistazo qué
+              queda libre.
+            </p>
+            <ul class="modulo__lista">
+              <li>{{ ic.icono('correcto') }} Rechazo de solapamientos con mensaje claro</li>
+              <li>{{ ic.icono('correcto') }} Sugerencia de las franjas libres más cercanas</li>
+              <li>{{ ic.icono('correcto') }} Comprobante imprimible de cada reserva</li>
+              <li>{{ ic.icono('correcto') }} Cancelación con liberación inmediata de la franja</li>
+            </ul>
+          </div>
+
+          <div class="modulo" id="modulo-prestamos" role="tabpanel">
+            <h3>Préstamos y devoluciones</h3>
+            <p>
+              El inventario refleja la realidad en todo momento: un equipo prestado no
+              puede volver a prestarse. Los préstamos que superan el límite de días
+              aparecen destacados para que nadie pierda la pista.
+            </p>
+            <ul class="modulo__lista">
+              <li>{{ ic.icono('correcto') }} El equipo pasa a PRESTADO al salir</li>
+              <li>{{ ic.icono('correcto') }} Vuelve a DISPONIBLE al devolverse</li>
+              <li>{{ ic.icono('correcto') }} Días transcurridos visibles en cada fila</li>
+              <li>{{ ic.icono('correcto') }} Aviso destacado de préstamos vencidos</li>
+            </ul>
+          </div>
+
+          <div class="modulo" id="modulo-analitica" role="tabpanel">
+            <h3>Indicadores y exportación</h3>
+            <p>
+              El panel resume la actividad del sistema con gráficos generados en el propio
+              navegador y compara la semana actual con la anterior. Cada listado se exporta
+              a CSV listo para Excel.
+            </p>
+            <ul class="modulo__lista">
+              <li>{{ ic.icono('correcto') }} Ocupación por día y por laboratorio</li>
+              <li>{{ ic.icono('correcto') }} Reparto del inventario por estado</li>
+              <li>{{ ic.icono('correcto') }} Variación semanal de la actividad</li>
+              <li>{{ ic.icono('correcto') }} Exportación a CSV de todos los listados</li>
+            </ul>
+          </div>
+
+          <div class="modulo" id="modulo-seguridad" role="tabpanel">
+            <h3>Seguridad y trazabilidad</h3>
+            <p>
+              Las contraseñas se guardan como hash, todas las consultas van parametrizadas
+              y cada acción destructiva exige confirmación. La auditoría conserva el rastro
+              completo incluso si el usuario se elimina después.
+            </p>
+            <ul class="modulo__lista">
+              <li>{{ ic.icono('correcto') }} Hash de contraseñas con Werkzeug (scrypt)</li>
+              <li>{{ ic.icono('correcto') }} Consultas parametrizadas contra inyección SQL</li>
+              <li>{{ ic.icono('correcto') }} Token CSRF en todos los formularios</li>
+              <li>{{ ic.icono('correcto') }} Auditoría con filtros y exportación</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="revelar revelar--1">
+          <div class="modulo__imagen" id="imagen-modulo">
+            <picture>
+              <source srcset="{{ url_for('static', filename='img/mod-reservas.webp') }}" type="image/webp">
+              <img id="imagen-modulo-img" src="{{ url_for('static', filename='img/mod-reservas.jpg') }}"
+                   alt="Módulo de reservas de laboratorios de TechLoan" width="900" height="900" loading="lazy">
+            </picture>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {#- ==================== Seguridad destacada ==================== -#}
+  <section class="seccion" id="seguridad">
+    <div class="contenedor">
+      <div class="destacado">
+        <div class="destacado__imagen revelar">
+          <picture>
+            <source srcset="{{ url_for('static', filename='img/mod-seguridad.webp') }}" type="image/webp">
+            <img src="{{ url_for('static', filename='img/mod-seguridad.jpg') }}"
+                 alt="Control de acceso y roles de TechLoan" width="900" height="900" loading="lazy">
+          </picture>
+        </div>
+        <div class="revelar revelar--1">
+          <span class="seccion__etiqueta">Seguridad</span>
+          <h2>Diseñado para que nada se pierda por el camino</h2>
+          <p class="dato-secundario" style="font-size:var(--t-base)">
+            Un sistema de gestión vale lo que vale la confianza en sus datos. TechLoan aplica
+            las mismas prácticas que se exigen en entornos profesionales.
+          </p>
+          <ul class="destacado__lista">
+            <li>
+              {{ ic.icono('candado') }}
+              <span><b>Contraseñas como hash</b>
+              Nunca se guarda ni se muestra la contraseña; solo su huella cifrada.</span>
+            </li>
+            <li>
+              {{ ic.icono('escudo-ok') }}
+              <span><b>Permisos por rol, revalidados</b>
+              El rol y el estado del usuario se comprueban contra la base de datos en cada acción.</span>
+            </li>
+            <li>
+              {{ ic.icono('auditoria') }}
+              <span><b>Auditoría inmutable</b>
+              El registro sobrevive a la baja del usuario y conserva su nombre como evidencia.</span>
+            </li>
+            <li>
+              {{ ic.icono('llave') }}
+              <span><b>Identidad tomada de la sesión</b>
+              Quién ejecuta una operación lo decide el servidor, nunca un campo del formulario.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {#- ==================== Pila tecnológica ==================== -#}
+  <section class="seccion seccion--alterna">
+    <div class="contenedor">
+      <header class="seccion__cabecera revelar">
+        <span class="seccion__etiqueta">Tecnología</span>
+        <h2>Estándares que cualquiera puede mantener</h2>
+        <p>
+          Sin dependencias exóticas ni servicios de pago obligatorios: dos paquetes y poco más.
+        </p>
+      </header>
+      <div class="pila revelar">
+        <span class="pila__item">{{ ic.icono('rayo', tamano=16) }} <b>Python 3</b></span>
+        <span class="pila__item">{{ ic.icono('equipos', tamano=16) }} <b>Flask</b></span>
+        <span class="pila__item">{{ ic.icono('caja', tamano=16) }} <b>SQLite3</b></span>
+        <span class="pila__item">{{ ic.icono('cuadricula', tamano=16) }} <b>Jinja2</b></span>
+        <span class="pila__item">{{ ic.icono('insignia', tamano=16) }} <b>HTML5</b></span>
+        <span class="pila__item">{{ ic.icono('destello', tamano=16) }} <b>CSS3</b></span>
+        <span class="pila__item">{{ ic.icono('comando', tamano=16) }} <b>JavaScript Vanilla</b></span>
+        <span class="pila__item">{{ ic.icono('candado', tamano=16) }} <b>Werkzeug</b></span>
+      </div>
+    </div>
+  </section>
+
+  {#- ==================== Testimonios ==================== -#}
+  <section class="seccion">
+    <div class="contenedor">
+      <header class="seccion__cabecera revelar">
+        <span class="seccion__etiqueta">Lo que cambia</span>
+        <h2>Menos fricción, más control</h2>
+      </header>
+
+      <div class="testimonios">
+        <article class="testimonio revelar">
+          <blockquote>
+            «Antes cruzábamos correos para saber si el laboratorio de redes estaba libre.
+            Ahora se ve en el panel y el sistema no deja que dos personas reserven la misma
+            hora. Se acabó el problema.»
+          </blockquote>
+          <div class="testimonio__autor">
+            <span class="avatar" aria-hidden="true">MG</span>
+            <span><b>María González</b><span>Coordinadora de laboratorios</span></span>
+          </div>
+        </article>
+
+        <article class="testimonio revelar revelar--1">
+          <blockquote>
+            «Los proyectores y los switches aparecían y desaparecían sin rastro. Con el
+            registro de préstamos sabemos quién tiene cada cosa y desde qué día.»
+          </blockquote>
+          <div class="testimonio__autor">
+            <span class="avatar" aria-hidden="true">JT</span>
+            <span><b>José Tarazón</b><span>Responsable de inventario</span></span>
+          </div>
+        </article>
+
+        <article class="testimonio revelar revelar--2">
+          <blockquote>
+            «Lo que más me sirve es la auditoría: si alguien pregunta qué pasó con una
+            reserva, tengo la respuesta con nombre y fecha en dos clics.»
+          </blockquote>
+          <div class="testimonio__autor">
+            <span class="avatar" aria-hidden="true">SV</span>
+            <span><b>Sleither Vásquez</b><span>Administración del sistema</span></span>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  {#- ==================== Planes ==================== -#}
+  <section class="seccion seccion--alterna" id="planes">
+    <div class="contenedor">
+      <header class="seccion__cabecera revelar">
+        <span class="seccion__etiqueta">Planes</span>
+        <h2>Empieza gratis, crece cuando lo necesites</h2>
+        <p>
+          El código es abierto. Estos planes describen el acompañamiento, no una licencia
+          que te ate.
+        </p>
+      </header>
+
+      <div class="planes">
+        <article class="plan revelar">
+          <h3>Comunidad</h3>
+          <p class="plan__precio"><b>Gratis</b><span>para siempre</span></p>
+          <p class="plan__descripcion">
+            Todo el producto, sin límites de registros, instalado en tu propio equipo.
+          </p>
+          <ul class="plan__lista">
+            <li>{{ ic.icono('correcto') }} Código fuente completo</li>
+            <li>{{ ic.icono('correcto') }} Todos los módulos y roles</li>
+            <li>{{ ic.icono('correcto') }} Esquema y datos de ejemplo incluidos</li>
+            <li>{{ ic.icono('correcto') }} Funciona sin conexión a internet</li>
+          </ul>
+          <a class="boton boton--secundario boton--ancho" href="{{ url_for('web.login') }}">Probar ahora</a>
+        </article>
+
+        <article class="plan plan--destacado revelar revelar--1">
+          <span class="plan__cinta">Más elegido</span>
+          <h3>Institución</h3>
+          <p class="plan__precio"><b>Desde 0 €</b><span>según despliegue</span></p>
+          <p class="plan__descripcion">
+            Puesta en marcha acompañada para centros que necesitan arrancar sin fricción.
+          </p>
+          <ul class="plan__lista">
+            <li>{{ ic.icono('correcto') }} Todo lo del plan Comunidad</li>
+            <li>{{ ic.icono('correcto') }} Migración de tus datos actuales</li>
+            <li>{{ ic.icono('correcto') }} Personalización de laboratorios y horarios</li>
+            <li>{{ ic.icono('correcto') }} Formación del equipo operador</li>
+            <li>{{ ic.icono('correcto') }} Copias de seguridad programadas</li>
+          </ul>
+          <a class="boton boton--marca boton--ancho" href="{{ url_for('web.login') }}">Ver la demo</a>
+        </article>
+
+        <article class="plan revelar revelar--2">
+          <h3>Avanzado</h3>
+          <p class="plan__precio"><b>A medida</b><span>hablemos</span></p>
+          <p class="plan__descripcion">
+            Para quien necesita integraciones, varios centros o informes propios.
+          </p>
+          <ul class="plan__lista">
+            <li>{{ ic.icono('correcto') }} Todo lo del plan Institución</li>
+            <li>{{ ic.icono('correcto') }} Despliegue en servidor propio o nube</li>
+            <li>{{ ic.icono('correcto') }} Integración con sistemas de la institución</li>
+            <li>{{ ic.icono('correcto') }} Informes y campos a medida</li>
+            <li>{{ ic.icono('correcto') }} Soporte prioritario</li>
+          </ul>
+          <a class="boton boton--secundario boton--ancho" href="#preguntas">Consultar</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  {#- ==================== Preguntas frecuentes ==================== -#}
+  <section class="seccion" id="preguntas">
+    <div class="contenedor">
+      <header class="seccion__cabecera revelar">
+        <span class="seccion__etiqueta">Preguntas frecuentes</span>
+        <h2>Lo que suelen preguntar</h2>
+      </header>
+
+      <div class="faq">
+        <details class="faq__item revelar" open>
+          <summary>¿Necesito internet para usarlo?</summary>
+          <p>
+            No. TechLoan funciona por completo en local: el servidor, la base de datos y los
+            estilos viven en tu equipo. Internet solo hace falta para instalar las
+            dependencias la primera vez.
+          </p>
+        </details>
+        <details class="faq__item revelar">
+          <summary>¿Qué pasa si dos personas reservan la misma hora?</summary>
+          <p>
+            La segunda reserva se rechaza. El sistema compara los intervalos reales
+            (<em>inicio existente &lt; fin nuevo</em> y <em>fin existente &gt; inicio nuevo</em>)
+            dentro de la misma operación, y además ofrece las franjas libres más cercanas.
+            Las reservas que solo se tocan —una termina justo cuando empieza la otra— sí se
+            permiten.
+          </p>
+        </details>
+        <details class="faq__item revelar">
+          <summary>¿Dónde se guardan los datos?</summary>
+          <p>
+            En un único archivo SQLite dentro del propio proyecto. Eso hace que hacer copia
+            de seguridad sea tan simple como copiar un fichero, y que puedas mover toda la
+            instalación de un equipo a otro sin exportar nada.
+          </p>
+        </details>
+        <details class="faq__item revelar">
+          <summary>¿Se pueden separar los permisos del personal?</summary>
+          <p>
+            Sí. El rol <strong>ADMINISTRADOR</strong> gestiona usuarios, elimina registros y
+            consulta la auditoría. El rol <strong>OPERADOR</strong> trabaja las reservas y
+            los préstamos del día a día, pero no ve el módulo de usuarios ni puede eliminar
+            catálogo.
+          </p>
+        </details>
+        <details class="faq__item revelar">
+          <summary>¿Es difícil de mantener?</summary>
+          <p>
+            Depende de dos paquetes: Flask y Werkzeug. La interfaz es HTML, CSS y JavaScript
+            sin frameworks, así que cualquiera con conocimientos básicos de desarrollo web
+            puede leerla y modificarla.
+          </p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  {#- ==================== Llamada final ==================== -#}
+  <section class="llamada">
+    <div class="contenedor">
+      <h2>Deja de perseguir reservas y equipos</h2>
+      <p>
+        Pruébalo con datos de ejemplo en menos de un minuto. Sin registro, sin tarjeta y
+        sin enviar nada a ningún servidor externo.
+      </p>
+      <div class="llamada__acciones">
+        <a class="boton boton--marca boton--grande" href="{{ url_for('web.login') }}">
+          {{ ic.icono('rayo', tamano=18) }} Entrar a la demo
+        </a>
+        <a class="boton boton--cristal boton--grande" href="#caracteristicas">Repasar características</a>
+      </div>
+    </div>
+  </section>
+
+  {#- ==================== Pie ==================== -#}
+  <footer class="portada__pie">
+    <div class="contenedor">
+      <div class="portada__pie-rejilla">
+        <div>
+          <a class="publico__marca" href="{{ url_for('web.portada') }}">
+            <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="32" height="32">
+            <b>TechLoan</b>
+          </a>
+          <p style="margin-top:var(--e-3);max-width:34ch">
+            Plataforma de gestión de reservas y préstamos de recursos tecnológicos.
+            Código abierto y ejecutable en local.
+          </p>
+        </div>
+        <div>
+          <h4>Producto</h4>
+          <ul>
+            <li><a href="#caracteristicas">Características</a></li>
+            <li><a href="#modulos">Módulos</a></li>
+            <li><a href="#seguridad">Seguridad</a></li>
+            <li><a href="#planes">Planes</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Aplicación</h4>
+          <ul>
+            <li><a href="{{ url_for('web.login') }}">Iniciar sesión</a></li>
+            <li><a href="{{ url_for('web.login') }}">Demo con datos de ejemplo</a></li>
+            <li><a href="#preguntas">Preguntas frecuentes</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Proyecto</h4>
+          <ul>
+            <li>Programación III · IUTEPI</li>
+            <li>Flask + SQLite3</li>
+            <li>HTML5 · CSS3 · JavaScript</li>
+          </ul>
+        </div>
+      </div>
+      <div class="portada__pie-legal">
+        <p>© {{ anio }} TechLoan. Proyecto académico de código abierto.</p>
+        <p>Hecho con Flask, SQLite3 y mucho CSS a mano.</p>
+      </div>
+    </div>
+  </footer>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/landing.js') }}" defer></script>
+{% endblock %}

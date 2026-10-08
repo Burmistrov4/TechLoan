@@ -16,8 +16,29 @@ class AuthService:
 
     @staticmethod
     def can(user, permission):
+        """Comprueba si el rol del usuario incluye el permiso indicado.
+
+        El rol OPERADOR puede operar el día a día (prestatarios, reservas,
+        préstamos y devoluciones) pero no administra el sistema: no gestiona
+        usuarios, no elimina registros de catálogo y no consulta la auditoría.
+        """
         permissions = {
-            "ADMINISTRADOR": {"prestatarios.read","prestatarios.write","prestatarios.delete","laboratorios.read","laboratorios.write","laboratorios.delete","categorias.read","categorias.write","categorias.delete","equipos.read","equipos.write","equipos.delete","usuarios.read","usuarios.write","usuarios.delete","reservas.read","reservas.write","prestamos.read","prestamos.write","prestamos.return","historial.read"},
-            "OPERADOR": {"prestatarios.read","prestatarios.write","laboratorios.read","categorias.read","equipos.read","reservas.read","reservas.write","prestamos.read","prestamos.write","prestamos.return","historial.read"}
+            "ADMINISTRADOR": {
+                "prestatarios.read", "prestatarios.write", "prestatarios.delete",
+                "laboratorios.read", "laboratorios.write", "laboratorios.delete",
+                "categorias.read", "categorias.write", "categorias.delete",
+                "equipos.read", "equipos.write", "equipos.delete",
+                "usuarios.read", "usuarios.write", "usuarios.delete",
+                "reservas.read", "reservas.write",
+                "prestamos.read", "prestamos.write", "prestamos.return",
+                "historial.read", "auditoria.read",
+            },
+            "OPERADOR": {
+                "prestatarios.read", "prestatarios.write",
+                "laboratorios.read", "categorias.read", "equipos.read",
+                "reservas.read", "reservas.write",
+                "prestamos.read", "prestamos.write", "prestamos.return",
+                "historial.read",
+            },
         }
         return bool(user and permission in permissions.get(user.get("rol"), set()))

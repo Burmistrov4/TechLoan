@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="TechLoan">
+  <defs>
+    <linearGradient id="tlGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="52%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="tlShine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.32"/>
+      <stop offset="60%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Teja con esquinas redondeadas y degradado de marca -->
+  <rect x="2" y="2" width="60" height="60" rx="17" fill="url(#tlGrad)"/>
+  <rect x="2" y="2" width="60" height="60" rx="17" fill="url(#tlShine)"/>
+
+  <!-- Monograma T -->
+  <path d="M19 22.5h26" stroke="#ffffff" stroke-width="6.5" stroke-linecap="round"/>
+  <path d="M32 22.5v21.5" stroke="#ffffff" stroke-width="6.5" stroke-linecap="round"/>
+
+  <!-- Nodo: guiño tecnológico en el extremo de la barra -->
+  <circle cx="45" cy="22.5" r="3.1" fill="#ffffff" opacity="0.55"/>
+</svg>

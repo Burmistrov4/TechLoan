@@ -1,0 +1,104 @@
+{% extends "base_app.html" %}
+{% import "parciales/iconos.html" as ic %}
+{% import "parciales/listado.html" as l with context %}
+{% import "parciales/formulario.html" as f %}
+{% block titulo %}Auditoría{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Registro de actividad</h1>
+    <p class="encabezado__subtitulo">
+      Quién hizo qué y cuándo. El registro es histórico: conserva el nombre del usuario
+      aunque su cuenta se elimine después.
+    </p>
+  </div>
+  <div class="encabezado__acciones">
+    <a class="boton boton--secundario"
+       href="{{ url_for('web.auditoria_exportar', **request.args.to_dict()) }}">
+      {{ ic.icono('descargar') }} Exportar CSV
+    </a>
+  </div>
+</section>
+
+{#- ==================== Filtros ==================== -#}
+<section class="tarjeta-formulario" aria-labelledby="titulo-filtros">
+  <h2 id="titulo-filtros" class="titulo-seccion">Filtros</h2>
+  <form method="get" class="formulario formulario--filtros" action="{{ url_for('web.auditoria') }}">
+    <div class="rejilla-campos">
+      {{ f.lista('accion', 'Acción', acciones, filtros.accion, vacio='— Todas —') }}
+      {{ f.lista('entidad', 'Entidad', entidades, filtros.entidad, vacio='— Todas —') }}
+      {{ f.texto('usuario', 'Usuario', filtros.usuario, marcador='admin',
+                 ayuda='Busca por nombre de usuario.') }}
+      {{ f.texto('fecha_desde', 'Desde', filtros.fecha_desde, tipo='date') }}
+      {{ f.texto('fecha_hasta', 'Hasta', filtros.fecha_hasta, tipo='date') }}
+    </div>
+    <div class="formulario__acciones">
+      <button type="submit" class="boton boton--primario">
+        {{ ic.icono('filtro') }} Filtrar
+      </button>
+      <a class="boton boton--secundario" href="{{ url_for('web.auditoria') }}">
+        {{ ic.icono('refrescar') }} Limpiar
+      </a>
+    </div>
+  </form>
+</section>
+
+{#- ==================== Resultados ==================== -#}
+<section aria-labelledby="titulo-resultados">
+  <h2 id="titulo-resultados" class="titulo-seccion">Resultados</h2>
+
+  {% if listado.filas %}
+  <div class="tabla-envoltura">
+    <table class="tabla">
+      <caption class="visualmente-oculto">Registro de actividad del sistema</caption>
+      <thead>
+        <tr>
+          {{ l.th('fecha', 'Fecha y hora', listado) }}
+          {{ l.th('usuario_username', 'Usuario', listado) }}
+          {{ l.th('accion', 'Acción', listado) }}
+          {{ l.th('entidad', 'Entidad', listado) }}
+          <th scope="col">Detalle</th>
+          <th scope="col">IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in listado.filas %}
+        <tr>
+          <td data-etiqueta="Fecha y hora"><span class="mono">{{ a.fecha }}</span></td>
+          <td data-etiqueta="Usuario">
+            <span class="acciones-fila">
+              <span class="avatar" style="width:26px;height:26px;font-size:var(--t-2xs)" aria-hidden="true">
+                {{ a.usuario_username[0] | upper }}
+              </span>
+              <span class="mono">{{ a.usuario_username }}</span>
+            </span>
+          </td>
+          <td data-etiqueta="Acción">
+            <span class="insignia insignia--{{ 'activo' if a.accion == 'CREAR'
+                                               else ('vencido' if a.accion == 'ELIMINAR'
+                                               else ('prestado' if a.accion in ('DEVOLVER', 'CANCELAR')
+                                               else 'neutro')) }}">
+              {{ etiquetas_accion.get(a.accion, a.accion) }}
+            </span>
+          </td>
+          <td data-etiqueta="Entidad">
+            {{ etiquetas_entidad.get(a.entidad, a.entidad) }}
+            {% if a.entidad_id %}<span class="dato-secundario mono">#{{ a.entidad_id }}</span>{% endif %}
+          </td>
+          <td data-etiqueta="Detalle">{{ a.descripcion }}</td>
+          <td data-etiqueta="IP"><span class="dato-secundario mono">{{ a.direccion_ip or '—' }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {{ l.paginacion(listado) }}
+  {% else %}
+  {{ l.vacio(listado,
+             'Todavía no hay actividad registrada',
+             'Cada alta, modificación, baja, préstamo y devolución aparecerá aquí con su autor y su fecha.',
+             'auditoria') }}
+  {% endif %}
+</section>
+{% endblock %}

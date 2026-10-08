@@ -1,18 +1,29 @@
 """Rutas web de las operaciones de negocio de TechLoan.
 
-- Reservas de laboratorios (duración estándar de 70 min o personalizada,
-  con rechazo de solapamientos).
-- Préstamos individuales de equipos (el equipo pasa a PRESTADO).
-- Devoluciones (el equipo vuelve a DISPONIBLE).
-- Historial unificado con filtros.
+- Reservas de laboratorios (duración estándar de 70 min o personalizada, con
+  rechazo de solapamientos y **sugerencia inteligente de horarios alternativos**).
+- Comprobante imprimible de una reserva.
+- Préstamos individuales de equipos (el equipo pasa a PRESTADO) y devoluciones
+  (el equipo vuelve a DISPONIBLE), con detección de préstamos vencidos.
+- Historial unificado con filtros y exportación.
 
 Todas las reglas de negocio permanecen en los servicios; estas rutas solo
 traducen formularios a llamadas de servicio y errores a mensajes amigables.
 """
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, jsonify, redirect, render_template, request, url_for
 
-from app.routes.web_common import form_fields, parse_int, permission_required, web_bp
+from app.config import DIAS_PRESTAMO_LIMITE
+from app.routes.web_common import (
+    exportar_csv,
+    form_fields,
+    parse_int,
+    permission_required,
+    preparar_listado,
+    registrar_accion,
+    web_bp,
+)
+from app.security.permissions import current_user
 from app.services.disponibilidad_service import DisponibilidadService
 from app.services.equipo_service import EquipoService
 from app.services.historial_service import HistorialService
@@ -28,6 +39,32 @@ ESTADOS_HISTORIAL = (
     "CANCELADA", "DEVUELTO", "ACTIVO",
 )
 
+COLUMNAS_RESERVA = (
+    ("fecha", "Fecha"),
+    ("hora_inicio", "Hora de inicio"),
+    ("hora_fin", "Hora de fin"),
+    ("duracion_minutos", "Duración (min)"),
+    ("laboratorio_codigo", "Laboratorio"),
+    ("laboratorio_nombre", "Nombre del laboratorio"),
+    ("cedula", "Cédula del prestatario"),
+    ("prestatario_nombre", "Nombre del prestatario"),
+    ("prestatario_apellido", "Apellido del prestatario"),
+    ("estado", "Estado"),
+    ("observaciones", "Observaciones"),
+)
+
+COLUMNAS_PRESTAMO = (
+    ("id", "Nº de préstamo"),
+    ("equipo_codigo", "Equipo"),
+    ("prestatario_nombre", "Prestatario"),
+    ("prestatario_apellido", "Apellido"),
+    ("fecha_prestamo", "Fecha del préstamo"),
+    ("fecha_devolucion", "Fecha de devolución"),
+    ("dias_prestado", "Días prestado"),
+    ("estado", "Estado"),
+    ("observaciones", "Observaciones"),
+)
+
 
 # ===========================================================================
 # RESERVAS
@@ -35,7 +72,24 @@ ESTADOS_HISTORIAL = (
 @web_bp.get("/reservas")
 @permission_required("reservas.read")
 def reservas():
-    return render_template("reservas/index.html", reservas=ReservationService.list_all())
+    listado = preparar_listado(
+        ReservationService.list_all(),
+        columnas_ordenables=("fecha", "hora_inicio", "laboratorio_codigo",
+                             "prestatario_apellido", "estado", "duracion_minutos"),
+    )
+    return render_template("reservas/index.html", listado=listado, columnas=COLUMNAS_RESERVA)
+
+
+@web_bp.get("/reservas/exportar")
+@permission_required("reservas.read")
+def reservas_exportar():
+    registrar_accion("EXPORTAR", "listado", None, "Exportación del listado de reservas")
+    registros = ReservationService.list_all()
+    return exportar_csv(
+        "techloan-reservas",
+        [etiqueta for _, etiqueta in COLUMNAS_RESERVA],
+        [tuple(registro.get(clave) for clave, _ in COLUMNAS_RESERVA) for registro in registros],
+    )
 
 
 def _contexto_reserva(registro=None):
@@ -50,9 +104,7 @@ def _contexto_reserva(registro=None):
     for lab in laboratorios:
         lab["etiqueta"] = f"{lab['codigo']} — {lab['nombre']}"
 
-    prestatarios = [
-        p for p in PrestatarioService.list_all() if p["estado"] == "ACTIVO"
-    ]
+    prestatarios = [p for p in PrestatarioService.list_all() if p["estado"] == "ACTIVO"]
     for prestatario in prestatarios:
         prestatario["etiqueta"] = (
             f"{prestatario['cedula']} — {prestatario['nombre']} {prestatario['apellido']}"
@@ -68,14 +120,13 @@ def _contexto_reserva(registro=None):
         # Fecha mínima admitida: no se permiten reservas en el pasado.
         "hoy": datetime.now().strftime("%Y-%m-%d"),
         "duracion_estandar": 70,
+        "url_disponibilidad": url_for("web.disponibilidad_json"),
     }
 
 
 @web_bp.route("/reservas/crear", methods=["GET", "POST"])
 @permission_required("reservas.write")
 def reserva_crear():
-    from app.security.permissions import current_user
-
     if request.method == "POST":
         data = form_fields(
             "laboratorio_id", "prestatario_id", "fecha", "hora_inicio",
@@ -87,6 +138,7 @@ def reserva_crear():
         duracion = parse_int(data.get("duracion_minutos"))
 
         error = None
+        sugerencias = []
         if laboratorio_id is None:
             error = "Debes seleccionar un laboratorio."
         elif prestatario_id is None:
@@ -98,7 +150,7 @@ def reserva_crear():
             try:
                 # El usuario que registra la reserva se toma SIEMPRE de la sesión,
                 # nunca de un campo enviado por el navegador.
-                ReservationService.create_reservation(
+                nuevo_id = ReservationService.create_reservation(
                     laboratorio_id,
                     prestatario_id,
                     current_user()["id"],
@@ -109,22 +161,57 @@ def reserva_crear():
                 )
             except ValueError as exc:
                 error = str(exc)
+                # Si el problema es un choque de horario, se calculan alternativas
+                # reales en lugar de dejar al usuario sin salida.
+                if "superpone" in error.lower():
+                    sugerencias = ReservationService.sugerir_horarios(
+                        laboratorio_id, data["fecha"], duracion, data["hora_inicio"]
+                    )
+            else:
+                registrar_accion(
+                    "CREAR", "reserva", nuevo_id,
+                    f"Reserva de {data['fecha']} {data['hora_inicio']} "
+                    f"({duracion} min) en el laboratorio #{laboratorio_id}",
+                )
+                flash("Reserva registrada correctamente.", "success")
+                return redirect(url_for("web.reservas"))
 
-        if error:
-            flash(error, "error")
-            return render_template("reservas/form.html", **_contexto_reserva(data)), 400
+        flash(error, "error")
+        return (
+            render_template(
+                "reservas/form.html",
+                sugerencias=sugerencias,
+                **_contexto_reserva(data),
+            ),
+            400,
+        )
 
-        flash("Reserva registrada correctamente.", "success")
+    return render_template("reservas/form.html", sugerencias=[], **_contexto_reserva())
+
+
+@web_bp.get("/reservas/<int:id_>/comprobante")
+@permission_required("reservas.read")
+def reserva_comprobante(id_):
+    """Comprobante imprimible de una reserva."""
+    reserva = ReservationService.get(id_)
+    if not reserva:
+        flash("La reserva indicada no existe.", "error")
         return redirect(url_for("web.reservas"))
-
-    return render_template("reservas/form.html", **_contexto_reserva())
+    return render_template("reservas/comprobante.html", reserva=reserva)
 
 
 @web_bp.post("/reservas/<int:id_>/cancelar")
 @permission_required("reservas.write")
 def reserva_cancelar(id_):
+    reserva = ReservationService.get(id_)
     try:
         ReservationService.cancel(id_)
+        if reserva:
+            registrar_accion(
+                "CANCELAR", "reserva", id_,
+                f"Cancelación de la reserva del {reserva['fecha']} "
+                f"{reserva['hora_inicio']} en {reserva['laboratorio_codigo']}",
+            )
         flash("Reserva cancelada correctamente.", "success")
     except ValueError as exc:
         flash(str(exc), "error")
@@ -134,26 +221,43 @@ def reserva_cancelar(id_):
 @web_bp.get("/reservas/disponibilidad")
 @permission_required("reservas.read")
 def disponibilidad_json():
-    """Endpoint JSON consumido con ``fetch()`` para avisar de solapamientos.
+    """Disponibilidad del día en JSON: la consume el formulario con ``fetch()``.
 
-    Se apoya en el servicio de disponibilidad existente, de modo que la
-    comprobación del navegador y la del servidor usan exactamente la misma
-    regla de negocio.
+    Devuelve la ocupación completa de la jornada (para dibujar la línea de
+    tiempo), si la franja consultada está libre y, cuando no lo está, las
+    alternativas más cercanas. Se apoya en los mismos servicios que la
+    validación del servidor, de modo que navegador y servidor nunca discrepan.
     """
-    from flask import jsonify
-
     laboratorio_id = parse_int(request.args.get("laboratorio_id"))
     fecha = (request.args.get("fecha") or "").strip()
     hora_inicio = (request.args.get("hora_inicio") or "").strip()
     hora_fin = (request.args.get("hora_fin") or "").strip()
+    duracion = parse_int(request.args.get("duracion"))
 
-    if laboratorio_id is None or not fecha or not hora_inicio or not hora_fin:
+    if laboratorio_id is None or not fecha:
         return jsonify({"ok": False, "error": "Parámetros incompletos."}), 400
 
-    disponible, mensaje = DisponibilidadService.laboratorio(
-        laboratorio_id, fecha, hora_inicio, hora_fin
-    )
-    return jsonify({"ok": True, "disponible": disponible, "mensaje": mensaje})
+    datos = {
+        "ok": True,
+        "ocupacion": ReservationService.ocupacion_del_dia(laboratorio_id, fecha),
+    }
+
+    if hora_inicio and hora_fin:
+        disponible, mensaje = DisponibilidadService.laboratorio(
+            laboratorio_id, fecha, hora_inicio, hora_fin
+        )
+        datos["disponible"] = disponible
+        datos["mensaje"] = mensaje
+        if not disponible and duracion:
+            datos["sugerencias"] = ReservationService.sugerir_horarios(
+                laboratorio_id, fecha, duracion, hora_inicio
+            )
+    elif duracion:
+        datos["sugerencias"] = ReservationService.sugerir_horarios(
+            laboratorio_id, fecha, duracion, hora_inicio or None
+        )
+
+    return jsonify(datos)
 
 
 # ===========================================================================
@@ -162,10 +266,46 @@ def disponibilidad_json():
 @web_bp.get("/prestamos")
 @permission_required("prestamos.read")
 def prestamos():
+    activos = PrestamoEquipoService.list_active()
+    for prestamo in activos:
+        prestamo["vencido"] = (prestamo.get("dias_prestado") or 0) > DIAS_PRESTAMO_LIMITE
+
+    todos = PrestamoEquipoService.list_all()
+    for prestamo in todos:
+        prestamo["vencido"] = (
+            prestamo["estado"] == "ACTIVO"
+            and (prestamo.get("dias_prestado") or 0) > DIAS_PRESTAMO_LIMITE
+        )
+
+    solo_vencidos = (request.args.get("filtro") or "") == "vencidos"
+    if solo_vencidos:
+        activos = [p for p in activos if p["vencido"]]
+
+    listado = preparar_listado(
+        todos,
+        columnas_ordenables=("id", "equipo_codigo", "prestatario_apellido",
+                             "fecha_prestamo", "estado", "dias_prestado"),
+    )
+
     return render_template(
         "prestamos/index.html",
-        prestamos=PrestamoEquipoService.list_all(),
-        activos=PrestamoEquipoService.list_active(),
+        activos=activos,
+        listado=listado,
+        columnas=COLUMNAS_PRESTAMO,
+        dias_limite=DIAS_PRESTAMO_LIMITE,
+        solo_vencidos=solo_vencidos,
+    )
+
+
+@web_bp.get("/prestamos/exportar")
+@permission_required("prestamos.read")
+def prestamos_exportar():
+    registrar_accion("EXPORTAR", "listado", None, "Exportación del listado de préstamos")
+    registros = PrestamoEquipoService.list_all()
+    return exportar_csv(
+        "techloan-prestamos",
+        [etiqueta for _, etiqueta in COLUMNAS_PRESTAMO],
+        [tuple(registro.get(clave) for clave, _ in COLUMNAS_PRESTAMO) for registro in registros],
     )
 
 
@@ -190,8 +330,6 @@ def _contexto_prestamo(registro=None):
 @web_bp.route("/prestamos/crear", methods=["GET", "POST"])
 @permission_required("prestamos.write")
 def prestamo_crear():
-    from app.security.permissions import current_user
-
     if request.method == "POST":
         data = form_fields(
             "equipo_id", "prestatario_id", "observaciones",
@@ -208,7 +346,7 @@ def prestamo_crear():
 
         if error is None:
             try:
-                PrestamoEquipoService.create(
+                nuevo_id = PrestamoEquipoService.create(
                     equipo_id,
                     prestatario_id,
                     current_user()["id"],
@@ -216,13 +354,18 @@ def prestamo_crear():
                 )
             except ValueError as exc:
                 error = str(exc)
+            else:
+                equipo = EquipoService.get(equipo_id) or {}
+                registrar_accion(
+                    "CREAR", "prestamo", nuevo_id,
+                    f"Préstamo del equipo {equipo.get('codigo', equipo_id)} "
+                    f"({equipo.get('nombre', '')})",
+                )
+                flash("Préstamo registrado. El equipo figura ahora como PRESTADO.", "success")
+                return redirect(url_for("web.prestamos"))
 
-        if error:
-            flash(error, "error")
-            return render_template("prestamos/form.html", **_contexto_prestamo(data)), 400
-
-        flash("Préstamo registrado. El equipo figura ahora como PRESTADO.", "success")
-        return redirect(url_for("web.prestamos"))
+        flash(error, "error")
+        return render_template("prestamos/form.html", **_contexto_prestamo(data)), 400
 
     return render_template("prestamos/form.html", **_contexto_prestamo())
 
@@ -231,8 +374,15 @@ def prestamo_crear():
 @permission_required("prestamos.return")
 def prestamo_devolver(id_):
     observaciones = (request.form.get("observaciones") or "").strip()
+    prestamo = PrestamoEquipoService.get(id_)
     try:
         PrestamoEquipoService.return_equipment(id_, observaciones)
+        if prestamo:
+            registrar_accion(
+                "DEVOLVER", "prestamo", id_,
+                f"Devolución del equipo {prestamo['equipo_codigo']} "
+                f"({prestamo['equipo_nombre']})",
+            )
         flash("Devolución registrada. El equipo vuelve a estar DISPONIBLE.", "success")
     except ValueError as exc:
         flash(str(exc), "error")
@@ -242,10 +392,8 @@ def prestamo_devolver(id_):
 # ===========================================================================
 # HISTORIAL
 # ===========================================================================
-@web_bp.get("/historial")
-@permission_required("historial.read")
-def historial():
-    filtros = {
+def _filtros_historial():
+    return {
         "tipo": (request.args.get("tipo") or "TODOS").upper(),
         "estado": (request.args.get("estado") or "TODOS").upper(),
         "recurso": (request.args.get("recurso") or "").strip(),
@@ -254,20 +402,23 @@ def historial():
         "fecha_hasta": (request.args.get("fecha_hasta") or "").strip(),
     }
 
-    error = None
+
+@web_bp.get("/historial")
+@permission_required("historial.read")
+def historial():
+    filtros = _filtros_historial()
+
     registros = []
     try:
-        registros = HistorialService.list_all(
-            tipo=filtros["tipo"],
-            prestatario_id=filtros["prestatario_id"],
-            recurso=filtros["recurso"],
-            estado=filtros["estado"],
-            fecha_desde=filtros["fecha_desde"],
-            fecha_hasta=filtros["fecha_hasta"],
-        )
+        registros = HistorialService.list_all(**filtros)
     except ValueError as exc:
-        error = str(exc)
-        flash(error, "error")
+        flash(str(exc), "error")
+
+    listado = preparar_listado(
+        registros,
+        columnas_ordenables=("fecha_operacion", "tipo", "estado", "prestatario", "recurso_codigo"),
+        por_pagina_por_defecto=15,
+    )
 
     prestatarios = PrestatarioService.list_all()
     for prestatario in prestatarios:
@@ -277,10 +428,29 @@ def historial():
 
     return render_template(
         "historial/index.html",
-        registros=registros,
+        listado=listado,
         filtros=filtros,
         tipos=TIPOS_HISTORIAL,
         estados=ESTADOS_HISTORIAL,
         prestatarios=prestatarios,
-        error=error,
+    )
+
+
+@web_bp.get("/historial/exportar")
+@permission_required("historial.read")
+def historial_exportar():
+    try:
+        registros = HistorialService.list_all(**_filtros_historial())
+    except ValueError:
+        registros = []
+    registrar_accion("EXPORTAR", "listado", None, "Exportación del historial de operaciones")
+    return exportar_csv(
+        "techloan-historial",
+        ["Tipo", "Fecha y hora", "Prestatario", "Cédula", "Recurso", "Nombre del recurso",
+         "Estado", "Registrado por", "Observaciones"],
+        [
+            (r["tipo"], r["fecha_operacion"], r["prestatario"], r["prestatario_cedula"],
+             r["recurso_codigo"], r["recurso_nombre"], r["estado"], r["usuario"], r["observaciones"])
+            for r in registros
+        ],
     )

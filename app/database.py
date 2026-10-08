@@ -113,5 +113,25 @@ def init_database():
                 FOREIGN KEY (prestatario_id) REFERENCES prestatarios(id),
                 FOREIGN KEY (usuario_sistema_id) REFERENCES usuarios_sistema(id)
             );
+
+            -- Registro de actividad. ``usuario_id`` no lleva clave foránea a
+            -- propósito: la auditoría debe sobrevivir a la baja del usuario.
+            CREATE TABLE IF NOT EXISTS auditoria (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario_id INTEGER,
+                usuario_username TEXT NOT NULL,
+                accion TEXT NOT NULL
+                    CHECK (accion IN ('CREAR', 'ACTUALIZAR', 'ELIMINAR', 'DEVOLVER',
+                                      'CANCELAR', 'ACCEDER', 'SALIR', 'EXPORTAR')),
+                entidad TEXT NOT NULL,
+                entidad_id INTEGER,
+                descripcion TEXT NOT NULL,
+                direccion_ip TEXT,
+                fecha TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_auditoria_fecha ON auditoria (fecha);
+            CREATE INDEX IF NOT EXISTS idx_auditoria_entidad ON auditoria (entidad, entidad_id);
+            CREATE INDEX IF NOT EXISTS idx_auditoria_usuario ON auditoria (usuario_id);
             """
         )

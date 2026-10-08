@@ -1,151 +1,278 @@
-{% extends "base.html" %}
-{% block titulo %}Panel de inicio{% endblock %}
+{% extends "base_app.html" %}
+{% import "parciales/iconos.html" as ic %}
+{% block titulo %}Inicio{% endblock %}
 
 {% block contenido %}
 <section class="encabezado">
   <div>
-    <h1>Panel de inicio</h1>
+    <h1>Hola, {{ usuario_actual.nombre }}</h1>
     <p class="encabezado__subtitulo">
-      Resumen general de la gestión de reservas y préstamos de recursos tecnológicos.
+      Este es el estado de TechLoan ahora mismo.
+      {% if alertas.total %}Hay <strong>{{ alertas.total }}</strong> aviso(s) que requieren tu atención.
+      {% else %}Todo está en orden.{% endif %}
     </p>
   </div>
   <div class="encabezado__acciones">
     {% if puede('reservas.write') %}
-    <a class="boton boton--primario" href="{{ url_for('web.reserva_crear') }}">+ Nueva reserva</a>
+    <a class="boton boton--marca" href="{{ url_for('web.reserva_crear') }}">
+      {{ ic.icono('mas') }} Nueva reserva
+    </a>
     {% endif %}
     {% if puede('prestamos.write') %}
-    <a class="boton boton--secundario" href="{{ url_for('web.prestamo_crear') }}">+ Nuevo préstamo</a>
+    <a class="boton boton--secundario" href="{{ url_for('web.prestamo_crear') }}">
+      {{ ic.icono('prestamos') }} Nuevo préstamo
+    </a>
     {% endif %}
   </div>
 </section>
 
+{#- ==================== Indicadores ==================== -#}
 <section aria-labelledby="titulo-indicadores">
   <h2 id="titulo-indicadores" class="titulo-seccion">Indicadores</h2>
   <div class="tarjetas-tablero">
     <article class="tarjeta-dato">
-      <p class="tarjeta-dato__valor">{{ stats.prestatarios }}</p>
+      <div class="tarjeta-dato__cabecera">
+        <span class="tarjeta-dato__icono">{{ ic.icono('prestatarios') }}</span>
+        {% if stats.prestatarios_activos == stats.prestatarios %}
+        <span class="tendencia tendencia--igual">Todos activos</span>
+        {% else %}
+        <span class="tendencia tendencia--igual">{{ stats.prestatarios_activos }} activos</span>
+        {% endif %}
+      </div>
+      <p class="tarjeta-dato__valor" data-contador="{{ stats.prestatarios }}">0</p>
       <p class="tarjeta-dato__etiqueta">Prestatarios</p>
-      <p class="tarjeta-dato__detalle">{{ stats.prestatarios_activos }} activos</p>
+      <p class="tarjeta-dato__detalle">Personas que reciben recursos</p>
     </article>
+
     <article class="tarjeta-dato">
-      <p class="tarjeta-dato__valor">{{ stats.laboratorios }}</p>
-      <p class="tarjeta-dato__etiqueta">Laboratorios</p>
-      <p class="tarjeta-dato__detalle">{{ stats.laboratorios_disponibles }} disponibles</p>
-    </article>
-    <article class="tarjeta-dato">
-      <p class="tarjeta-dato__valor">{{ stats.equipos }}</p>
-      <p class="tarjeta-dato__etiqueta">Equipos</p>
-      <p class="tarjeta-dato__detalle">
-        {{ stats.equipos_disponibles }} disponibles · {{ stats.equipos_prestados }} prestados
-      </p>
-    </article>
-    <article class="tarjeta-dato">
-      <p class="tarjeta-dato__valor">{{ stats.reservas_confirmadas }}</p>
+      <div class="tarjeta-dato__cabecera">
+        <span class="tarjeta-dato__icono">{{ ic.icono('reservas') }}</span>
+        {% set v = tendencias.reservas %}
+        <span class="tendencia {{ 'tendencia--sube' if v > 0 else ('tendencia--baja' if v < 0 else 'tendencia--igual') }}">
+          {% if v > 0 %}{{ ic.icono('subir', tamano=12) }}{% elif v < 0 %}{{ ic.icono('bajar', tamano=12) }}{% endif %}
+          {{ v }}% vs. semana previa
+        </span>
+      </div>
+      <p class="tarjeta-dato__valor" data-contador="{{ stats.reservas_confirmadas }}">0</p>
       <p class="tarjeta-dato__etiqueta">Reservas vigentes</p>
       <p class="tarjeta-dato__detalle">{{ stats.reservas }} en total</p>
     </article>
+
     <article class="tarjeta-dato">
-      <p class="tarjeta-dato__valor">{{ stats.prestamos_activos }}</p>
+      <div class="tarjeta-dato__cabecera">
+        <span class="tarjeta-dato__icono">{{ ic.icono('prestamos') }}</span>
+        {% set p = tendencias.prestamos %}
+        <span class="tendencia {{ 'tendencia--sube' if p > 0 else ('tendencia--baja' if p < 0 else 'tendencia--igual') }}">
+          {% if p > 0 %}{{ ic.icono('subir', tamano=12) }}{% elif p < 0 %}{{ ic.icono('bajar', tamano=12) }}{% endif %}
+          {{ p }}% vs. semana previa
+        </span>
+      </div>
+      <p class="tarjeta-dato__valor" data-contador="{{ stats.prestamos_activos }}">0</p>
       <p class="tarjeta-dato__etiqueta">Préstamos activos</p>
       <p class="tarjeta-dato__detalle">Equipos sin devolver</p>
     </article>
+
     <article class="tarjeta-dato">
-      <p class="tarjeta-dato__valor">{{ stats.categorias }}</p>
-      <p class="tarjeta-dato__etiqueta">Categorías</p>
+      <div class="tarjeta-dato__cabecera">
+        <span class="tarjeta-dato__icono">{{ ic.icono('equipos') }}</span>
+        <span class="tendencia tendencia--igual">{{ stats.equipos_prestados }} prestados</span>
+      </div>
+      <p class="tarjeta-dato__valor" data-contador="{{ stats.equipos_disponibles }}">0</p>
+      <p class="tarjeta-dato__etiqueta">Equipos disponibles</p>
+      <p class="tarjeta-dato__detalle">de {{ stats.equipos }} en inventario</p>
+    </article>
+
+    <article class="tarjeta-dato">
+      <div class="tarjeta-dato__cabecera">
+        <span class="tarjeta-dato__icono">{{ ic.icono('laboratorios') }}</span>
+        <span class="tendencia tendencia--igual">{{ stats.laboratorios_disponibles }} disponibles</span>
+      </div>
+      <p class="tarjeta-dato__valor" data-contador="{{ stats.laboratorios }}">0</p>
+      <p class="tarjeta-dato__etiqueta">Laboratorios</p>
+      <p class="tarjeta-dato__detalle">Espacios reservables</p>
+    </article>
+
+    <article class="tarjeta-dato">
+      <div class="tarjeta-dato__cabecera">
+        <span class="tarjeta-dato__icono">{{ ic.icono('auditoria') }}</span>
+        <span class="tendencia tendencia--igual">Trazabilidad</span>
+      </div>
+      <p class="tarjeta-dato__valor" data-contador="{{ stats.auditoria }}">0</p>
+      <p class="tarjeta-dato__etiqueta">Acciones registradas</p>
       <p class="tarjeta-dato__detalle">{{ stats.usuarios }} usuarios del sistema</p>
     </article>
   </div>
 </section>
 
+{#- ==================== Avisos ==================== -#}
+{% if vencidos %}
+<section aria-labelledby="titulo-avisos" style="margin-bottom:var(--e-6)">
+  <h2 id="titulo-avisos" class="titulo-seccion">Requiere atención</h2>
+  <div class="panel">
+    <ul class="lista-avisos">
+      {% for v in vencidos %}
+      <li class="aviso-fila">
+        <span class="aviso-fila__icono">{{ ic.icono('alerta', tamano=20) }}</span>
+        <span class="aviso-fila__texto">
+          <b>{{ v.equipo_codigo }} · {{ v.equipo_nombre }}</b>
+          En poder de {{ v.prestatario }} desde el {{ v.fecha_prestamo }}
+        </span>
+        <span class="aviso-fila__dias">{{ v.dias }} días</span>
+        {% if puede('prestamos.return') %}
+        <form method="post" class="formulario-eliminar"
+              action="{{ url_for('web.prestamo_devolver', id_=v.id) }}"
+              data-confirmar="¿Confirmar la devolución del equipo {{ v.equipo_codigo }} — {{ v.equipo_nombre }}?">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="boton boton--exito boton--pequeno">
+            {{ ic.icono('devolver') }} Devolver
+          </button>
+        </form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endif %}
+
+{#- ==================== Gráficos ==================== -#}
+<section aria-labelledby="titulo-analisis" style="margin-bottom:var(--e-6)">
+  <h2 id="titulo-analisis" class="titulo-seccion">Análisis</h2>
+
+  <div class="panel">
+    <div class="panel__cabecera">
+      <h3>Reservas por día</h3>
+      <span class="dato-secundario">Desde 3 días atrás hasta 11 días adelante</span>
+    </div>
+    <div class="grafico-contenedor" data-grafico="barras"
+         data-datos='{{ graficos.serie_reservas | tojson }}'
+         aria-label="Reservas confirmadas por día"></div>
+  </div>
+
+  <div class="rejilla-doble">
+    <div class="panel">
+      <div class="panel__cabecera">
+        <h3>Inventario por estado</h3>
+      </div>
+      <div class="grafico-contenedor" data-grafico="anillo"
+           data-datos='{{ graficos.serie_equipos | tojson }}'
+           aria-label="Distribución de equipos por estado"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel__cabecera">
+        <h3>Ocupación por laboratorio</h3>
+        <span class="dato-secundario">Próximos 7 días</span>
+      </div>
+      <div class="grafico-contenedor" data-grafico="barras-horizontales"
+           data-datos='{{ graficos.serie_laboratorios | tojson }}'
+           aria-label="Reservas por laboratorio en los próximos 7 días"></div>
+    </div>
+  </div>
+</section>
+
+{#- ==================== Agenda y actividad ==================== -#}
 <div class="rejilla-doble">
   <section aria-labelledby="titulo-reservas">
     <h2 id="titulo-reservas" class="titulo-seccion">Próximas reservas</h2>
-    {% if reservas_proximas %}
-    <div class="tabla-envoltura">
-      <table class="tabla">
-        <caption class="visualmente-oculto">Próximas reservas confirmadas</caption>
-        <thead>
-          <tr>
-            <th scope="col">Fecha</th>
-            <th scope="col">Horario</th>
-            <th scope="col">Laboratorio</th>
-            <th scope="col">Prestatario</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in reservas_proximas %}
-          <tr>
-            <td data-etiqueta="Fecha">{{ r.fecha }}</td>
-            <td data-etiqueta="Horario">{{ r.hora_inicio }} – {{ r.hora_fin }}</td>
-            <td data-etiqueta="Laboratorio">{{ r.laboratorio_codigo }} · {{ r.laboratorio_nombre }}</td>
-            <td data-etiqueta="Prestatario">{{ r.prestatario }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="panel" style="padding:0;overflow:hidden">
+      {% if reservas_proximas %}
+      <div class="tabla-envoltura" style="margin:0;border:0;box-shadow:none">
+        <table class="tabla">
+          <caption class="visualmente-oculto">Próximas reservas confirmadas</caption>
+          <thead>
+            <tr>
+              <th scope="col">Fecha</th>
+              <th scope="col">Horario</th>
+              <th scope="col">Laboratorio</th>
+              <th scope="col">Prestatario</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in reservas_proximas %}
+            <tr>
+              <td data-etiqueta="Fecha">{{ r.fecha }}</td>
+              <td data-etiqueta="Horario"><span class="mono">{{ r.hora_inicio }} – {{ r.hora_fin }}</span></td>
+              <td data-etiqueta="Laboratorio">{{ r.laboratorio_codigo }}</td>
+              <td data-etiqueta="Prestatario">{{ r.prestatario }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="vacio" style="border:0;background:transparent">No hay reservas confirmadas a partir de hoy.</p>
+      {% endif %}
     </div>
-    {% else %}
-    <p class="vacio">No hay reservas confirmadas a partir de hoy.</p>
-    {% endif %}
   </section>
 
-  <section aria-labelledby="titulo-prestamos">
-    <h2 id="titulo-prestamos" class="titulo-seccion">Préstamos activos</h2>
-    {% if prestamos_activos %}
-    <div class="tabla-envoltura">
-      <table class="tabla">
-        <caption class="visualmente-oculto">Equipos actualmente prestados</caption>
-        <thead>
-          <tr>
-            <th scope="col">Equipo</th>
-            <th scope="col">Prestatario</th>
-            <th scope="col">Desde</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in prestamos_activos %}
-          <tr>
-            <td data-etiqueta="Equipo">{{ p.equipo_codigo }} · {{ p.equipo_nombre }}</td>
-            <td data-etiqueta="Prestatario">{{ p.prestatario }}</td>
-            <td data-etiqueta="Desde">{{ p.fecha_prestamo }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+  <section aria-labelledby="titulo-actividad">
+    <h2 id="titulo-actividad" class="titulo-seccion">Actividad reciente</h2>
+    <div class="panel">
+      {% if actividad %}
+      <ul class="actividad">
+        {% for a in actividad %}
+        <li class="actividad__item">
+          <span class="actividad__punto">
+            {%- if a.accion == 'CREAR' %}{{ ic.icono('mas') }}
+            {%- elif a.accion == 'ELIMINAR' %}{{ ic.icono('eliminar') }}
+            {%- elif a.accion == 'DEVOLVER' %}{{ ic.icono('devolver') }}
+            {%- elif a.accion == 'ACTUALIZAR' %}{{ ic.icono('editar') }}
+            {%- elif a.accion == 'ACCEDER' %}{{ ic.icono('llave') }}
+            {%- elif a.accion == 'EXPORTAR' %}{{ ic.icono('descargar') }}
+            {%- else %}{{ ic.icono('historial') }}{% endif -%}
+          </span>
+          <span class="actividad__cuerpo">
+            <p>{{ a.descripcion }}</p>
+            <span>{{ a.usuario_username }} · {{ a.fecha }}</span>
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="vacio" style="border:0;background:transparent">Todavía no hay actividad registrada.</p>
+      {% endif %}
+      {% if puede('auditoria.read') %}
+      <p style="margin:var(--e-4) 0 0">
+        <a href="{{ url_for('web.auditoria') }}">Ver el registro completo →</a>
+      </p>
+      {% endif %}
     </div>
-    {% else %}
-    <p class="vacio">No hay préstamos activos en este momento.</p>
-    {% endif %}
   </section>
 </div>
 
+{#- ==================== Accesos rápidos ==================== -#}
 <section aria-labelledby="titulo-accesos">
   <h2 id="titulo-accesos" class="titulo-seccion">Accesos rápidos</h2>
   <div class="accesos">
     {% if puede('prestatarios.read') %}
     <a class="acceso" href="{{ url_for('web.prestatarios') }}">
-      <span class="acceso__titulo">Prestatarios</span>
+      <span class="acceso__titulo">{{ ic.icono('prestatarios') }} Prestatarios</span>
       <span class="acceso__texto">Personas que reciben reservas y préstamos</span>
     </a>
     {% endif %}
     {% if puede('laboratorios.read') %}
     <a class="acceso" href="{{ url_for('web.laboratorios') }}">
-      <span class="acceso__titulo">Laboratorios</span>
+      <span class="acceso__titulo">{{ ic.icono('laboratorios') }} Laboratorios</span>
       <span class="acceso__texto">Espacios reservables y su duración estándar</span>
     </a>
     {% endif %}
     {% if puede('equipos.read') %}
     <a class="acceso" href="{{ url_for('web.equipos') }}">
-      <span class="acceso__titulo">Equipos</span>
+      <span class="acceso__titulo">{{ ic.icono('equipos') }} Equipos</span>
       <span class="acceso__texto">Inventario de recursos prestables</span>
     </a>
     {% endif %}
     {% if puede('historial.read') %}
     <a class="acceso" href="{{ url_for('web.historial') }}">
-      <span class="acceso__titulo">Historial</span>
+      <span class="acceso__titulo">{{ ic.icono('historial') }} Historial</span>
       <span class="acceso__texto">Reservas, préstamos y devoluciones con filtros</span>
     </a>
     {% endif %}
   </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/graficos.js') }}" defer></script>
 {% endblock %}

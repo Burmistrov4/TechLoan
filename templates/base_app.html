@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% import "parciales/iconos.html" as ic %}
+
+{#
+  Shell de la aplicación autenticada: barra lateral fija, barra superior con
+  búsqueda global, conmutador de tema, alertas y menú de usuario, más la paleta
+  de comandos (Ctrl+K).
+
+  Las vistas del dominio extienden esta plantilla y sobrescriben
+  ``{% block titulo %}`` y ``{% block contenido %}``.
+#}
+
+{% block cuerpo %}
+<a class="saltar-contenido" href="#contenido">Saltar al contenido principal</a>
+
+<div class="app">
+  {#- ================= Barra lateral ================= -#}
+  <aside class="lateral" id="lateral" aria-label="Navegación principal">
+    <a class="lateral__marca" href="{{ url_for('web.dashboard') }}">
+      <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="34" height="34">
+      <span class="lateral__nombre">
+        <b>TechLoan</b>
+        <span>{{ 'Administración' if usuario_actual.rol == 'ADMINISTRADOR' else 'Operaciones' }}</span>
+      </span>
+    </a>
+
+    <nav class="lateral__nav">
+      <p class="lateral__grupo">General</p>
+      <a class="lateral__enlace {% if request.endpoint == 'web.dashboard' %}activo{% endif %}"
+         href="{{ url_for('web.dashboard') }}">{{ ic.icono('inicio') }} Inicio</a>
+      {% if puede('historial.read') %}
+      <a class="lateral__enlace {% if request.endpoint == 'web.historial' %}activo{% endif %}"
+         href="{{ url_for('web.historial') }}">{{ ic.icono('historial') }} Historial</a>
+      {% endif %}
+
+      {% if puede('reservas.read') or puede('prestamos.read') %}
+      <p class="lateral__grupo">Operación</p>
+      {% endif %}
+      {% if puede('reservas.read') %}
+      <a class="lateral__enlace {% if request.endpoint and request.endpoint.startswith('web.reserva') %}activo{% endif %}"
+         href="{{ url_for('web.reservas') }}">
+        {{ ic.icono('reservas') }} Reservas
+        {% if alertas.reservas_hoy %}<span class="lateral__contador">{{ alertas.reservas_hoy }}</span>{% endif %}
+      </a>
+      {% endif %}
+      {% if puede('prestamos.read') %}
+      <a class="lateral__enlace {% if request.endpoint and request.endpoint.startswith('web.prestamo') %}activo{% endif %}"
+         href="{{ url_for('web.prestamos') }}">
+        {{ ic.icono('prestamos') }} Préstamos
+        {% if alertas.prestamos_vencidos %}<span class="lateral__contador">{{ alertas.prestamos_vencidos }}</span>{% endif %}
+      </a>
+      {% endif %}
+
+      {% if puede('prestatarios.read') or puede('equipos.read') %}
+      <p class="lateral__grupo">Catálogo</p>
+      {% endif %}
+      {% if puede('prestatarios.read') %}
+      <a class="lateral__enlace {% if request.endpoint and request.endpoint.startswith('web.prestatario') %}activo{% endif %}"
+         href="{{ url_for('web.prestatarios') }}">{{ ic.icono('prestatarios') }} Prestatarios</a>
+      {% endif %}
+      {% if puede('equipos.read') %}
+      <a class="lateral__enlace {% if request.endpoint and request.endpoint.startswith('web.equipo') %}activo{% endif %}"
+         href="{{ url_for('web.equipos') }}">{{ ic.icono('equipos') }} Equipos</a>
+      {% endif %}
+      {% if puede('laboratorios.read') %}
+      <a class="lateral__enlace {% if request.endpoint and request.endpoint.startswith('web.laboratorio') %}activo{% endif %}"
+         href="{{ url_for('web.laboratorios') }}">{{ ic.icono('laboratorios') }} Laboratorios</a>
+      {% endif %}
+      {% if puede('categorias.read') %}
+      <a class="lateral__enlace {% if request.endpoint and request.endpoint.startswith('web.categoria') %}activo{% endif %}"
+         href="{{ url_for('web.categorias') }}">{{ ic.icono('categorias') }} Categorías</a>
+      {% endif %}
+
+      {% if puede('usuarios.read') or puede('auditoria.read') %}
+      <p class="lateral__grupo">Administración</p>
+      {% endif %}
+      {% if puede('usuarios.read') %}
+      <a class="lateral__enlace {% if request.endpoint and request.endpoint.startswith('web.usuario') %}activo{% endif %}"
+         href="{{ url_for('web.usuarios') }}">{{ ic.icono('usuarios') }} Usuarios</a>
+      {% endif %}
+      {% if puede('auditoria.read') %}
+      <a class="lateral__enlace {% if request.endpoint == 'web.auditoria' %}activo{% endif %}"
+         href="{{ url_for('web.auditoria') }}">{{ ic.icono('auditoria') }} Auditoría</a>
+      {% endif %}
+
+      <p class="lateral__grupo">Ayuda</p>
+      <a class="lateral__enlace {% if request.endpoint == 'web.ayuda' %}activo{% endif %}"
+         href="{{ url_for('web.ayuda') }}">{{ ic.icono('ayuda') }} Guía de uso</a>
+    </nav>
+
+    <div class="lateral__pie">
+      <a class="lateral__enlace" style="margin:0" href="{{ url_for('web.perfil') }}">
+        {{ ic.icono('perfil') }} Mi perfil
+      </a>
+    </div>
+  </aside>
+  <div class="lateral__velo" id="lateral-velo"></div>
+
+  {#- ================= Contenido ================= -#}
+  <div class="principal">
+    <header class="barra">
+      <button type="button" class="barra__hamburguesa" id="boton-lateral"
+              aria-label="Mostrar u ocultar el menú" aria-controls="lateral" aria-expanded="false">
+        {{ ic.icono('menu', tamano=20) }}
+      </button>
+
+      <nav class="barra__migas" aria-label="Ubicación">
+        <ol>
+          <li><a href="{{ url_for('web.dashboard') }}">TechLoan</a></li>
+          <li><strong>{{ self.titulo() }}</strong></li>
+        </ol>
+      </nav>
+
+      <div class="barra__acciones">
+        <button type="button" class="buscar-global" id="abrir-paleta">
+          {{ ic.icono('buscar') }}
+          <span>Buscar o ir a…</span>
+          <kbd>Ctrl</kbd><kbd>K</kbd>
+        </button>
+
+        <button type="button" class="boton-icono" id="boton-tema"
+                aria-label="Cambiar entre tema claro y oscuro" title="Cambiar tema">
+          {{ ic.icono('sol', clase='tema-icono tema-icono--sol', tamano=19) }}
+          {{ ic.icono('luna', clase='tema-icono tema-icono--luna', tamano=19) }}
+        </button>
+
+        <div class="usuario" id="contenedor-alertas">
+          <button type="button" class="boton-icono" id="boton-alertas"
+                  aria-label="Alertas" aria-haspopup="true" aria-expanded="false">
+            {{ ic.icono('campana', tamano=19) }}
+            {% if alertas.total %}<span class="boton-icono__punto"></span>{% endif %}
+          </button>
+          <div class="menu-emergente" id="menu-alertas" role="menu" style="min-width:308px">
+            <div class="menu-emergente__cabecera">
+              <b>Alertas</b>
+              <span>
+                {% if alertas.total %}{{ alertas.total }} aviso(s) que requieren atención
+                {% else %}Todo en orden{% endif %}
+              </span>
+            </div>
+            {% if alertas.prestamos_vencidos %}
+            <a class="menu-emergente__item" role="menuitem"
+               href="{{ url_for('web.prestamos') }}?filtro=vencidos">
+              {{ ic.icono('alerta') }}
+              <span>{{ alertas.prestamos_vencidos }} préstamo(s) con más de
+                {{ alertas.dias_limite }} días sin devolver</span>
+            </a>
+            {% endif %}
+            {% if alertas.reservas_hoy %}
+            <a class="menu-emergente__item" role="menuitem" href="{{ url_for('web.reservas') }}">
+              {{ ic.icono('reservas') }}
+              <span>{{ alertas.reservas_hoy }} reserva(s) programada(s) para hoy</span>
+            </a>
+            {% endif %}
+            {% if alertas.labs_saturados %}
+            <a class="menu-emergente__item" role="menuitem" href="{{ url_for('web.reservas') }}">
+              {{ ic.icono('grafico') }}
+              <span>{{ alertas.labs_saturados }} laboratorio(s) con alta ocupación esta semana</span>
+            </a>
+            {% endif %}
+            {% if not alertas.total %}
+            <p class="paleta__vacio">No hay avisos pendientes.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="usuario" id="contenedor-usuario">
+          <button type="button" class="usuario__disparador" id="boton-usuario"
+                  aria-haspopup="true" aria-expanded="false">
+            <span class="avatar" aria-hidden="true">
+              {{ usuario_actual.nombre[0] | upper }}{{ usuario_actual.apellido[0] | upper }}
+            </span>
+            <span class="usuario__texto">
+              <b>{{ usuario_actual.nombre }} {{ usuario_actual.apellido }}</b>
+              <span>{{ usuario_actual.rol }}</span>
+            </span>
+          </button>
+          <div class="menu-emergente" id="menu-usuario" role="menu">
+            <div class="menu-emergente__cabecera">
+              <b>{{ usuario_actual.nombre }} {{ usuario_actual.apellido }}</b>
+              <span>{{ usuario_actual.email }}</span>
+            </div>
+            <a class="menu-emergente__item" role="menuitem" href="{{ url_for('web.perfil') }}">
+              {{ ic.icono('perfil') }} Mi perfil
+            </a>
+            <a class="menu-emergente__item" role="menuitem" href="{{ url_for('web.ayuda') }}">
+              {{ ic.icono('libro') }} Guía de uso
+            </a>
+            <div class="menu-emergente__separador"></div>
+            <form method="post" action="{{ url_for('web.logout') }}">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="menu-emergente__item menu-emergente__item--peligro" role="menuitem">
+                {{ ic.icono('salir') }} Cerrar sesión
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main id="contenido" class="contenido">
+      <div class="contenedor">
+        {% block contenido %}{% endblock %}
+      </div>
+    </main>
+
+    <footer class="pie">
+      <div class="contenedor pie__interior">
+        <p><strong>TechLoan</strong> · Gestión de reservas y préstamos de recursos tecnológicos</p>
+        <p>Flask · SQLite3 · HTML5 · CSS3 · JavaScript</p>
+      </div>
+    </footer>
+  </div>
+</div>
+
+{#- ================= Paleta de comandos ================= -#}
+<div class="paleta" id="paleta" role="dialog" aria-modal="true" aria-label="Buscar o ir a">
+  <div class="paleta__caja">
+    <div class="paleta__entrada">
+      {{ ic.icono('buscar', tamano=19) }}
+      <input type="text" id="paleta-entrada" autocomplete="off" role="combobox"
+             aria-controls="paleta-resultados" aria-expanded="false"
+             placeholder="Busca secciones, acciones o registros…">
+      <kbd>Esc</kbd>
+    </div>
+    <div class="paleta__resultados" id="paleta-resultados" role="listbox"
+         aria-label="Resultados"></div>
+    <div class="paleta__pie">
+      <span><kbd>&uarr;</kbd><kbd>&darr;</kbd> navegar</span>
+      <span><kbd>Enter</kbd> abrir</span>
+      <span><kbd>Esc</kbd> cerrar</span>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,201 @@
+{% extends "base_app.html" %}
+{% import "parciales/iconos.html" as ic %}
+{% block titulo %}Guía de uso{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Guía de uso</h1>
+    <p class="encabezado__subtitulo">
+      Todo lo necesario para operar TechLoan, en el orden en que se hace normalmente.
+      También tienes el manual completo en <code>docs/MANUAL_DE_USUARIO.md</code>.
+    </p>
+  </div>
+</section>
+
+{#- ==================== Atajos ==================== -#}
+<section class="panel" aria-labelledby="titulo-atajos">
+  <div class="panel__cabecera">
+    <h2 id="titulo-atajos">Atajos de teclado</h2>
+  </div>
+  <div class="rejilla-campos" style="margin-bottom:0">
+    <div class="campo">
+      <label>Buscar o ir a cualquier parte</label>
+      <p><kbd>Ctrl</kbd> + <kbd>K</kbd> &nbsp;o&nbsp; <kbd>/</kbd></p>
+    </div>
+    <div class="campo">
+      <label>Navegar por los resultados</label>
+      <p><kbd>↑</kbd> <kbd>↓</kbd> para moverte y <kbd>Enter</kbd> para abrir.</p>
+    </div>
+    <div class="campo">
+      <label>Cerrar o cancelar</label>
+      <p><kbd>Esc</kbd> cierra la paleta y los menús desplegables.</p>
+    </div>
+    <div class="campo">
+      <label>Cambiar de tema</label>
+      <p>El botón de sol/luna de la barra superior; se recuerda tu preferencia.</p>
+    </div>
+  </div>
+</section>
+
+{#- ==================== Flujo de trabajo ==================== -#}
+<section aria-labelledby="titulo-flujo">
+  <h2 id="titulo-flujo" class="titulo-seccion">Flujo de trabajo recomendado</h2>
+
+  <div class="panel">
+    <ol style="margin:0;padding-inline-start:var(--e-5);display:grid;gap:var(--e-4)">
+      <li>
+        <strong>Prepara el catálogo.</strong> Crea primero las <em>categorías</em> y los
+        <em>laboratorios</em>; después los <em>equipos</em>, asignándoles su categoría y su
+        laboratorio. Así los préstamos y las reservas podrán referenciarlos.
+      </li>
+      <li>
+        <strong>Registra a los prestatarios.</strong> Son las personas que reciben un
+        espacio o un equipo: docentes, estudiantes o personal. No necesitan cuenta en el
+        sistema; solo sus datos de contacto.
+      </li>
+      <li>
+        <strong>Reserva laboratorios.</strong> Indica laboratorio, prestatario, fecha y
+        hora. La duración viene con el valor estándar de 70 minutos, pero puedes cambiarla.
+        Si el horario está ocupado, el sistema te ofrecerá alternativas.
+      </li>
+      <li>
+        <strong>Presta equipos.</strong> Selecciona un equipo disponible y el prestatario.
+        El equipo pasa a <strong>PRESTADO</strong> y no podrá prestarse otra vez hasta que
+        se devuelva.
+      </li>
+      <li>
+        <strong>Registra las devoluciones.</strong> Desde el listado de préstamos activos,
+        con el botón <em>Devolver</em>. El equipo vuelve a <strong>DISPONIBLE</strong> y se
+        guarda la fecha.
+      </li>
+      <li>
+        <strong>Consulta el historial y los indicadores.</strong> El panel resume la
+        actividad; el historial permite filtrar por tipo, estado, prestatario, recurso y
+        fechas, y exportar a CSV.
+      </li>
+    </ol>
+  </div>
+</section>
+
+{#- ==================== Reglas que conviene conocer ==================== -#}
+<section aria-labelledby="titulo-reglas">
+  <h2 id="titulo-reglas" class="titulo-seccion">Reglas del sistema</h2>
+
+  <div class="rejilla-doble">
+    <div class="panel">
+      <div class="panel__cabecera">
+        <h3>{{ ic.icono('reservas') }} Solapamientos</h3>
+      </div>
+      <p>
+        Dos reservas del mismo laboratorio y fecha chocan cuando
+        <code>inicio existente &lt; fin nueva</code> y
+        <code>fin existente &gt; inicio nueva</code>.
+      </p>
+      <ul class="plan__lista">
+        <li>{{ ic.icono('correcto') }} 08:00–09:10 y 09:10–10:20 → <strong>permitido</strong></li>
+        <li>{{ ic.icono('error') }} 08:00–09:10 y 09:09–10:19 → <strong>rechazado</strong></li>
+      </ul>
+      <p class="ayuda">
+        Solo bloquean las reservas en estado CONFIRMADA o ACTIVA: al cancelar una reserva,
+        la franja queda libre de inmediato.
+      </p>
+    </div>
+
+    <div class="panel">
+      <div class="panel__cabecera">
+        <h3>{{ ic.icono('equipos') }} Estados de los equipos</h3>
+      </div>
+      <ul class="plan__lista">
+        <li>{{ ic.icono('correcto') }} <strong>DISPONIBLE</strong> → se puede prestar.</li>
+        <li>{{ ic.icono('correcto') }} <strong>PRESTADO</strong> → está fuera; no se puede
+          volver a prestar ni eliminar.</li>
+        <li>{{ ic.icono('correcto') }} <strong>MANTENIMIENTO</strong> / <strong>DAÑADO</strong> /
+          <strong>INACTIVO</strong> → fuera de servicio.</li>
+      </ul>
+      <p class="ayuda">
+        Un equipo con préstamo activo no aparece en el formulario de préstamos.
+      </p>
+    </div>
+
+    <div class="panel">
+      <div class="panel__cabecera">
+        <h3>{{ ic.icono('escudo') }} Roles</h3>
+      </div>
+      <ul class="plan__lista">
+        <li>{{ ic.icono('correcto') }} <strong>ADMINISTRADOR</strong>: todo, incluidos
+          usuarios, eliminaciones y auditoría.</li>
+        <li>{{ ic.icono('correcto') }} <strong>OPERADOR</strong>: prestatarios, reservas,
+          préstamos y devoluciones. No ve usuarios ni puede eliminar catálogo.</li>
+      </ul>
+      <p class="ayuda">
+        El rol se comprueba contra la base de datos en cada acción, así que un cambio de
+        permisos surte efecto de inmediato.
+      </p>
+    </div>
+
+    <div class="panel">
+      <div class="panel__cabecera">
+        <h3>{{ ic.icono('alerta') }} Avisos automáticos</h3>
+      </div>
+      <ul class="plan__lista">
+        <li>{{ ic.icono('correcto') }} Préstamos con más de {{ alertas.dias_limite }} días sin
+          devolver: se destacan en rojo.</li>
+        <li>{{ ic.icono('correcto') }} Reservas programadas para hoy.</li>
+        <li>{{ ic.icono('correcto') }} Laboratorios con alta ocupación esta semana
+          ({{ alertas.umbral_saturacion }} reservas o más).</li>
+      </ul>
+      <p class="ayuda">
+        El número de la campana de la barra superior indica cuántos avisos hay pendientes.
+      </p>
+    </div>
+  </div>
+</section>
+
+{#- ==================== Preguntas rápidas ==================== -#}
+<section aria-labelledby="titulo-dudas">
+  <h2 id="titulo-dudas" class="titulo-seccion">Dudas frecuentes</h2>
+  <div class="faq" style="max-width:none">
+    <details class="faq__item" open>
+      <summary>¿Cómo busco algo rápido sin recorrer los menús?</summary>
+      <p>
+        Pulsa <kbd>Ctrl</kbd>+<kbd>K</kbd> y escribe. Encontrarás secciones, acciones y
+        también registros concretos: prestatarios, equipos, laboratorios y reservas.
+      </p>
+    </details>
+    <details class="faq__item">
+      <summary>¿Por qué no me deja eliminar un laboratorio?</summary>
+      <p>
+        Porque tiene equipos o reservas asociadas. El sistema protege la integridad de los
+        datos: primero reasigna o elimina lo que depende de él. Es una salvaguarda, no un
+        error.
+      </p>
+    </details>
+    <details class="faq__item">
+      <summary>¿Puedo exportar lo que estoy viendo?</summary>
+      <p>
+        Sí. El botón <em>Exportar CSV</em> de cada listado descarga lo que tienes filtrado
+        en ese momento. El archivo se abre directamente en Excel con las columnas y los
+        acentos correctos.
+      </p>
+    </details>
+    <details class="faq__item">
+      <summary>¿Qué pasa si dos personas guardan una reserva a la vez?</summary>
+      <p>
+        La comprobación de solapamiento y la inserción se hacen dentro de la misma
+        operación sobre la base de datos, así que la segunda petición ve la primera y se
+        rechaza. Si necesitas coordinación a mayor escala, el sistema está preparado para
+        añadir una restricción de unicidad.
+      </p>
+    </details>
+    <details class="faq__item">
+      <summary>¿Cómo recupero la base de datos si algo va mal?</summary>
+      <p>
+        Con <code>python init_db.py</code> desde la carpeta del proyecto. Reconstruye el
+        esquema completo con los datos de ejemplo a partir de <code>schema.sql</code>. Haz
+        copia del archivo <code>database/techloan.db</code> antes si tienes datos reales.
+      </p>
+    </details>
+  </div>
+</section>
+{% endblock %}
