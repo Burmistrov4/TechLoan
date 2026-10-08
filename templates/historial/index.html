@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% import "parciales/formulario.html" as f %}
+{% block titulo %}Historial{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Historial de operaciones</h1>
+    <p class="encabezado__subtitulo">
+      Reservas, préstamos y devoluciones en una sola vista, con filtros.
+    </p>
+  </div>
+</section>
+
+<section class="tarjeta-formulario" aria-labelledby="titulo-filtros">
+  <h2 id="titulo-filtros" class="titulo-seccion">Filtros</h2>
+  <form method="get" class="formulario formulario--filtros" action="{{ url_for('web.historial') }}">
+    <div class="rejilla-campos">
+      {{ f.lista('tipo', 'Tipo de operación', tipos, filtros.tipo or 'TODOS') }}
+      {{ f.lista('estado', 'Estado', estados, filtros.estado or 'TODOS') }}
+      {{ f.lista_objetos('prestatario_id', 'Prestatario', prestatarios, 'id', 'cedula',
+                         filtros.prestatario_id or '', vacio='— Todos —') }}
+      {{ f.texto('recurso', 'Recurso', filtros.recurso, marcador='LAB-01 o EQ-001',
+                 ayuda='Busca por código o nombre del laboratorio/equipo.') }}
+      {{ f.texto('fecha_desde', 'Desde', filtros.fecha_desde, tipo='date') }}
+      {{ f.texto('fecha_hasta', 'Hasta', filtros.fecha_hasta, tipo='date') }}
+    </div>
+    <div class="formulario__acciones">
+      <button type="submit" class="boton boton--primario">Filtrar</button>
+      <a class="boton boton--secundario" href="{{ url_for('web.historial') }}">Limpiar</a>
+    </div>
+  </form>
+</section>
+
+<section aria-labelledby="titulo-resultados">
+  <h2 id="titulo-resultados" class="titulo-seccion">Resultados</h2>
+  {% if registros %}
+  <div class="tabla-envoltura">
+    <table class="tabla">
+      <caption class="visualmente-oculto">Historial de operaciones filtrado</caption>
+      <thead>
+        <tr>
+          <th scope="col">Tipo</th>
+          <th scope="col">Fecha y hora</th>
+          <th scope="col">Prestatario</th>
+          <th scope="col">Recurso</th>
+          <th scope="col">Estado</th>
+          <th scope="col">Registrado por</th>
+          <th scope="col">Observaciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in registros %}
+        <tr>
+          <td data-etiqueta="Tipo">
+            <span class="insignia insignia--tipo-{{ h.tipo | lower }}">{{ h.tipo }}</span>
+          </td>
+          <td data-etiqueta="Fecha y hora">
+            <span class="mono">{{ h.fecha_operacion }}</span>
+            {% if h.hora_fin %}<br><span class="dato-secundario">hasta {{ h.hora_fin }}</span>{% endif %}
+          </td>
+          <td data-etiqueta="Prestatario">
+            {{ h.prestatario }}<br>
+            <span class="dato-secundario mono">{{ h.prestatario_cedula }}</span>
+          </td>
+          <td data-etiqueta="Recurso">
+            <strong>{{ h.recurso_codigo }}</strong><br>
+            <span class="dato-secundario">{{ h.recurso_nombre }}</span>
+          </td>
+          <td data-etiqueta="Estado">
+            <span class="insignia insignia--{{ h.estado | lower }}">{{ h.estado }}</span>
+          </td>
+          <td data-etiqueta="Registrado por"><span class="mono">{{ h.usuario }}</span></td>
+          <td data-etiqueta="Observaciones">{{ h.observaciones if h.observaciones else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="contador-registros">Total: <strong>{{ registros | length }}</strong> operación(es).</p>
+  {% else %}
+  <div class="estado-vacio">
+    <p class="estado-vacio__titulo">No hay operaciones que coincidan</p>
+    <p class="estado-vacio__texto">
+      Ajusta los filtros o registra reservas, préstamos y devoluciones para verlas aquí.
+    </p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

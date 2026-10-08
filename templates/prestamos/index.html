@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block titulo %}Préstamos{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Préstamos de equipos</h1>
+    <p class="encabezado__subtitulo">
+      Al registrar un préstamo el equipo pasa a <strong>PRESTADO</strong>; al devolverlo
+      vuelve a <strong>DISPONIBLE</strong>.
+    </p>
+  </div>
+  {% if puede('prestamos.write') %}
+  <div class="encabezado__acciones">
+    <a class="boton boton--primario" href="{{ url_for('web.prestamo_crear') }}">+ Nuevo préstamo</a>
+  </div>
+  {% endif %}
+</section>
+
+<section aria-labelledby="titulo-activos">
+  <h2 id="titulo-activos" class="titulo-seccion">Préstamos activos (sin devolver)</h2>
+  {% if activos %}
+  <div class="tabla-envoltura">
+    <table class="tabla">
+      <caption class="visualmente-oculto">Equipos actualmente prestados</caption>
+      <thead>
+        <tr>
+          <th scope="col">Equipo</th>
+          <th scope="col">Prestatario</th>
+          <th scope="col">Fecha del préstamo</th>
+          <th scope="col">Observaciones</th>
+          <th scope="col" class="columna-acciones">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in activos %}
+        <tr>
+          <td data-etiqueta="Equipo">
+            <strong>{{ p.equipo_codigo }}</strong><br>
+            <span class="dato-secundario">{{ p.equipo_nombre }}</span>
+          </td>
+          <td data-etiqueta="Prestatario">
+            {{ p.prestatario_nombre }} {{ p.prestatario_apellido }}<br>
+            <span class="dato-secundario mono">{{ p.cedula }}</span>
+          </td>
+          <td data-etiqueta="Fecha del préstamo">{{ p.fecha_prestamo }}</td>
+          <td data-etiqueta="Observaciones">{{ p.observaciones if p.observaciones else '—' }}</td>
+          <td data-etiqueta="Acciones" class="columna-acciones">
+            {% if puede('prestamos.return') %}
+            <form method="post" class="formulario-eliminar"
+                  action="{{ url_for('web.prestamo_devolver', id_=p.id) }}"
+                  data-confirmar="¿Confirmar la devolución del equipo {{ p.equipo_codigo }} — {{ p.equipo_nombre }}? El equipo volverá al estado DISPONIBLE.">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="boton boton--exito boton--pequeno">Devolver</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="vacio">No hay préstamos activos. Todos los equipos prestados han sido devueltos.</p>
+  {% endif %}
+</section>
+
+<section aria-labelledby="titulo-todos">
+  <h2 id="titulo-todos" class="titulo-seccion">Historial de préstamos</h2>
+  {% if prestamos %}
+  <div class="tabla-envoltura">
+    <table class="tabla">
+      <caption class="visualmente-oculto">Todos los préstamos registrados</caption>
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">Equipo</th>
+          <th scope="col">Prestatario</th>
+          <th scope="col">Prestado</th>
+          <th scope="col">Devuelto</th>
+          <th scope="col">Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in prestamos %}
+        <tr>
+          <td data-etiqueta="#">{{ p.id }}</td>
+          <td data-etiqueta="Equipo"><span class="mono">{{ p.equipo_codigo }}</span></td>
+          <td data-etiqueta="Prestatario">
+            {{ p.prestatario_nombre }} {{ p.prestatario_apellido }}
+          </td>
+          <td data-etiqueta="Prestado">{{ p.fecha_prestamo }}</td>
+          <td data-etiqueta="Devuelto">{{ p.fecha_devolucion if p.fecha_devolucion else '—' }}</td>
+          <td data-etiqueta="Estado">
+            <span class="insignia insignia--{{ p.estado | lower }}">{{ p.estado }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="contador-registros">Total: <strong>{{ prestamos | length }}</strong> préstamo(s).</p>
+  {% else %}
+  <p class="vacio">Todavía no se ha registrado ningún préstamo de equipos.</p>
+  {% endif %}
+</section>
+{% endblock %}

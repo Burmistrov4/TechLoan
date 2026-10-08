@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% import "parciales/formulario.html" as f %}
+{% block titulo %}Nueva reserva{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Nueva reserva de laboratorio</h1>
+    <p class="encabezado__subtitulo">
+      Duración estándar: <strong>{{ duracion_estandar }} minutos</strong> (1 h 10 min).
+      Puedes ajustarla según la necesidad de la actividad.
+    </p>
+  </div>
+</section>
+
+<section class="tarjeta-formulario">
+  <form method="post" class="formulario" data-validar id="formulario-reserva"
+        action="{{ url_for('web.reserva_crear') }}"
+        data-duraciones='{{ duraciones | tojson }}'
+        data-url-disponibilidad="{{ url_for('web.disponibilidad_json') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+    <div class="rejilla-campos">
+      {{ f.lista_objetos('laboratorio_id', 'Laboratorio', laboratorios, 'id',
+                         'codigo', registro.laboratorio_id or '', requerido=true,
+                         vacio='— Seleccione un laboratorio —',
+                         ayuda='Solo se muestran los laboratorios disponibles.') }}
+
+      {{ f.lista_objetos('prestatario_id', 'Prestatario', prestatarios, 'id',
+                         'cedula', registro.prestatario_id or '', requerido=true,
+                         vacio='— Seleccione un prestatario —') }}
+
+      {{ f.texto('fecha', 'Fecha', registro.fecha, tipo='date', requerido=true,
+                 minimo=hoy, ayuda='No se permiten reservas en fechas pasadas.') }}
+
+      {{ f.texto('hora_inicio', 'Hora de inicio', registro.hora_inicio, tipo='time',
+                 requerido=true) }}
+
+      {{ f.texto('duracion_minutos', 'Duración (minutos)',
+                 registro.duracion_minutos if registro.duracion_minutos is not none else duracion_estandar,
+                 tipo='number', requerido=true, minimo=1, maximo=1440, paso=1,
+                 ayuda='Entre 1 y 1440 minutos.') }}
+    </div>
+
+    <div class="campo campo--calculado">
+      <label for="campo-hora_fin_calculada">Hora de finalización (calculada)</label>
+      <output id="campo-hora_fin_calculada" class="salida"
+              for="campo-hora_inicio campo-duracion_minutos" aria-live="polite">—</output>
+      <button type="button" class="boton boton--secundario boton--pequeno"
+              id="boton-duracion-estandar">Usar duración estándar</button>
+    </div>
+
+    <div class="campo">
+      <button type="button" class="boton boton--secundario" id="boton-disponibilidad">
+        Verificar disponibilidad
+      </button>
+      <p class="resultado-disponibilidad" id="resultado-disponibilidad"
+         role="status" aria-live="polite"></p>
+    </div>
+
+    {{ f.area('observaciones', 'Observaciones', registro.observaciones, filas=3,
+              marcador='Práctica de programación, clase de bases de datos…',
+              ayuda='Opcional.') }}
+
+    {{ f.acciones('Guardar reserva', url_for('web.reservas')) }}
+  </form>
+</section>
+{% endblock %}

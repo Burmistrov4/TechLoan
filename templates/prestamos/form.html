@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% import "parciales/formulario.html" as f %}
+{% block titulo %}Nuevo préstamo{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Registrar préstamo de equipo</h1>
+    <p class="encabezado__subtitulo">
+      Solo aparecen los equipos con estado <strong>DISPONIBLE</strong>. Al guardar, el
+      equipo pasará automáticamente a <strong>PRESTADO</strong>.
+    </p>
+  </div>
+</section>
+
+<section class="tarjeta-formulario">
+  <form method="post" class="formulario" data-validar
+        action="{{ url_for('web.prestamo_crear') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+    {% if not equipos %}
+    <p class="aviso aviso--atencion">
+      No hay equipos disponibles para prestar en este momento. Registra un equipo nuevo
+      o espera a que se devuelva alguno.
+    </p>
+    {% endif %}
+
+    <div class="rejilla-campos">
+      {{ f.lista_objetos('equipo_id', 'Equipo', equipos, 'id', 'codigo',
+                         registro.equipo_id or '', requerido=true,
+                         vacio='— Seleccione un equipo disponible —') }}
+      {{ f.lista_objetos('prestatario_id', 'Prestatario', prestatarios, 'id', 'cedula',
+                         registro.prestatario_id or '', requerido=true,
+                         vacio='— Seleccione un prestatario —') }}
+    </div>
+
+    {{ f.area('observaciones', 'Observaciones', registro.observaciones, filas=3,
+              marcador='Préstamo para práctica de redes…', ayuda='Opcional.') }}
+
+    {{ f.acciones('Registrar préstamo', url_for('web.prestamos')) }}
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block titulo %}Reservas{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Reservas de laboratorios</h1>
+    <p class="encabezado__subtitulo">
+      La duración estándar es de <strong>70 minutos</strong> y puede personalizarse.
+      El sistema rechaza las reservas cuyos horarios se superpongan en el mismo laboratorio.
+    </p>
+  </div>
+  {% if puede('reservas.write') %}
+  <div class="encabezado__acciones">
+    <a class="boton boton--primario" href="{{ url_for('web.reserva_crear') }}">+ Nueva reserva</a>
+  </div>
+  {% endif %}
+</section>
+
+{% if reservas %}
+<div class="tabla-envoltura">
+  <table class="tabla">
+    <caption class="visualmente-oculto">Listado de reservas registradas</caption>
+    <thead>
+      <tr>
+        <th scope="col">Fecha</th>
+        <th scope="col">Horario</th>
+        <th scope="col">Duración</th>
+        <th scope="col">Laboratorio</th>
+        <th scope="col">Prestatario</th>
+        <th scope="col">Estado</th>
+        <th scope="col">Observaciones</th>
+        <th scope="col" class="columna-acciones">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reservas %}
+      <tr>
+        <td data-etiqueta="Fecha">{{ r.fecha }}</td>
+        <td data-etiqueta="Horario"><span class="mono">{{ r.hora_inicio }} – {{ r.hora_fin }}</span></td>
+        <td data-etiqueta="Duración">{{ r.duracion_minutos }} min</td>
+        <td data-etiqueta="Laboratorio">
+          <strong>{{ r.laboratorio_codigo }}</strong><br>
+          <span class="dato-secundario">{{ r.laboratorio_nombre }}</span>
+        </td>
+        <td data-etiqueta="Prestatario">
+          {{ r.prestatario_nombre }} {{ r.prestatario_apellido }}<br>
+          <span class="dato-secundario mono">{{ r.cedula }}</span>
+        </td>
+        <td data-etiqueta="Estado">
+          <span class="insignia insignia--{{ r.estado | lower }}">{{ r.estado }}</span>
+        </td>
+        <td data-etiqueta="Observaciones">
+          {{ r.observaciones if r.observaciones else '—' }}
+        </td>
+        <td data-etiqueta="Acciones" class="columna-acciones">
+          {% if puede('reservas.write') and r.estado in ('CONFIRMADA', 'ACTIVA') %}
+          <form method="post" class="formulario-eliminar"
+                action="{{ url_for('web.reserva_cancelar', id_=r.id) }}"
+                data-confirmar="¿Está seguro de cancelar la reserva del laboratorio {{ r.laboratorio_codigo }} para el {{ r.fecha }} de {{ r.hora_inicio }} a {{ r.hora_fin }}?">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="boton boton--peligro boton--pequeno">Cancelar</button>
+          </form>
+          {% else %}
+          <span class="dato-secundario">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="contador-registros">Total: <strong>{{ reservas | length }}</strong> reserva(s).</p>
+{% else %}
+<div class="estado-vacio">
+  <p class="estado-vacio__titulo">No hay reservas registradas</p>
+  <p class="estado-vacio__texto">
+    Crea la primera reserva indicando laboratorio, prestatario, fecha y hora.
+  </p>
+  {% if puede('reservas.write') %}
+  <a class="boton boton--primario" href="{{ url_for('web.reserva_crear') }}">+ Crear la primera</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
