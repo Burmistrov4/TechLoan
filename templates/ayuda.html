@@ -11,6 +11,11 @@
       También tienes el manual completo en <code>docs/MANUAL_DE_USUARIO.md</code>.
     </p>
   </div>
+  <div class="encabezado__acciones">
+    <a class="boton boton--marca" href="{{ url_for('web.dashboard', tutorial=1) }}">
+      {{ ic.icono('destello', tamano=17) }} Ver el tutorial interactivo
+    </a>
+  </div>
 </section>
 
 {#- ==================== Atajos ==================== -#}
@@ -159,7 +164,7 @@
     <details class="faq__item" open>
       <summary>¿Cómo busco algo rápido sin recorrer los menús?</summary>
       <p>
-        Pulsa <kbd>Ctrl</kbd>+<kbd>K</kbd> y escribe. Encontrarás secciones, acciones y
+        Presiona <kbd>Ctrl</kbd>+<kbd>K</kbd> y escribe. Encontrarás secciones, acciones y
         también registros concretos: prestatarios, equipos, laboratorios y reservas.
       </p>
     </details>

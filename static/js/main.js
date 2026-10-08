@@ -3,7 +3,7 @@
    --------------------------------------------------------------------------
    Módulos:
      1.  Tema claro / oscuro con persistencia
-     2.  Barra lateral (cajón en móvil, plegable en escritorio)
+     2.  Barra lateral (cajón en celular, plegable en escritorio)
      3.  Menús emergentes (usuario y alertas)
      4.  Notificaciones emergentes (toasts)
      5.  Paleta de comandos (Ctrl+K)
@@ -547,7 +547,7 @@
             if (datos.sugerencias && datos.sugerencias.length) {
               var titulo = document.createElement("p");
               titulo.className = "ayuda";
-              titulo.textContent = "Franjas libres más cercanas (pulsa una para usarla):";
+              titulo.textContent = "Franjas libres más cercanas (haz clic en una para usarla):";
               alternativas.appendChild(titulo);
 
               var fila = document.createElement("div");

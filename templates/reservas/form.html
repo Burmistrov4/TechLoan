@@ -17,7 +17,7 @@
 {% if sugerencias %}
 <div class="aviso aviso--info">
   <strong>Ese horario ya está ocupado.</strong>
-  Te proponemos las franjas libres más cercanas; pulsa una para aplicarla y guardar.
+  Te proponemos las franjas libres más cercanas; haz clic en una para aplicarla y guardar.
 </div>
 {% endif %}
 
@@ -76,7 +76,7 @@
          role="status" aria-live="polite"></p>
       <div id="alternativas"></div>
       {% if sugerencias %}
-      <p class="ayuda">Franjas libres más cercanas (pulsa una para usarla):</p>
+      <p class="ayuda">Franjas libres más cercanas (haz clic en una para usarla):</p>
       <div class="alternativas__fila">
         {% for s in sugerencias %}
         <button type="button" class="alternativa" data-hora="{{ s.hora_inicio }}">

@@ -186,6 +186,10 @@
             <a class="menu-emergente__item" role="menuitem" href="{{ url_for('web.ayuda') }}">
               {{ ic.icono('libro') }} Guía de uso
             </a>
+            <a class="menu-emergente__item" role="menuitem"
+               href="{{ url_for('web.dashboard', tutorial=1) }}">
+              {{ ic.icono('destello') }} Ver el tutorial
+            </a>
             <div class="menu-emergente__separador"></div>
             <form method="post" action="{{ url_for('web.logout') }}">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
@@ -229,6 +233,40 @@
       <span><kbd>&uarr;</kbd><kbd>&darr;</kbd> navegar</span>
       <span><kbd>Enter</kbd> abrir</span>
       <span><kbd>Esc</kbd> cerrar</span>
+    </div>
+  </div>
+</div>
+
+{#- ================= Tutorial guiado =================
+   El recorrido se lanza solo la primera vez que el usuario entra al panel, y
+   también cuando se llega con ?tutorial=1 (menú de usuario y guía de uso).
+   El contenido de los pasos vive en static/js/tutorial.js. -#}
+<div class="tutorial" id="tutorial" hidden role="dialog" aria-modal="true"
+     aria-labelledby="tutorial-titulo" aria-describedby="tutorial-texto">
+  <div class="tutorial__foco" id="tutorial-foco"></div>
+  <div class="tutorial__tarjeta" id="tutorial-tarjeta">
+    <div class="tutorial__cabecera">
+      <span class="tutorial__contador" id="tutorial-contador">Paso 1</span>
+      <button type="button" class="tutorial__cerrar" id="tutorial-cerrar"
+              aria-label="Cerrar el tutorial">
+        {{ ic.icono('equis', tamano=15) }}
+      </button>
+    </div>
+    <h2 class="tutorial__titulo" id="tutorial-titulo"></h2>
+    <p class="tutorial__texto" id="tutorial-texto"></p>
+    <div class="tutorial__barra" aria-hidden="true">
+      <span class="tutorial__progreso" id="tutorial-progreso"></span>
+    </div>
+    <div class="tutorial__acciones">
+      <button type="button" class="tutorial__saltar" id="tutorial-saltar">
+        Saltar el tutorial
+      </button>
+      <button type="button" class="boton boton--secundario boton--pequeno" id="tutorial-anterior">
+        Anterior
+      </button>
+      <button type="button" class="boton boton--marca boton--pequeno" id="tutorial-siguiente">
+        Siguiente
+      </button>
     </div>
   </div>
 </div>

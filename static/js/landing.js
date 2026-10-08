@@ -1,15 +1,16 @@
 /* ==========================================================================
    TechLoan — Interacciones de la portada pública
    --------------------------------------------------------------------------
-   Aporta el movimiento de la landing page, todo con JavaScript Vanilla:
+   Movimiento de la landing page, todo con JavaScript Vanilla:
 
-     1. Escena 3D del héroe: la captura se inclina siguiendo el puntero.
+     1. Escenas 3D: escalado uniforme, inclinación con el puntero y giro
+        arrastrando. Los objetos son DOM real con CSS 3D, no imágenes ni WebGL.
      2. Revelado progresivo de las secciones al desplazar (IntersectionObserver).
-     3. Pestañas de los módulos, con cambio de ilustración.
+     3. Pestañas de los módulos: fundido cruzado entre los cuatro objetos 3D.
      4. Desplazamiento suave para los enlaces internos.
 
-   Respeta ``prefers-reduced-motion``: si el usuario pide menos movimiento, se
-   desactivan la inclinación y las animaciones de aparición.
+   Respeta ``prefers-reduced-motion``: si el usuario pide menos movimiento, la
+   escena se queda quieta y los objetos dejan de girar.
    ========================================================================== */
 
 (function () {
@@ -17,54 +18,139 @@
 
   var prefiereQuieto = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  function $(selector, ambito) {
+    return (ambito || document).querySelector(selector);
+  }
+
+  function $$(selector, ambito) {
+    return Array.prototype.slice.call((ambito || document).querySelectorAll(selector));
+  }
+
   /* ========================================================================
-     1. Escena 3D del héroe
+     1. Escenas 3D
      ====================================================================== */
-  function inicializarEscena() {
-    var escena = document.getElementById("escena-3d");
-    var marco = document.getElementById("marco-3d");
-    if (!escena || !marco || prefiereQuieto) return;
+  var ANCHO_MUNDO = 520;           // el interior de la escena siempre mide 520 x 400
+  var REPOSO = { x: -8, y: -16 };  // rotación cuando nadie interactúa
 
-    var objetivo = { x: 0, y: 0 };
-    var actual = { x: 0, y: 0 };
-    var animando = false;
+  function inicializarEscenas() {
+    var escenas = $$(".e3d");
+    if (!escenas.length) return;
 
-    function animar() {
-      // Interpolación suave hacia el objetivo: da sensación de peso y evita
-      // que el marco siga al puntero de forma nerviosa.
-      actual.x += (objetivo.x - actual.x) * 0.09;
-      actual.y += (objetivo.y - actual.y) * 0.09;
+    escenas.forEach(function (escena) {
+      var escala = $(".e3d__escala", escena);
+      var lienzo = $(".e3d__lienzo", escena);
+      var mundo = $("[data-orbita]", escena);
+      if (!escala || !lienzo) return;
 
-      marco.style.transform =
-        "rotateY(" + actual.x.toFixed(3) + "deg) rotateX(" + actual.y.toFixed(3) + "deg)";
+      // --- Escalado: el interior trabaja en píxeles fijos y se reduce con scale() ---
+      function ajustarEscala() {
+        var ancho = escena.clientWidth;
+        if (!ancho) return;
+        escala.style.transform = "scale(" + (ancho / ANCHO_MUNDO).toFixed(4) + ")";
+      }
 
-      if (Math.abs(objetivo.x - actual.x) > 0.01 || Math.abs(objetivo.y - actual.y) > 0.01) {
-        window.requestAnimationFrame(animar);
+      if ("ResizeObserver" in window) {
+        new ResizeObserver(ajustarEscala).observe(escena);
       } else {
-        animando = false;
+        window.addEventListener("resize", ajustarEscala);
       }
-    }
+      ajustarEscala();
 
-    function arrancar() {
-      if (!animando) {
-        animando = true;
-        window.requestAnimationFrame(animar);
+      if (!mundo || prefiereQuieto) return;
+
+      var objetivo = { x: REPOSO.x, y: REPOSO.y };
+      var actual = { x: REPOSO.x, y: REPOSO.y };
+      var animando = false;
+      var arrastrando = false;
+      var ultimo = null;
+      var temporizador = null;
+
+      function pintar() {
+        // Interpolación: da sensación de peso y evita que la escena siga al
+        // puntero de forma nerviosa.
+        actual.x += (objetivo.x - actual.x) * 0.12;
+        actual.y += (objetivo.y - actual.y) * 0.12;
+        lienzo.style.transform =
+          "rotateX(" + actual.x.toFixed(3) + "deg) rotateY(" + actual.y.toFixed(3) + "deg)";
+
+        if (Math.abs(objetivo.x - actual.x) > 0.02 || Math.abs(objetivo.y - actual.y) > 0.02) {
+          window.requestAnimationFrame(pintar);
+        } else {
+          animando = false;
+        }
       }
-    }
 
-    escena.addEventListener("mousemove", function (evento) {
-      var caja = escena.getBoundingClientRect();
-      var relX = (evento.clientX - caja.left) / caja.width - 0.5;
-      var relY = (evento.clientY - caja.top) / caja.height - 0.5;
-      objetivo.x = relX * 16;   // giro horizontal
-      objetivo.y = -relY * 12;  // giro vertical
-      arrancar();
-    });
+      function arrancar() {
+        if (!animando) {
+          animando = true;
+          window.requestAnimationFrame(pintar);
+        }
+      }
 
-    escena.addEventListener("mouseleave", function () {
-      objetivo.x = 0;
-      objetivo.y = 0;
-      arrancar();
+      // Tras un rato sin tocar nada, la escena vuelve sola a su pose de reposo.
+      function programarReposo() {
+        window.clearTimeout(temporizador);
+        temporizador = window.setTimeout(function () {
+          objetivo.x = REPOSO.x;
+          objetivo.y = REPOSO.y;
+          arrancar();
+        }, 2600);
+      }
+
+      escena.addEventListener("pointermove", function (evento) {
+        if (arrastrando) {
+          var dx = evento.clientX - ultimo.x;
+          var dy = evento.clientY - ultimo.y;
+          ultimo = { x: evento.clientX, y: evento.clientY };
+          objetivo.y = Math.max(-72, Math.min(72, objetivo.y + dx * 0.42));
+          objetivo.x = Math.max(-48, Math.min(48, objetivo.x - dy * 0.32));
+          arrancar();
+          return;
+        }
+
+        // En táctil no existe "pasar por encima": solo cuenta el arrastre.
+        if (evento.pointerType === "touch") return;
+
+        var caja = escena.getBoundingClientRect();
+        if (!caja.width || !caja.height) return;
+        var relX = (evento.clientX - caja.left) / caja.width - 0.5;
+        var relY = (evento.clientY - caja.top) / caja.height - 0.5;
+        objetivo.x = REPOSO.x - relY * 11;
+        objetivo.y = REPOSO.y + relX * 20;
+        arrancar();
+      });
+
+      mundo.addEventListener("pointerdown", function (evento) {
+        arrastrando = true;
+        ultimo = { x: evento.clientX, y: evento.clientY };
+        mundo.classList.add("arrastrando");
+        window.clearTimeout(temporizador);
+        if (mundo.setPointerCapture) {
+          try { mundo.setPointerCapture(evento.pointerId); } catch (e) { /* sin captura */ }
+        }
+      });
+
+      function soltar(evento) {
+        if (!arrastrando) return;
+        arrastrando = false;
+        mundo.classList.remove("arrastrando");
+        if (mundo.releasePointerCapture && evento && evento.pointerId !== undefined) {
+          try { mundo.releasePointerCapture(evento.pointerId); } catch (e) { /* ya liberado */ }
+        }
+        programarReposo();
+      }
+
+      mundo.addEventListener("pointerup", soltar);
+      mundo.addEventListener("pointercancel", soltar);
+
+      escena.addEventListener("pointerleave", function () {
+        if (arrastrando) return;
+        objetivo.x = REPOSO.x;
+        objetivo.y = REPOSO.y;
+        arrancar();
+      });
+
+      pintar();
     });
   }
 
@@ -72,7 +158,7 @@
      2. Revelado progresivo al desplazar
      ====================================================================== */
   function inicializarRevelado() {
-    var nodos = Array.prototype.slice.call(document.querySelectorAll(".revelar"));
+    var nodos = $$(".revelar");
     if (!nodos.length) return;
 
     if (prefiereQuieto || !("IntersectionObserver" in window)) {
@@ -102,30 +188,29 @@
 
   /* ========================================================================
      3. Pestañas de los módulos
+     --------------------------------------------------------------------
+     Cada pestaña activa su objeto 3D. El fundido cruzado lo resuelve el CSS
+     (.e3d-modulo.activo), así que aquí solo se conmuta la clase.
      ====================================================================== */
   function inicializarModulos() {
-    var pestanas = Array.prototype.slice.call(document.querySelectorAll("[data-modulo]"));
+    var pestanas = $$("[data-modulo]");
     if (!pestanas.length) return;
 
-    var imagen = document.getElementById("imagen-modulo-img");
-    var fuente = document.querySelector("#imagen-modulo source");
+    var escenario = $("#imagen-modulo");
+    var objetos = escenario ? $$("[data-objeto]", escenario) : [];
 
     function activar(nombre) {
       pestanas.forEach(function (pestana) {
         pestana.setAttribute("aria-selected", pestana.dataset.modulo === nombre ? "true" : "false");
       });
 
-      document.querySelectorAll(".modulo").forEach(function (modulo) {
+      $$(".modulo").forEach(function (modulo) {
         modulo.classList.toggle("activo", modulo.id === "modulo-" + nombre);
       });
 
-      if (imagen) {
-        imagen.src = "/static/img/mod-" + nombre + ".jpg";
-        imagen.alt = "Módulo de " + nombre + " de TechLoan";
-      }
-      if (fuente) {
-        fuente.srcset = "/static/img/mod-" + nombre + ".webp";
-      }
+      objetos.forEach(function (objeto) {
+        objeto.classList.toggle("activo", objeto.dataset.objeto === nombre);
+      });
     }
 
     pestanas.forEach(function (pestana) {
@@ -137,9 +222,9 @@
      4. Desplazamiento suave de los enlaces internos
      ====================================================================== */
   function inicializarAnclas() {
-    document.querySelectorAll('a[href^="#"]').forEach(function (enlace) {
+    $$('a[href^="#"]').forEach(function (enlace) {
       enlace.addEventListener("click", function (evento) {
-        var destino = document.querySelector(enlace.getAttribute("href"));
+        var destino = $(enlace.getAttribute("href"));
         if (!destino) return;
         evento.preventDefault();
         destino.scrollIntoView({
@@ -152,7 +237,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    inicializarEscena();
+    inicializarEscenas();
     inicializarRevelado();
     inicializarModulos();
     inicializarAnclas();

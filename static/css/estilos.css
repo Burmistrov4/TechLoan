@@ -864,20 +864,29 @@ kbd {
 .aviso--exito { border-color: var(--exito); background: var(--exito-tenue); }
 .aviso--peligro { border-color: var(--peligro); background: var(--peligro-tenue); }
 
-.nota-credenciales {
-  margin-top: var(--e-5);
+/* Nota informativa de la pantalla de acceso. No revela credenciales: solo
+   indica dónde encontrarlas, que es como debe hacerse. */
+.nota-acceso {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--e-2);
+  margin: var(--e-5) 0 0;
   padding-top: var(--e-4);
   font-size: var(--t-sm);
+  line-height: 1.55;
   color: var(--texto-suave);
   border-top: 1px dashed var(--borde-fuerte);
 }
-.nota-credenciales h2 {
-  font-size: var(--t-2xs);
-  letter-spacing: .09em;
-  text-transform: uppercase;
-  color: var(--texto-tenue);
+.nota-acceso svg { width: 15px; height: 15px; flex: 0 0 auto; margin-top: 2px; color: var(--texto-tenue); }
+.nota-acceso code {
+  padding: 1px 5px;
+  font-size: var(--t-xs);
+  font-family: var(--fuente-mono);
+  color: var(--texto);
+  background: var(--superficie-3);
+  border: 1px solid var(--borde);
+  border-radius: var(--r-xs);
 }
-.nota-credenciales ul { margin: 0; padding-inline-start: var(--e-5); }
 
 .acceso-formulario { display: flex; justify-content: center; padding-block: var(--e-8); }
 .acceso-formulario .tarjeta-formulario { width: 100%; max-width: 440px; }
@@ -1655,7 +1664,8 @@ kbd {
    ========================================================================== */
 @media print {
   .lateral, .barra, .pie, .notificaciones, .paleta, .barra-herramientas,
-  .encabezado__acciones, .columna-acciones, .formulario-eliminar, .paginacion { display: none !important; }
+  .encabezado__acciones, .columna-acciones, .formulario-eliminar, .paginacion,
+  .tutorial { display: none !important; }
 
   body { background: #fff !important; background-image: none !important; color: #000; }
   .principal { margin-inline-start: 0 !important; }
@@ -1663,4 +1673,163 @@ kbd {
   .panel, .tarjeta-formulario, .tabla-envoltura { box-shadow: none !important; border-color: #94a3b8 !important; }
   .tabla thead th { background: #f1f5f9 !important; color: #000 !important; }
   a { color: #000; text-decoration: none; }
+}
+
+/* ==========================================================================
+   21. Tutorial guiado (walkthrough)
+   --------------------------------------------------------------------------
+   Recorrido interactivo por la interfaz. El oscurecimiento del fondo se
+   consigue con un único elemento que se coloca encima del elemento señalado y
+   proyecta una sombra enorme alrededor: así el "foco" es un agujero real y no
+   hay que dibujar cuatro paneles.
+
+   El foco lleva ``pointer-events: none`` para no bloquear nada, y la tarjeta
+   se recoloca según el hueco disponible.
+   ========================================================================== */
+.tutorial {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+}
+
+.tutorial[hidden] { display: none; }
+
+.tutorial__foco {
+  position: absolute;
+  border-radius: var(--r-md);
+  box-shadow: 0 0 0 9999px rgba(6, 10, 19, .74);
+  outline: 2px solid rgba(34, 211, 238, .92);
+  outline-offset: 3px;
+  pointer-events: none;
+  transition:
+    top 340ms cubic-bezier(.22, 1, .36, 1),
+    left 340ms cubic-bezier(.22, 1, .36, 1),
+    width 340ms cubic-bezier(.22, 1, .36, 1),
+    height 340ms cubic-bezier(.22, 1, .36, 1),
+    opacity 240ms linear;
+}
+
+/* En el primer y último paso no hay nada que señalar: se oscurece todo. */
+.tutorial--centrado .tutorial__foco { opacity: 0; }
+
+.tutorial__tarjeta {
+  position: absolute;
+  width: min(370px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: var(--e-5);
+  border-radius: var(--r-lg);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  box-shadow: var(--sombra-3);
+  transition:
+    top 340ms cubic-bezier(.22, 1, .36, 1),
+    left 340ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.tutorial__cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-3);
+  margin-bottom: var(--e-3);
+}
+
+.tutorial__contador {
+  font-size: var(--t-2xs);
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--primario);
+}
+
+.tutorial__cerrar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--borde);
+  border-radius: var(--r-sm);
+  background: var(--superficie-2);
+  color: var(--texto-suave);
+  cursor: pointer;
+  transition: background var(--tr-rapida), color var(--tr-rapida);
+}
+.tutorial__cerrar:hover { background: var(--superficie-3); color: var(--texto); }
+
+.tutorial__titulo {
+  margin: 0 0 var(--e-2);
+  font-size: var(--t-xl);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--texto);
+}
+
+.tutorial__texto {
+  margin: 0;
+  font-size: var(--t-base);
+  line-height: 1.6;
+  color: var(--texto-suave);
+}
+.tutorial__texto kbd {
+  padding: 1px 5px;
+  font-size: var(--t-xs);
+  font-family: var(--fuente-mono);
+  color: var(--texto);
+  background: var(--superficie-3);
+  border: 1px solid var(--borde);
+  border-radius: var(--r-xs);
+}
+
+.tutorial__barra {
+  height: 4px;
+  margin: var(--e-4) 0 var(--e-4);
+  border-radius: var(--r-full);
+  background: var(--superficie-3);
+  overflow: hidden;
+}
+.tutorial__progreso {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: var(--r-full);
+  background: var(--degradado-marca);
+  transition: width 340ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.tutorial__acciones {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+}
+
+.tutorial__saltar {
+  margin-right: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--t-sm);
+  color: var(--texto-tenue);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.tutorial__saltar:hover { color: var(--texto); }
+
+/* Punto de reanudación: el botón que relanza el tutorial desde el menú. */
+.tutorial__reanudar { display: inline-flex; align-items: center; gap: var(--e-2); }
+
+@media (max-width: 640px) {
+  .tutorial__tarjeta {
+    left: var(--e-4) !important;
+    right: var(--e-4);
+    width: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial__foco,
+  .tutorial__tarjeta,
+  .tutorial__progreso { transition: none; }
 }

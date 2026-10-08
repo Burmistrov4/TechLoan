@@ -44,8 +44,8 @@
         </div>
         <div class="portada__acciones">
           <a class="boton boton--cristal boton--pequeno" href="{{ url_for('web.login') }}">Iniciar sesión</a>
-          <a class="boton boton--marca boton--pequeno" href="{{ url_for('web.login') }}">
-            Ver la demo {{ ic.icono('flecha-derecha', tamano=15) }}
+          <a class="boton boton--marca boton--pequeno" href="{{ url_for('web.registro') }}">
+            Crear cuenta {{ ic.icono('flecha-derecha', tamano=15) }}
           </a>
         </div>
       </nav>
@@ -74,8 +74,8 @@
             <a class="boton boton--marca boton--grande" href="{{ url_for('web.login') }}">
               {{ ic.icono('rayo', tamano=18) }} Probar la aplicación
             </a>
-            <a class="boton boton--cristal boton--grande" href="#modulos">
-              Ver los módulos
+            <a class="boton boton--cristal boton--grande" href="{{ url_for('web.registro') }}">
+              Crear una cuenta
             </a>
           </div>
 
@@ -86,15 +86,89 @@
           </ul>
         </div>
 
-        <div class="heroe__escena" id="escena-3d">
-          <div class="heroe__marco" id="marco-3d">
-            <picture>
-              <source srcset="{{ url_for('static', filename='img/hero-3d.webp') }}" type="image/webp">
-              <img src="{{ url_for('static', filename='img/hero-3d.jpg') }}"
-                   alt="Panel de control de TechLoan con indicadores de reservas, equipos y préstamos"
-                   width="1536" height="1024" fetchpriority="high">
-            </picture>
+        <div class="heroe__escena e3d" id="escena-3d">
+          <div class="e3d__escala">
+            <div class="e3d__lienzo" id="marco-3d">
+              {#-
+                Escena 3D del héroe: un tablero real construido con CSS 3D, no una
+                imagen. Se puede inclinar con el puntero y girar arrastrando.
+                Es decorativa: la misma información está en el texto de al lado y
+                en la sección de cifras, así que se oculta a los lectores de pantalla.
+              -#}
+              <div class="e3d__mundo" data-orbita aria-hidden="true">
+                <span class="e3d-halo"></span>
+                <span class="e3d-piso"></span>
+
+                <div class="e3d-panel">
+                  <div class="e3d-panel__barra">
+                    <span class="e3d-panel__punto"></span>
+                    <span class="e3d-panel__punto"></span>
+                    <span class="e3d-panel__punto"></span>
+                    <b>Panel de TechLoan</b>
+                  </div>
+                  <div class="e3d-panel__cuerpo">
+                    <div class="e3d-panel__kpis">
+                      <div class="e3d-kpi">
+                        <b>{{ metricas.laboratorios }}</b><span>Laboratorios</span>
+                      </div>
+                      <div class="e3d-kpi">
+                        <b>{{ metricas.equipos }}</b><span>Equipos</span>
+                      </div>
+                      <div class="e3d-kpi">
+                        <b>{{ metricas.reservas }}</b><span>Reservas</span>
+                      </div>
+                    </div>
+                    <div class="e3d-panel__grafico">
+                      {% for altura in [34, 58, 46, 78, 52, 88, 64, 42] %}
+                      <span class="e3d-barra-mini" style="--h:{{ altura }}%"></span>
+                      {% endfor %}
+                    </div>
+                    <div class="e3d-panel__agenda">
+                      <span class="e3d-franja" style="left:6%;width:22%"></span>
+                      <span class="e3d-franja e3d-franja--b" style="left:36%;width:16%"></span>
+                      <span class="e3d-franja" style="left:64%;width:26%"></span>
+                    </div>
+                  </div>
+                </div>
+
+                {#- Cubos volumétricos girando alrededor del tablero -#}
+                <div class="e3d-objeto e3d-objeto--a">
+                  <div class="e3d-cubo">
+                    <span class="e3d-cubo__cara e3d-cubo__cara--frente">{{ ic.icono('laboratorios') }}</span>
+                    <span class="e3d-cubo__cara e3d-cubo__cara--atras">{{ ic.icono('laboratorios') }}</span>
+                    <span class="e3d-cubo__cara e3d-cubo__cara--derecha">{{ ic.icono('laboratorios') }}</span>
+                    <span class="e3d-cubo__cara e3d-cubo__cara--izquierda">{{ ic.icono('laboratorios') }}</span>
+                    <span class="e3d-cubo__cara e3d-cubo__cara--arriba"></span>
+                    <span class="e3d-cubo__cara e3d-cubo__cara--abajo"></span>
+                  </div>
+                </div>
+
+                <div class="e3d-objeto e3d-objeto--b">
+                  <div class="e3d-cubo e3d-cubo--lento">
+                    <span class="e3d-cubo__cara e3d-cubo__cara--frente">{{ ic.icono('reservas') }}</span>
+                    <span class="e3d-cubo__cara e3d-cubo__cara--atras">{{ ic.icono('reservas') }}</span>
+                    <span class="e3d-cubo__cara e3d-cubo__cara--derecha">{{ ic.icono('reservas') }}</span>
+                    <span class="e3d-cubo__cara e3d-cubo__cara--izquierda">{{ ic.icono('reservas') }}</span>
+                    <span class="e3d-cubo__cara e3d-cubo__cara--arriba"></span>
+                    <span class="e3d-cubo__cara e3d-cubo__cara--abajo"></span>
+                  </div>
+                </div>
+
+                <div class="e3d-objeto e3d-objeto--c">
+                  <div class="e3d-cubo e3d-cubo--inverso">
+                    <span class="e3d-cubo__cara e3d-cubo__cara--frente">{{ ic.icono('equipos') }}</span>
+                    <span class="e3d-cubo__cara e3d-cubo__cara--atras">{{ ic.icono('equipos') }}</span>
+                    <span class="e3d-cubo__cara e3d-cubo__cara--derecha">{{ ic.icono('equipos') }}</span>
+                    <span class="e3d-cubo__cara e3d-cubo__cara--izquierda">{{ ic.icono('equipos') }}</span>
+                    <span class="e3d-cubo__cara e3d-cubo__cara--arriba"></span>
+                    <span class="e3d-cubo__cara e3d-cubo__cara--abajo"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+
+          <p class="e3d-pista">{{ ic.icono('comando') }} Arrastra para girar la escena</p>
 
           <div class="flotante flotante--1">
             <span class="flotante__icono">{{ ic.icono('correcto') }}</span>
@@ -162,7 +236,7 @@
     <div class="contenedor">
       <header class="seccion__cabecera revelar">
         <span class="seccion__etiqueta">Por qué TechLoan</span>
-        <h2>Todo lo que hoy resolvéis con papel y mensajes sueltos</h2>
+        <h2>Todo lo que hoy se resuelve con papel y mensajes sueltos</h2>
         <p>
           Seis capacidades que convierten la gestión de recursos en un proceso
           ordenado, verificable y sin sorpresas.
@@ -358,12 +432,130 @@
         </div>
 
         <div class="revelar revelar--1">
-          <div class="modulo__imagen" id="imagen-modulo">
-            <picture>
-              <source srcset="{{ url_for('static', filename='img/mod-reservas.webp') }}" type="image/webp">
-              <img id="imagen-modulo-img" src="{{ url_for('static', filename='img/mod-reservas.jpg') }}"
-                   alt="Módulo de reservas de laboratorios de TechLoan" width="900" height="900" loading="lazy">
-            </picture>
+          {#-
+            Escenario 3D de los módulos. Los cuatro objetos viven en el mismo
+            espacio y se funden entre sí al cambiar de pestaña, en lugar de
+            saltar de una imagen a otra.
+          -#}
+          <div class="modulo__imagen e3d" id="imagen-modulo">
+            <div class="e3d__escala">
+              <div class="e3d__lienzo">
+                <div class="e3d__mundo" data-orbita>
+
+                  {#- Reservas: la jornada como bloques de tiempo en 3D -#}
+                  <div class="e3d-modulo activo" data-objeto="reservas" aria-hidden="true">
+                    <span class="e3d-sombra"></span>
+                    <span class="e3d-rejilla"></span>
+                    <div class="e3d-escena-objeto">
+                      <div class="e3d-pieza" style="--w:40px;--h:92px;--d:34px;--x:-110px;--z:6px">
+                        <span class="e3d-prisma__frente"></span>
+                        <span class="e3d-prisma__arriba"></span>
+                        <span class="e3d-prisma__lado"></span>
+                      </div>
+                      <div class="e3d-pieza e3d-pieza--apagada" style="--w:40px;--h:42px;--d:34px;--x:-66px;--z:-6px">
+                        <span class="e3d-prisma__frente"></span>
+                        <span class="e3d-prisma__arriba"></span>
+                        <span class="e3d-prisma__lado"></span>
+                      </div>
+                      <div class="e3d-pieza e3d-pieza--clara" style="--w:40px;--h:118px;--d:34px;--x:-22px;--z:10px">
+                        <span class="e3d-prisma__frente"></span>
+                        <span class="e3d-prisma__arriba"></span>
+                        <span class="e3d-prisma__lado"></span>
+                      </div>
+                      <div class="e3d-pieza" style="--w:40px;--h:62px;--d:34px;--x:22px;--z:-2px">
+                        <span class="e3d-prisma__frente"></span>
+                        <span class="e3d-prisma__arriba"></span>
+                        <span class="e3d-prisma__lado"></span>
+                      </div>
+                      <div class="e3d-pieza e3d-pieza--violeta" style="--w:40px;--h:86px;--d:34px;--x:66px;--z:8px">
+                        <span class="e3d-prisma__frente"></span>
+                        <span class="e3d-prisma__arriba"></span>
+                        <span class="e3d-prisma__lado"></span>
+                      </div>
+                      <div class="e3d-pieza e3d-pieza--apagada" style="--w:40px;--h:30px;--d:34px;--x:110px;--z:-8px">
+                        <span class="e3d-prisma__frente"></span>
+                        <span class="e3d-prisma__arriba"></span>
+                        <span class="e3d-prisma__lado"></span>
+                      </div>
+                    </div>
+                    <span class="e3d-etiqueta">Franjas de la jornada</span>
+                  </div>
+
+                  {#- Préstamos: la caja del equipo con su etiqueta de estado -#}
+                  <div class="e3d-modulo" data-objeto="prestamos" aria-hidden="true">
+                    <span class="e3d-sombra"></span>
+                    <span class="e3d-rejilla"></span>
+                    <div class="e3d-escena-objeto">
+                      <div class="e3d-pieza" style="--w:132px;--h:86px;--d:84px;--x:-66px;--z:0px">
+                        <span class="e3d-prisma__frente"></span>
+                        <span class="e3d-prisma__arriba"></span>
+                        <span class="e3d-prisma__lado"></span>
+                      </div>
+                      <div class="e3d-pieza e3d-pieza--violeta" style="--w:84px;--h:18px;--d:18px;--x:-42px;--y:-86px;--z:24px">
+                        <span class="e3d-prisma__frente"></span>
+                        <span class="e3d-prisma__arriba"></span>
+                        <span class="e3d-prisma__lado"></span>
+                      </div>
+                      <div class="e3d-pieza e3d-pieza--clara" style="--w:26px;--h:26px;--d:26px;--x:74px;--y:-124px;--z:40px">
+                        <span class="e3d-prisma__frente"></span>
+                        <span class="e3d-prisma__arriba"></span>
+                        <span class="e3d-prisma__lado"></span>
+                      </div>
+                    </div>
+                    <span class="e3d-etiqueta">Equipo prestado</span>
+                  </div>
+
+                  {#- Analítica: el gráfico de barras extruido -#}
+                  <div class="e3d-modulo" data-objeto="analitica" aria-hidden="true">
+                    <span class="e3d-sombra"></span>
+                    <span class="e3d-rejilla"></span>
+                    <div class="e3d-escena-objeto">
+                      <div class="e3d-pieza" style="--w:36px;--h:50px;--d:34px;--x:-105px;--z:0px">
+                        <span class="e3d-prisma__frente"></span><span class="e3d-prisma__arriba"></span><span class="e3d-prisma__lado"></span>
+                      </div>
+                      <div class="e3d-pieza e3d-pieza--violeta" style="--w:36px;--h:86px;--d:34px;--x:-63px;--z:0px">
+                        <span class="e3d-prisma__frente"></span><span class="e3d-prisma__arriba"></span><span class="e3d-prisma__lado"></span>
+                      </div>
+                      <div class="e3d-pieza" style="--w:36px;--h:66px;--d:34px;--x:-21px;--z:0px">
+                        <span class="e3d-prisma__frente"></span><span class="e3d-prisma__arriba"></span><span class="e3d-prisma__lado"></span>
+                      </div>
+                      <div class="e3d-pieza e3d-pieza--clara" style="--w:36px;--h:132px;--d:34px;--x:21px;--z:0px">
+                        <span class="e3d-prisma__frente"></span><span class="e3d-prisma__arriba"></span><span class="e3d-prisma__lado"></span>
+                      </div>
+                      <div class="e3d-pieza e3d-pieza--violeta" style="--w:36px;--h:102px;--d:34px;--x:63px;--z:0px">
+                        <span class="e3d-prisma__frente"></span><span class="e3d-prisma__arriba"></span><span class="e3d-prisma__lado"></span>
+                      </div>
+                      <div class="e3d-pieza" style="--w:36px;--h:152px;--d:34px;--x:105px;--z:0px">
+                        <span class="e3d-prisma__frente"></span><span class="e3d-prisma__arriba"></span><span class="e3d-prisma__lado"></span>
+                      </div>
+                    </div>
+                    <span class="e3d-etiqueta">Ocupación por día</span>
+                  </div>
+
+                  {#- Seguridad: anillos concéntricos con el candado en el centro -#}
+                  <div class="e3d-modulo" data-objeto="seguridad" aria-hidden="true">
+                    <span class="e3d-sombra"></span>
+                    <div class="e3d-escena-objeto">
+                      <span class="e3d-anillo" style="--tam:280px;--z:0px"></span>
+                      <span class="e3d-anillo e3d-anillo--b" style="--tam:196px;--z:26px"></span>
+                      <span class="e3d-anillo e3d-anillo--c" style="--tam:118px;--z:52px"></span>
+                      <div class="e3d-candado">
+                        <div class="e3d-cubo e3d-cubo--lento">
+                          <span class="e3d-cubo__cara e3d-cubo__cara--frente">{{ ic.icono('candado') }}</span>
+                          <span class="e3d-cubo__cara e3d-cubo__cara--atras">{{ ic.icono('candado') }}</span>
+                          <span class="e3d-cubo__cara e3d-cubo__cara--derecha">{{ ic.icono('candado') }}</span>
+                          <span class="e3d-cubo__cara e3d-cubo__cara--izquierda">{{ ic.icono('candado') }}</span>
+                          <span class="e3d-cubo__cara e3d-cubo__cara--arriba"></span>
+                          <span class="e3d-cubo__cara e3d-cubo__cara--abajo"></span>
+                        </div>
+                      </div>
+                    </div>
+                    <span class="e3d-etiqueta">Acceso verificado</span>
+                  </div>
+
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -374,12 +566,54 @@
   <section class="seccion" id="seguridad">
     <div class="contenedor">
       <div class="destacado">
-        <div class="destacado__imagen revelar">
-          <picture>
-            <source srcset="{{ url_for('static', filename='img/mod-seguridad.webp') }}" type="image/webp">
-            <img src="{{ url_for('static', filename='img/mod-seguridad.jpg') }}"
-                 alt="Control de acceso y roles de TechLoan" width="900" height="900" loading="lazy">
-          </picture>
+        <div class="destacado__imagen e3d revelar" id="escena-seguridad">
+          <div class="e3d__escala">
+            <div class="e3d__lienzo">
+              <div class="e3d__mundo" data-orbita aria-hidden="true">
+                <span class="e3d-halo"></span>
+                <div class="e3d-escena-objeto">
+                  <span class="e3d-anillo" style="--tam:330px;--z:-20px"></span>
+                  <span class="e3d-anillo e3d-anillo--b" style="--tam:248px;--z:14px"></span>
+                  <span class="e3d-anillo e3d-anillo--c" style="--tam:170px;--z:44px"></span>
+                  <span class="e3d-anillo" style="--tam:96px;--z:74px"></span>
+
+                  <div class="e3d-candado">
+                    <div class="e3d-cubo">
+                      <span class="e3d-cubo__cara e3d-cubo__cara--frente">{{ ic.icono('candado') }}</span>
+                      <span class="e3d-cubo__cara e3d-cubo__cara--atras">{{ ic.icono('candado') }}</span>
+                      <span class="e3d-cubo__cara e3d-cubo__cara--derecha">{{ ic.icono('llave') }}</span>
+                      <span class="e3d-cubo__cara e3d-cubo__cara--izquierda">{{ ic.icono('llave') }}</span>
+                      <span class="e3d-cubo__cara e3d-cubo__cara--arriba"></span>
+                      <span class="e3d-cubo__cara e3d-cubo__cara--abajo"></span>
+                    </div>
+                  </div>
+
+                  <div class="e3d-objeto e3d-objeto--a">
+                    <div class="e3d-cubo e3d-cubo--lento">
+                      <span class="e3d-cubo__cara e3d-cubo__cara--frente">{{ ic.icono('escudo-ok') }}</span>
+                      <span class="e3d-cubo__cara e3d-cubo__cara--atras">{{ ic.icono('escudo-ok') }}</span>
+                      <span class="e3d-cubo__cara e3d-cubo__cara--derecha">{{ ic.icono('escudo-ok') }}</span>
+                      <span class="e3d-cubo__cara e3d-cubo__cara--izquierda">{{ ic.icono('escudo-ok') }}</span>
+                      <span class="e3d-cubo__cara e3d-cubo__cara--arriba"></span>
+                      <span class="e3d-cubo__cara e3d-cubo__cara--abajo"></span>
+                    </div>
+                  </div>
+
+                  <div class="e3d-objeto e3d-objeto--c">
+                    <div class="e3d-cubo e3d-cubo--inverso">
+                      <span class="e3d-cubo__cara e3d-cubo__cara--frente">{{ ic.icono('auditoria') }}</span>
+                      <span class="e3d-cubo__cara e3d-cubo__cara--atras">{{ ic.icono('auditoria') }}</span>
+                      <span class="e3d-cubo__cara e3d-cubo__cara--derecha">{{ ic.icono('auditoria') }}</span>
+                      <span class="e3d-cubo__cara e3d-cubo__cara--izquierda">{{ ic.icono('auditoria') }}</span>
+                      <span class="e3d-cubo__cara e3d-cubo__cara--arriba"></span>
+                      <span class="e3d-cubo__cara e3d-cubo__cara--abajo"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="e3d-pista">{{ ic.icono('comando') }} Arrastra para girar la escena</p>
         </div>
         <div class="revelar revelar--1">
           <span class="seccion__etiqueta">Seguridad</span>
@@ -449,13 +683,13 @@
       <div class="testimonios">
         <article class="testimonio revelar">
           <blockquote>
-            «Antes cruzábamos correos para saber si el laboratorio de redes estaba libre.
-            Ahora se ve en el panel y el sistema no deja que dos personas reserven la misma
-            hora. Se acabó el problema.»
+            «Antes nos escribíamos correos para saber si el laboratorio de redes estaba
+            libre. Ahora se ve en el panel y el sistema no deja que dos personas reserven la
+            misma hora. Se acabó el problema.»
           </blockquote>
           <div class="testimonio__autor">
-            <span class="avatar" aria-hidden="true">MG</span>
-            <span><b>María González</b><span>Coordinadora de laboratorios</span></span>
+            <span class="avatar" aria-hidden="true">E</span>
+            <span><b>Evelyn</b><span>Coordinadora de laboratorios</span></span>
           </div>
         </article>
 
@@ -478,6 +712,28 @@
           <div class="testimonio__autor">
             <span class="avatar" aria-hidden="true">SV</span>
             <span><b>Sleither Vásquez</b><span>Administración del sistema</span></span>
+          </div>
+        </article>
+
+        <article class="testimonio revelar">
+          <blockquote>
+            «Lo armamos pensando en el día a día de un centro de formación: que reservar un
+            laboratorio no obligue a llamar a nadie y que cada movimiento quede registrado.»
+          </blockquote>
+          <div class="testimonio__autor">
+            <span class="avatar" aria-hidden="true">LR</span>
+            <span><b>Lorenzo Roca</b><span>Desarrollo y arquitectura</span></span>
+          </div>
+        </article>
+
+        <article class="testimonio revelar revelar--1">
+          <blockquote>
+            «Probamos el sistema con los datos reales del centro hasta que las reglas
+            quedaron claras: sin dobles reservas, sin equipos sin rastro y sin sorpresas.»
+          </blockquote>
+          <div class="testimonio__autor">
+            <span class="avatar" aria-hidden="true">AC</span>
+            <span><b>Adrián Cedeño</b><span>Desarrollo y pruebas</span></span>
           </div>
         </article>
       </div>
@@ -515,7 +771,7 @@
         <article class="plan plan--destacado revelar revelar--1">
           <span class="plan__cinta">Más elegido</span>
           <h3>Institución</h3>
-          <p class="plan__precio"><b>Desde 0 €</b><span>según despliegue</span></p>
+          <p class="plan__precio"><b>Desde $0</b><span>según despliegue</span></p>
           <p class="plan__descripcion">
             Puesta en marcha acompañada para centros que necesitan arrancar sin fricción.
           </p>
@@ -579,7 +835,7 @@
           <summary>¿Dónde se guardan los datos?</summary>
           <p>
             En un único archivo SQLite dentro del propio proyecto. Eso hace que hacer copia
-            de seguridad sea tan simple como copiar un fichero, y que puedas mover toda la
+            de seguridad sea tan simple como copiar un archivo, y que puedas mover toda la
             instalación de un equipo a otro sin exportar nada.
           </p>
         </details>
@@ -648,6 +904,7 @@
           <h4>Aplicación</h4>
           <ul>
             <li><a href="{{ url_for('web.login') }}">Iniciar sesión</a></li>
+            <li><a href="{{ url_for('web.registro') }}">Crear una cuenta</a></li>
             <li><a href="{{ url_for('web.login') }}">Demo con datos de ejemplo</a></li>
             <li><a href="#preguntas">Preguntas frecuentes</a></li>
           </ul>
