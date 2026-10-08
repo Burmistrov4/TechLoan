@@ -5,3 +5,4 @@ database/*.db
 database/*.backup-*
 .env
 .task-flow-progress/
+.workbuddy-ai/
