@@ -51,8 +51,31 @@ En palabras: un **prestatario** (una persona) recibe una **reserva** de un
 
 ### 2.1 Iniciar sesión
 
-Abre el navegador en **http://127.0.0.1:5000**. Verás la portada del producto; pulsa
+Abre el navegador en **http://127.0.0.1:5000**. Verás la portada del producto; haz clic en
 **Iniciar sesión** (o ve directamente a `/login`).
+
+Puedes identificarte con tu **nombre de usuario o con tu correo**: da igual cuál uses, la
+contraseña es la misma.
+
+### 2.1.1 Crear tu propia cuenta
+
+Si no tienes cuenta, en la pantalla de acceso hay un enlace a **Crear una cuenta**
+(`/registro`):
+
+1. Rellena nombre, apellido, nombre de usuario, correo y contraseña.
+2. Al enviar el formulario se crea la cuenta y se te manda un **enlace de confirmación** por
+   correo. Hasta que no lo abras, no podrás entrar: el sistema te lo dirá si lo intentas.
+3. Abre el enlace y ya puedes iniciar sesión.
+
+Tu cuenta se crea con el rol **operador**: reservas, préstamos y catálogo. Los permisos de
+administración los reparte un administrador desde el módulo *Usuarios*.
+
+> Si el enlace caduca o no te llega, usa **No confirmé mi correo** en la pantalla de acceso
+> para pedir uno nuevo. El anterior deja de funcionar.
+
+> **Sin servidor de correo configurado** (lo normal en una demostración local), el mensaje no
+> sale: se guarda en `database/buzon/` y el enlace aparece en pantalla al terminar el
+> registro. Así se puede ver el flujo completo sin internet.
 
 ### 2.2 Usuarios de prueba
 
@@ -67,6 +90,11 @@ Si vas a probar el sistema por primera vez, entra como `admin`: verás todos los
 
 El **panel de inicio** con seis indicadores, tres gráficos y la actividad reciente. Es la
 pantalla desde la que se trabaja.
+
+La primera vez, además, arranca solo un **tutorial guiado** de 8 pasos que va señalando cada
+parte de la interfaz. Puedes saltarlo con *Saltar el tutorial* o cerrarlo con `Esc`. No
+volverá a aparecer; si quieres verlo otra vez, está en tu menú de usuario
+(**Ver el tutorial**) y en la guía de uso.
 
 ---
 
@@ -104,7 +132,8 @@ Un número junto a **Reservas** o **Préstamos** indica avisos pendientes.
 - **Buscar o ir a…** — abre la búsqueda global (también con `Ctrl`+`K`).
 - **Sol / luna** — cambia entre tema claro y oscuro. Tu elección se recuerda.
 - **Campana** — avisos: préstamos vencidos, reservas de hoy, laboratorios saturados.
-- **Tu nombre** — menú con *Mi perfil*, *Guía de uso* y *Cerrar sesión*.
+- **Tu nombre** — menú con *Mi perfil*, *Guía de uso*, **Ver el tutorial** y
+  *Cerrar sesión*.
 
 ### 3.3 Los listados
 
@@ -112,7 +141,7 @@ Todos los listados funcionan igual, y eso es a propósito:
 
 - **Buscar**: escribe en el recuadro de búsqueda; el listado se filtra solo. Busca en
   todos los campos, así que da igual si recuerdas el código o el nombre.
-- **Ordenar**: pulsa el encabezado de una columna. Vuelve a pulsarlo para invertir el orden.
+- **Ordenar**: haz clic en el encabezado de una columna. Vuelve a hacer clic en él para invertir el orden.
 - **Paginar**: los controles aparecen al pie cuando hay más registros que los que caben.
 - **Exportar CSV**: descarga lo que tienes filtrado en ese momento. Se abre en Excel
   directamente, con los acentos y las columnas correctos.
@@ -128,7 +157,7 @@ Todos los listados funcionan igual, y eso es a propósito:
 1. Ve a **Prestatarios** → **Nuevo prestatario**.
 2. Rellena cédula, nombre, apellido y tipo (estudiante, profesor, empleado u otro).
 3. Teléfono y correo son opcionales, pero facilitan el contacto.
-4. Pulsa **Guardar prestatario**.
+4. Haz clic en **Guardar prestatario**.
 
 > **Ojo:** la cédula es única. Si ya existe, el sistema te avisará y no guardará el duplicado.
 
@@ -152,27 +181,27 @@ Hazlo en este orden, porque cada paso depende del anterior:
    puedes cambiarla.
 5. Observa el recuadro **Hora de finalización**: se calcula sola mientras escribes.
 6. Consulta la **ocupación del día**: la barra muestra en azul las franjas ya reservadas.
-7. Pulsa **Verificar disponibilidad** para comprobarlo antes de guardar, o directamente
+7. Haz clic en **Verificar disponibilidad** para comprobarlo antes de guardar, o directamente
    **Guardar reserva**.
 
 **Si el horario está ocupado**, el sistema te lo dirá y te ofrecerá las **franjas libres
-más cercanas**. Pulsa la que te sirva y se aplicará sola: no tienes que empezar de nuevo.
+más cercanas**. Haz clic en la que te sirva y se aplicará sola: no tienes que empezar de nuevo.
 
 ### 4.4 Cancelar una reserva
 
-En el listado de reservas, pulsa **Cancelar** en la fila correspondiente y confirma. La
+En el listado de reservas, haz clic en **Cancelar** en la fila correspondiente y confirma. La
 franja queda libre de inmediato para que otro pueda reservarla.
 
 ### 4.5 Imprimir un comprobante
 
-En el listado de reservas, pulsa **Comprobante**. Se abre una vista limpia con todos los
+En el listado de reservas, haz clic en **Comprobante**. Se abre una vista limpia con todos los
 datos y un botón **Imprimir** que respeta el diseño (también sirve para guardar en PDF).
 
 ### 4.6 Prestar un equipo
 
 1. Ve a **Préstamos** → **Nuevo préstamo**.
 2. Elige un **equipo disponible** y el **prestatario** que lo recibe.
-3. Añade observaciones si hace falta y pulsa **Registrar préstamo**.
+3. Añade observaciones si hace falta y haz clic en **Registrar préstamo**.
 
 El equipo pasa automáticamente a **PRESTADO** y desaparece de la lista de disponibles.
 Nadie podrá prestarlo de nuevo hasta que vuelva.
@@ -182,7 +211,7 @@ Nadie podrá prestarlo de nuevo hasta que vuelva.
 
 ### 4.7 Registrar una devolución
 
-En **Préstamos**, localiza el préstamo en la tabla de *Préstamos activos* y pulsa
+En **Préstamos**, localiza el préstamo en la tabla de *Préstamos activos* y haz clic en
 **Devolver**. Confirma el diálogo.
 
 El equipo vuelve a **DISPONIBLE** y se guarda la fecha de devolución.
@@ -205,7 +234,7 @@ nombre del usuario aunque su cuenta se haya eliminado después.
 
 ### 4.10 Cambiar tu contraseña
 
-Menú de usuario (arriba a la derecha) → **Mi perfil** → rellena los tres campos y pulsa
+Menú de usuario (arriba a la derecha) → **Mi perfil** → rellena los tres campos y haz clic en
 **Actualizar contraseña**.
 
 Se te pide la contraseña actual como comprobación: tener la sesión abierta no basta.
@@ -354,7 +383,7 @@ No. Solo aparecen en el formulario los equipos en estado DISPONIBLE.
 La comprobación y el guardado se hacen en la misma operación, así que la segunda petición
 ve la primera y se rechaza. Además, quien la intentó recibe alternativas.
 
-**¿Puedo usar TechLoan en el móvil?**
+**¿Puedo usar TechLoan en el celular?**
 Sí. La interfaz se adapta: en pantallas pequeñas las tablas se convierten en tarjetas y el
 menú lateral se abre como un cajón.
 
@@ -375,9 +404,9 @@ Se guardan como hash cifrado (scrypt). Nadie puede leerlas, ni siquiera un admin
 | No veo el módulo *Usuarios* ni *Auditoría* | Tu rol es OPERADOR | Es el comportamiento previsto; pide el rol de administrador |
 | No aparece un equipo en el formulario de préstamo | No está DISPONIBLE | Revisa su estado en *Equipos* |
 | El selector de fecha rechaza la fecha | Es anterior a hoy | No se permiten reservas en el pasado |
-| El listado aparece vacío | Hay un filtro activo | Pulsa *Limpiar* junto al buscador |
+| El listado aparece vacío | Hay un filtro activo | Haz clic en *Limpiar* junto al buscador |
 | No veo el botón *Eliminar* | Tu rol no lo permite | Es el comportamiento previsto para OPERADOR |
-| El menú lateral no se cierra en el móvil | — | Pulsa fuera del menú, sobre el fondo oscurecido |
+| El menú lateral no se cierra en el celular | — | Haz clic fuera del menú, sobre el fondo oscurecido |
 | La página se ve sin estilos | El servidor no está sirviendo los archivos estáticos | Recarga con `Ctrl`+`F5` |
 | El servidor no arranca | Puerto 5000 ocupado | Cierra otra instancia o cambia el puerto en `app/config.py` |
 | «No module named 'app'» al ejecutar pruebas | Falta el prefijo de ruta | Ejecuta con `PYTHONPATH=. python tests/…` |

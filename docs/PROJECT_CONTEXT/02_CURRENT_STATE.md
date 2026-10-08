@@ -1,6 +1,6 @@
 # 02 — ESTADO ACTUAL REAL
 
-> Última actualización: 2026-10-08 (sesión 5, verificación final de la interfaz premium).
+> Última actualización: 2026-10-08 (sesión 6: escenas 3D, tutorial guiado y registro por correo).
 > **Estado: TERMINADO Y EMPAQUETADO.** Ver `WORKLOG.md` para la evidencia completa.
 
 ## Estado general
@@ -10,7 +10,7 @@ funcional construida con Flask + SQLite3 + Jinja2 + HTML5 + CSS3 + JavaScript
 Vanilla, que reutiliza íntegramente el backend, los servicios y las pruebas
 heredados. Está verificado, documentado y empaquetado para la entrega.
 
-> **Nota (sesión 4–5):** sobre esta base se construyó la **interfaz premium**
+> **Nota (sesión 4–6):** sobre esta base se construyó la **interfaz premium**
 > (portada pública, sistema de diseño con tema claro/oscuro, panel analítico con
 > gráficos SVG, paleta de comandos, auditoría, perfil y guía de uso). El detalle de
 > uso está en `docs/MANUAL_DE_USUARIO.md`; el mapa de archivos, en el `README.md`.
@@ -27,12 +27,14 @@ heredados. Está verificado, documentado y empaquetado para la entrega.
 | CRUD web de las 5 entidades | `app/routes/web_crud_routes.py` |
 | Reservas, préstamos, devoluciones, historial | `app/routes/web_operations_routes.py` |
 | Perfil, guía de uso y auditoría | `app/routes/web_extra_routes.py` |
+| Registro, confirmación por correo y reenvío | `app/routes/web_auth_routes.py` |
 | Shell autenticado (barra lateral, cabecera, alertas) | `templates/base_app.html` |
 | Shell público (portada, acceso, error) | `templates/base_publico.html` |
 | Sistema de diseño (tema claro/oscuro, responsive) | `static/css/estilos.css` |
-| Portada pública y pantalla de acceso | `static/css/landing.css` · `templates/landing.html` |
+| Portada pública, pantalla de acceso y escenas 3D | `static/css/landing.css` · `templates/landing.html` |
 | Gráficos SVG del panel | `static/js/graficos.js` |
 | Interacciones (tema, menús, paleta, sugerencias) | `static/js/main.js` |
+| Tutorial guiado (walkthrough) | `static/js/tutorial.js` |
 | Animaciones de la portada | `static/js/landing.js` |
 | Configuración del servidor | `app/server.py` |
 | Parámetros de negocio (días de préstamo, umbral de saturación, franja horaria) | `app/config.py` |
@@ -51,6 +53,9 @@ los permisos, las alertas y el token CSRF.
 /perfil  (GET, POST)     Cuenta propia y cambio de contraseña
 /ayuda                   Guía de uso (exige sesión)
 /auditoria               Registro de actividad (solo ADMINISTRADOR)
+/registro                Alta de cuenta por parte del propio usuario
+/confirmar/<token>       Activa la cuenta desde el enlace del correo
+/reenviar                Emite un enlace de confirmación nuevo
 /buscar                  Búsqueda global para la paleta de comandos (JSON)
 
 /crear                   Alta de prestatario        ← ruta del PDF
@@ -124,6 +129,7 @@ adyacentes, estados que bloquean/no bloquean e historial.
 |---|---|---|
 | `tests/smoke_test.py` | Esquema, hash, solapamiento, arranque web | ✅ |
 | `tests/test_web_phase6.py` | Integración web (208 peticiones, BD temporal) | ✅ |
+| `tests/test_registro_phase7.py` | Registro, token y confirmación por correo | ✅ |
 | `tests/test_crud_phase5.py` | CRUD backend | ✅ |
 | `tests/test_validations_phase5.py` | Validaciones | ✅ |
 | `tests/test_security_phase5.py` | Seguridad | ✅ |
@@ -132,14 +138,16 @@ adyacentes, estados que bloquean/no bloquean e historial.
 | `tests/test_historial_phase4.py` | Historial | ✅ |
 | `tests/crud_test.py`, `tests/security_test.py` | Legado | ✅ |
 
-**Resultados de la verificación final (sesión 5):**
+**Resultados de la verificación final (sesiones 5 y 6):**
 
-- Suite completa en el proyecto: **10 PASS / 0 FAIL**.
+- Suite completa en el proyecto: **11 PASS / 0 FAIL**.
 - `test_web_phase6`: **208 peticiones**, cero errores 500, más un **barrido de las
   57 rutas GET sin sesión** que exige que ninguna devuelva 500.
 - Navegador real (Chromium/Playwright, interfaz premium completa): **47/47
   comprobaciones OK**, 85 respuestas observadas, **cero errores 5xx**, sin
   excepciones de JavaScript y sin errores de consola inesperados.
+- Tutorial guiado y escenas 3D en navegador real: **33/33 comprobaciones OK**.
+- Registro con confirmación por correo en navegador real: **18/18 OK**, 0 respuestas 5xx.
 - Capturas de evidencia en `docs/capturas/`.
 
 **Incidencia detectada y resuelta en esta sesión:**

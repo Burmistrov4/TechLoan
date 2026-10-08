@@ -116,7 +116,7 @@ Cada módulo debe extender `base.html`.
 
 Prioridad mínima:
 
-- móvil ~375px;
+- celular ~375px;
 - tablet ~768px;
 - escritorio ~1280px.
 

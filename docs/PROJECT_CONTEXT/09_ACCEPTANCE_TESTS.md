@@ -23,7 +23,7 @@
 ### CRUD — 35 % ✅
 
 - [x] Crear funciona (formulario + validación servidor + servicio + redirección).
-- [x] Leer funciona (tabla responsive; en móvil, tarjetas).
+- [x] Leer funciona (tabla responsive; en celular, tarjetas).
 - [x] Editar funciona (formulario precargado).
 - [x] Eliminar funciona (por `POST`).
 - [x] Flujo normal sin errores 500 (113 peticiones verificadas).
@@ -48,7 +48,7 @@
 - [x] Labels asociados a todos los campos (`for`/`id`).
 - [x] Formularios claros, con ayudas y campos obligatorios marcados.
 - [x] CSS propio, limpio y comentado por secciones.
-- [x] Responsive móvil 375 px (verificado con capturas).
+- [x] Responsive celular 375 px (verificado con capturas).
 - [x] Responsive tablet 768 px.
 - [x] Escritorio 1280 px.
 - [x] Navegación usable, con enlace "Saltar al contenido principal".
@@ -59,7 +59,7 @@
 - [x] Vanilla JS, sin dependencias.
 - [x] Confirmación antes de eliminar, cancelar y devolver.
 - [x] Validación en el cliente con realimentación visual.
-- [x] Manipulación del DOM (menú móvil, hora de finalización en vivo, cierre de mensajes).
+- [x] Manipulación del DOM (menú celular, hora de finalización en vivo, cierre de mensajes).
 - [x] Interacción visible (botón "Usar duración estándar", estados de carga).
 - [x] `fetch()` a `/reservas/disponibilidad` para avisar de solapamientos.
 
@@ -177,4 +177,4 @@
 - [x] El diálogo de confirmación nombra el registro concreto que se va a eliminar.
 - [x] Las fechas de demostración nunca quedan vencidas (son relativas a la fecha de ejecución).
 - [x] La navegación indica la sección activa y respeta los permisos del rol.
-- [x] Sin desbordamiento horizontal en móvil.
+- [x] Sin desbordamiento horizontal en celular.

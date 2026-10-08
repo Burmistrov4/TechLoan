@@ -14,6 +14,8 @@
 - [ ] Ensayado el flujo completo de la sección 3, cronometrado
 - [ ] Capturas de respaldo en `docs/capturas/` (por si falla el equipo)
 - [ ] Suite de pruebas ejecutada y en verde
+- [ ] Tutorial guiado probado (se relanza desde el menú de usuario)
+- [ ] Registro por correo probado y `database/buzon/` vacío antes de empezar
 
 > **Importante:** ejecuta `python init_db.py` **el mismo día**. Las fechas de las reservas de
 > demostración son relativas a la fecha de ejecución, así que siempre quedan en el futuro.
@@ -56,7 +58,7 @@ solapamiento. Anótalos: los necesitarás en el paso 12.
 
 ---
 
-## 3. Recorrido de demostración (≈ 15–18 minutos)
+## 3. Recorrido de demostración (≈ 17–20 minutos)
 
 ### Paso 0 — Mostrar la estructura del proyecto (1 min)
 
@@ -106,11 +108,18 @@ Señala en el panel: las **6 tarjetas de indicadores** con contadores animados y
 SVG** dibujados en el cliente (reservas por día, inventario por estado, ocupación por
 laboratorio), más las próximas reservas y la actividad reciente.
 
+Nada más entrar, la primera vez, **arranca solo el tutorial guiado**: 8 pasos que van
+señalando el menú, la búsqueda, el tema, las alertas, el panel y la cuenta. Es la forma más
+rápida de enseñar la aplicación sin explicar la interfaz a mano.
+
+Frase útil: *"El sistema se explica solo: el recorrido se guarda por usuario y no vuelve a
+aparecer, pero se puede repetir desde el menú de usuario."*
+
 Dos detalles que lucen y son gratis de mostrar:
 
-- Pulsa el **botón de tema** de la cabecera → la interfaz pasa a oscuro y los gráficos se
+- Haz clic en el **botón de tema** de la cabecera → la interfaz pasa a oscuro y los gráficos se
   redibujan tomando los colores del tema. Recarga la página: **el tema elegido persiste**.
-- Pulsa **Ctrl+K** → se abre la **paleta de comandos**. Escribe `González`: encuentra al
+- Presiona **Ctrl+K** → se abre la **paleta de comandos**. Escribe `González`: encuentra al
   prestatario buscando en los datos reales del servidor. `Escape` la cierra.
 
 Frase útil: *"Todo esto es HTML, CSS y JavaScript sin ninguna librería: los gráficos son SVG
@@ -125,16 +134,16 @@ hash, nunca en texto plano."*
 ### Paso 6 — CRUD completo de Prestatarios (3 min) ← **35 % de la rúbrica**
 
 1. **Leer**: entra en *Prestatarios*. Hay 4 registros.
-2. **Crear**: pulsa *Nuevo prestatario* (fíjate que la URL es `/crear`). Rellena:
+2. **Crear**: haz clic en *Nuevo prestatario* (fíjate que la URL es `/crear`). Rellena:
    - Cédula `V-88888888`, Nombre `Valentina`, Apellido `Demostración`
    - Tipo `Estudiante`, Teléfono `0414-8888888`, Correo `valentina.demo@correo.com`
-   - Pulsa *Guardar* → mensaje verde y el listado pasa a 5 registros.
+   - Haz clic en *Guardar* → mensaje verde y el listado pasa a 5 registros.
 3. **Validación**: intenta crear otra vez con la **misma cédula** → error
    *"La cédula ya está registrada."* *"Valida el servidor, no solo el navegador."*
-4. **Actualizar**: pulsa *Editar* en la fila creada (URL `/editar/<id>`), cambia el nombre a
+4. **Actualizar**: haz clic en *Editar* en la fila creada (URL `/editar/<id>`), cambia el nombre a
    `Valentina Elena` y el tipo a `Profesor` → se refleja en el listado.
-5. **Eliminar**: pulsa *Eliminar* → **aparece el diálogo de confirmación de JavaScript**.
-   Pulsa *Cancelar* primero para mostrar que no borra, y luego *Aceptar*.
+5. **Eliminar**: haz clic en *Eliminar* → **aparece el diálogo de confirmación de JavaScript**.
+   Haz clic en *Cancelar* primero para mostrar que no borra, y luego *Aceptar*.
    → mensaje verde y el listado vuelve a 4 registros.
 
 ### Paso 7 — Categorías, Laboratorios y Equipos (2 min)
@@ -156,13 +165,13 @@ foráneas; el listado resuelve las relaciones y muestra los nombres."*
 3. Hora de inicio `08:00`, duración `70`.
 4. Señala el recuadro **"Hora de finalización (calculada)"**: muestra `09:10` y se actualiza
    mientras escribes. *"Es manipulación del DOM con JavaScript."*
-5. Cambia la duración a `30` y pulsa *Usar duración estándar* → vuelve a `70`.
+5. Cambia la duración a `30` y haz clic en *Usar duración estándar* → vuelve a `70`.
 
 ### Paso 9 — Solapamiento: rechazo y adyacencia (2 min) ← **regla de negocio clave**
 
-1. Pon hora de inicio `08:30` y pulsa **Verificar disponibilidad** →
+1. Pon hora de inicio `08:30` y haz clic en **Verificar disponibilidad** →
    el navegador consulta el servidor con `fetch()` y responde en rojo que se superpone.
-2. Pulsa *Guardar* → el servidor **también** lo rechaza con un mensaje claro.
+2. Haz clic en *Guardar* → el servidor **también** lo rechaza con un mensaje claro.
    Frase útil: *"La comprobación del navegador es una comodidad; la que manda es la del
    servidor, que usa la misma regla."*
 3. Ahora pon `10:20` (justo cuando termina la reserva anterior) → **se acepta**.
@@ -174,7 +183,7 @@ foráneas; el listado resuelve las relaciones y muestra los nombres."*
 1. *Préstamos* → *Nuevo préstamo*: equipo `EQ-DEMO`, prestatario María González.
 2. Guardar → mensaje *"El equipo figura ahora como PRESTADO"*.
 3. Ve a *Equipos* y señala que **EQ-DEMO está en PRESTADO**.
-4. Vuelve a *Préstamos*, pulsa *Devolver* → confirmación → mensaje
+4. Vuelve a *Préstamos*, haz clic en *Devolver* → confirmación → mensaje
    *"El equipo vuelve a estar DISPONIBLE"*.
 5. Vuelve a *Equipos* y muestra que **EQ-DEMO está DISPONIBLE** otra vez.
 
@@ -193,10 +202,30 @@ Prueba una fecha futura (ej. `Desde 01/01/2030`) → aparece el **mensaje amigab
    tiene clave foránea a propósito."*
 2. **Mi perfil** → cambio de contraseña, con la actual como comprobación.
 3. **Guía de uso** → el manual de usuario dentro de la propia aplicación.
-4. En *Reservas*, pulsa **Comprobante** en una fila: se genera una ficha imprimible de la
+4. En *Reservas*, haz clic en **Comprobante** en una fila: se genera una ficha imprimible de la
    reserva.
 
-### Paso 13 — Restricción administrativa (2 min) ← **seguridad y roles**
+### Paso 13 — Registro de una cuenta nueva (2 min, opcional)
+
+Demuestra que el sistema no depende de que un administrador dé de alta a nadie:
+
+1. *Cerrar sesión* y, en la pantalla de acceso, haz clic en **Crea una aquí**.
+2. Rellena el formulario con un correo cualquiera y una contraseña válida.
+3. Al enviar, la pantalla avisa de que hay que **confirmar el correo**. Como no hay servidor
+   SMTP configurado, el sistema entra en **modo demostración**: muestra el enlace de
+   confirmación ahí mismo y guarda el mensaje en `database/buzon/`.
+4. Antes de confirmar, intenta iniciar sesión: **se rechaza**, y explica por qué. Ese es el
+   punto de la funcionalidad.
+5. Haz clic en **Confirmar mi cuenta ahora** y entra con el **correo** como identificador: funciona.
+
+Frase útil: *"El enlace es de un solo uso y caduca. La cuenta se crea como operador, nunca
+como administrador: nadie se concede permisos a sí mismo. Y si configuras las variables
+`TECHLOAN_SMTP_*`, el mismo flujo manda el correo de verdad."*
+
+> Enseñar `database/buzon/` refuerza el mensaje: el mensaje que "se habría enviado" queda
+> ahí como evidencia.
+
+### Paso 14 — Restricción administrativa (2 min) ← **seguridad y roles**
 
 1. *Cerrar sesión*.
 2. Entra como **`operador` / `Operador123!`**.
@@ -204,13 +233,13 @@ Prueba una fecha futura (ej. `Desde 01/01/2030`) → aparece el **mensaje amigab
 4. Intenta abrir `http://127.0.0.1:5000/usuarios` a mano → redirige con
    *"Tu rol no tiene permisos para realizar esa acción."*
 
-### Paso 14 — Responsive (1 min)
+### Paso 15 — Responsive (1 min)
 
 Reduce la ventana del navegador (o usa F12 → modo dispositivo) a ~375 px:
 - El menú se convierte en un botón que despliega con JavaScript.
 - **Las tablas se convierten en tarjetas** apiladas, sin perder información.
 
-### Paso 15 — Pruebas y cierre (1 min)
+### Paso 16 — Pruebas y cierre (1 min)
 
 ```bash
 PYTHONPATH=. python tests/test_web_phase6.py
@@ -232,7 +261,7 @@ Muestra que pasa completo. Y cierra con:
 | El navegador no abre | Prueba `http://localhost:5000` en lugar de `127.0.0.1`. |
 | `import app` falla al ejecutar pruebas | Falta `PYTHONPATH=.` delante del comando. |
 | Se cae el equipo o el proyector | Usa las capturas de `docs/capturas/`, que cubren todo el recorrido. |
-| Se acaba el tiempo | Prioriza: pasos 6 (CRUD), 9 (solapamiento) y 13 (roles). Son los de mayor peso. |
+| Se acaba el tiempo | Prioriza: pasos 6 (CRUD), 9 (solapamiento) y 14 (roles). Son los de mayor peso. |
 
 ---
 

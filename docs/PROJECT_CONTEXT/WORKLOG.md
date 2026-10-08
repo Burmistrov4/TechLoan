@@ -80,7 +80,7 @@ No volver a desarrollar Tkinter salvo que sea necesario para conservar compatibi
 - 21 plantillas Jinja2 en `templates/` (base, panel, login, 5 módulos CRUD,
   reservas, préstamos, historial, errores y parciales reutilizables).
 - `static/css/estilos.css`: CSS propio mobile-first, 375/768/1280 px, tablas que
-  se convierten en tarjetas en móvil, insignias de estado, foco visible.
+  se convierten en tarjetas en celular, insignias de estado, foco visible.
 - `static/js/main.js`: menú móvil, cierre de mensajes, `confirm()` antes de
   eliminar/cancelar/devolver, validación con realimentación visual, cálculo en
   vivo de la hora de finalización y `fetch()` a `/reservas/disponibilidad`.
@@ -319,3 +319,85 @@ segundo plano, responde correctamente en `http://127.0.0.1:5000`.
 
 **TERMINADO.** No quedan pendientes técnicos.
 
+---
+
+## 2026-10-08 (sesión 6) — Escenas 3D, tutorial guiado, registro por correo
+
+**Agente:** Aria (WorkBuddy AI).
+
+### Contexto
+
+Lorenzo pidió cinco cosas sobre la interfaz y, después, revisar el acceso: no había podido
+iniciar sesión. Se atendió todo en este orden.
+
+### Diagnóstico del acceso (causa real)
+
+Las credenciales `admin` / `Admin123!` y `operador` / `Operador123!` **sí autenticaban**
+(verificado contra la base de datos con `AuthService.authenticate`). El problema era otro:
+**no había ningún proceso escuchando en el puerto 5000**, así que el formulario no tenía a
+quién enviar. El servidor que se había dejado abierto en la sesión anterior murió con ella.
+
+Comprobado también que `iniciar.bat` → `start.py` arranca el servidor correctamente: es la
+vía documentada y la que conviene usar.
+
+### Cambios en la interfaz
+
+- **Equipo en la portada.** «María González» pasa a **Evelyn** (coordinadora de laboratorios)
+  y se añaden **Lorenzo Roca** y **Adrián Cedeño** con sus roles.
+- **Español de Venezuela.** Auditoría completa del texto: «resolvéis» → «se resuelve»,
+  «pulsa» → «haz clic en» / «presiona» (teclas), «fichero» → «archivo», «móvil» → «celular»,
+  «0 €» → «$0». Corregido en plantillas, JavaScript y toda la documentación.
+- **Escenas 3D interactivas.** La imagen plana del héroe y las cuatro ilustraciones de módulos
+  se sustituyen por **geometría CSS 3D** (`preserve-3d`), sin WebGL ni librerías: un tablero
+  con indicadores y gráficos, cubos volumétricos girando, prismas extruidos y anillos
+  concéntricos. La escena se inclina con el puntero y **se gira arrastrando**.
+- **Transiciones suaves.** El cambio de pestaña de módulo ya no salta de imagen a imagen:
+  fundido cruzado entre los cuatro objetos 3D. El revelado al desplazar se suaviza (760 ms con
+  curva de salida y un punto de escala).
+- **Tutorial guiado.** Recorrido de 8 pasos que arranca solo la primera vez que se entra al
+  panel, con foco real sobre cada elemento (sombra gigante alrededor, no cuatro paneles),
+  tarjeta explicativa, barra de progreso, navegación con teclado y botones. Se guarda por
+  navegador y se relanza desde el menú de usuario y la guía de uso (`?tutorial=1`).
+- **Credenciales fuera del frontend.** La pantalla de acceso ya no muestra los usuarios de
+  prueba: solo indica dónde están. Viven en el README y en el manual.
+
+### Registro de usuarios con confirmación por correo
+
+- Tabla `tokens_correo` (un solo uso, con caducidad) y columna `usuarios_sistema.email_confirmado`
+  (`DEFAULT 1`, para que las cuentas creadas por un administrador y las ya existentes sigan
+  entrando; el autoregistro inserta 0).
+- **Migración automática** en `init_database()`: añade la columna si falta, sin recrear tablas.
+- `RegistroService` (alta, token, confirmación, reenvío) y `CorreoService` (SMTP real o **modo
+  demostración**: guarda el mensaje en `database/buzon/` y el enlace se muestra en pantalla).
+- El autoregistro crea siempre **OPERADOR**: nadie se concede privilegios.
+- El acceso admite **usuario o correo**. Sin confirmar no se entra, y se explica por qué (ese
+  aviso solo se da a quien ya acertó la contraseña).
+- Rutas nuevas: `/registro`, `/confirmar/<token>`, `/reenviar`.
+
+### Verificación
+
+| Comprobación | Resultado |
+|---|---|
+| Suite completa (11 archivos) | **11 PASS / 0 FAIL** |
+| `tests/test_registro_phase7.py` (nuevo) | Alta, token, confirmación, acceso con correo, rechazo sin confirmar, validaciones, duplicados, token inválido/caducado/reusado y reenvío |
+| Navegador: tutorial y 3D | **33/33 OK** |
+| Navegador: registro por correo | **18/18 OK**, 0 respuestas 5xx |
+| Migración sobre la base de datos real | columna y tabla creadas, usuarios existentes confirmados |
+
+### Trampas nuevas
+
+- **Flask con `debug=False` cachea las plantillas.** Editar un `.html` y recargar no basta: hay
+  que reiniciar el servidor. Costó un diagnóstico en falso («el tutorial no arranca» cuando en
+  realidad `tutorial.js` no se estaba sirviendo).
+- El enlace de confirmación es **absoluto** (lo construye `URL_BASE`, porque va en un correo),
+  así que en las pruebas no hay que volver a prefijarlo con el host.
+
+### Siguiente acción exacta
+
+1. Ensayar el recorrido de `docs/GUIA_EXPOSICION.md` §3 (ahora 17 pasos) y cronometrarlo.
+2. Regenerar la base de datos con `python init_db.py` el mismo día de la exposición.
+3. Decisión abierta (heredada): incluir o no `docs/PROMPT_AUTONOMOUS_AGENT.md` en el ZIP.
+
+### Estado
+
+**TERMINADO.** No quedan pendientes técnicos.

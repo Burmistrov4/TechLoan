@@ -76,7 +76,8 @@ Proyecto Final de Python/
 │   ├── js/
 │   │   ├── main.js                       # Interactividad de la aplicación
 │   │   ├── graficos.js                   # Gráficos SVG dibujados en el cliente
-│   │   └── landing.js                    # Animaciones 3D de la portada
+│   │   ├── tutorial.js                   # Tutorial guiado (walkthrough) del panel
+│   │   └── landing.js                    # Escenas 3D y animaciones de la portada
 │   └── img/                              # Logotipo, iconos e ilustraciones
 │
 ├── templates/                            # Plantillas HTML procesadas por Jinja2
@@ -88,6 +89,10 @@ Proyecto Final de Python/
 │   ├── perfil.html · ayuda.html          # Cuenta propia y guía de uso
 │   ├── parciales/                        # Fragmentos reutilizables (iconos, listados, campos)
 │   ├── auth/login.html                   # Formulario de acceso
+│   ├── auth/registro.html                # Alta de cuenta
+│   ├── auth/revisar_correo.html          # Aviso de correo enviado (y enlace en demo)
+│   ├── auth/confirmar.html               # Resultado de la confirmación
+│   ├── auth/reenviar.html                # Pedir un enlace nuevo
 │   ├── prestatarios/ · laboratorios/ · categorias/ · equipos/ · usuarios/
 │   ├── reservas/                         # Listado, formulario y comprobante
 │   ├── prestamos/ · historial/ · auditoria/
@@ -109,10 +114,12 @@ Proyecto Final de Python/
 │   │   ├── historial_service.py
 │   │   ├── dashboard_service.py          #   Indicadores, tendencias y series de gráficos
 │   │   ├── alertas_service.py            #   Avisos operativos
-│   │   └── auditoria_service.py          #   Registro de actividad
+│   │   ├── auditoria_service.py          #   Registro de actividad
+│   │   ├── registro_service.py           #   Alta con confirmación por correo
+│   │   └── correo_service.py             #   Envío SMTP (con modo demostración)
 │   ├── routes/
 │   │   ├── web_common.py                 # Blueprint web, permisos, CSRF, listados y CSV
-│   │   ├── web_auth_routes.py            # Portada, panel, acceso y búsqueda global
+│   │   ├── web_auth_routes.py            # Portada, panel, acceso, registro y búsqueda
 │   │   ├── web_crud_routes.py            # CRUD web de las entidades
 │   │   ├── web_operations_routes.py      # Reservas, préstamos, historial
 │   │   ├── web_extra_routes.py           # Perfil, guía de uso y auditoría
@@ -128,6 +135,7 @@ Proyecto Final de Python/
 │
 └── tests/                                # Pruebas automatizadas
     ├── test_web_phase6.py                # Integración de la capa web
+    ├── test_registro_phase7.py           # Registro y confirmación por correo
     ├── smoke_test.py                     # Verificación rápida de extremo a extremo
     ├── test_crud_phase5.py · test_validations_phase5.py
     ├── test_security_phase5.py · test_overlap_phase5.py
@@ -250,7 +258,7 @@ python run_server.py
 
 Abre el navegador en **http://127.0.0.1:5000**.
 
-Verás la **portada pública** del producto. Pulsa *Iniciar sesión* o ve a `/login`. Una vez
+Verás la **portada pública** del producto. Haz clic en *Iniciar sesión* o ve a `/login`. Una vez
 dentro, `/` pasa a ser el panel de control.
 
 ---
@@ -267,6 +275,11 @@ Los crea `schema.sql` con la contraseña almacenada **como hash** (nunca en text
 La diferencia es demostrable: al entrar como `operador` desaparecen del menú los módulos
 *Usuarios* y *Auditoría*, y los botones *Eliminar*; las rutas correspondientes redirigen con
 un aviso de permisos insuficientes.
+
+> **Estas credenciales no se muestran en la aplicación.** La pantalla de acceso solo indica
+> dónde encontrarlas, porque dejar contraseñas a la vista —aunque sean de prueba— es una mala
+> práctica. Además, cualquier persona puede **crear su propia cuenta** desde `/registro`: se
+> da de alta como *operador* y confirma su correo antes de poder entrar (ver §8.5).
 
 ---
 
@@ -334,6 +347,18 @@ de identidad.
 **Tema claro y oscuro.** Conmutador en la barra superior, con la preferencia recordada y sin
 destello al cargar. Los gráficos se redibujan al cambiar.
 
+**Tutorial guiado.** La primera vez que un usuario entra al panel arranca solo un recorrido
+de 8 pasos que va señalando cada parte de la interfaz (menú, búsqueda, tema, alertas, panel y
+cuenta) con una tarjeta explicativa. Se puede saltar, repetir desde el menú de usuario o
+desde la guía de uso, y no vuelve a aparecer una vez visto. Es navegable con teclado
+(`←`, `→`, `Esc`).
+
+**Escenas 3D interactivas.** La portada no usa ilustraciones planas: la composición del héroe
+—un tablero con indicadores, gráficos y la agenda del día— y los objetos de cada módulo son
+**geometría real construida con CSS 3D** (`transform-style: preserve-3d`), sin WebGL ni
+librerías. La escena se inclina siguiendo el puntero y se puede **girar arrastrando**, y los
+objetos de los módulos se funden entre sí al cambiar de pestaña.
+
 **Aplicación instalable.** Manifiesto web y favicon propios: se puede añadir a la pantalla
 de inicio.
 
@@ -388,6 +413,54 @@ libera la franja.
 **Estados de los equipos.** `DISPONIBLE → PRESTADO` al prestar; `PRESTADO → DISPONIBLE` al
 devolver.
 
+### 8.5 Registro de usuarios con confirmación por correo
+
+Cualquiera puede crear su cuenta desde `/registro` sin que intervenga un administrador. El
+flujo garantiza que la cuenta pertenece a quien dice:
+
+| Paso | Qué ocurre |
+|---|---|
+| 1. Alta | Se valida el formulario y se crea el usuario con `email_confirmado = 0` |
+| 2. Rol | El autoregistro crea siempre un **OPERADOR**: nadie se concede privilegios |
+| 3. Token | Se emite un token aleatorio (`secrets`), de **un solo uso** y con caducidad (24 h por defecto) |
+| 4. Correo | Se envía el enlace `http://…/confirmar/<token>` |
+| 5. Activación | Al abrir el enlace, la cuenta pasa a confirmada y el token queda inservible |
+| 6. Acceso | Ya se puede entrar con el **usuario o con el correo** |
+
+Si el enlace caduca o se pierde, `/reenviar` emite uno nuevo e invalida el anterior.
+
+**Sin confirmar no se entra**, y el mensaje de error lo explica. Ese aviso solo se muestra a
+quien ya acertó la contraseña, así que no revela si una cuenta existe.
+
+#### Configurar el correo saliente
+
+El único módulo que necesita hablar con el exterior es este. Se configura por variables de
+entorno; si no se define ninguna, la aplicación entra en **modo demostración**.
+
+| Variable | Para qué |
+|---|---|
+| `TECHLOAN_SMTP_HOST` | Servidor SMTP (p. ej. `smtp.gmail.com`) |
+| `TECHLOAN_SMTP_PORT` | Puerto (por defecto `587`, con STARTTLS) |
+| `TECHLOAN_SMTP_USER` | Usuario de la cuenta |
+| `TECHLOAN_SMTP_PASSWORD` | Contraseña o *contraseña de aplicación* |
+| `TECHLOAN_SMTP_FROM` | Remitente (por defecto, el usuario) |
+| `TECHLOAN_SMTP_TLS` | `0` para desactivar STARTTLS |
+| `TECHLOAN_URL_BASE` | Dirección pública con la que se construyen los enlaces |
+| `TECHLOAN_HORAS_TOKEN` | Horas de validez del enlace (24 por defecto) |
+
+```bash
+# Ejemplo en Windows (PowerShell)
+$env:TECHLOAN_SMTP_HOST = "smtp.gmail.com"
+$env:TECHLOAN_SMTP_USER = "micorreo@gmail.com"
+$env:TECHLOAN_SMTP_PASSWORD = "clave-de-aplicacion"
+python run_server.py
+```
+
+**Modo demostración (sin SMTP).** No se envía nada: el mensaje se guarda en
+`database/buzon/` y el enlace de confirmación se muestra en pantalla tras el registro. Es lo
+que permite enseñar el flujo completo en la defensa sin internet ni cuenta de correo, y
+también si el envío real falla.
+
 ---
 
 ## 9. Seguridad implementada
@@ -416,7 +489,7 @@ devolver.
 **CSS3 propio**, sin frameworks, con un sistema de diseño basado en variables: tokens de
 color, tipografía, espaciado, radios y sombras, y **dos temas completos** (claro y oscuro)
 que comparten estructura. Enfoque *mobile-first* con puntos de ruptura en **375 px**
-(móvil), **768 px** (tablet) y **1280 px** (escritorio). En pantallas pequeñas las tablas se
+(celular), **768 px** (tablet) y **1280 px** (escritorio). En pantallas pequeñas las tablas se
 transforman en tarjetas apiladas mediante CSS, sin duplicar el HTML.
 
 **JavaScript Vanilla** (`static/js/`), organizado en módulos comentados:
@@ -464,7 +537,18 @@ préstamos y devoluciones, historial, auditoría, perfil, comprobante, permisos 
 archivos estáticos y la ausencia de errores 500. **Se ejecuta sobre una base de datos
 temporal**, por lo que no altera `database/techloan.db`.
 
-### 11.3 Regresión del backend
+### 11.3 Pruebas del registro con confirmación por correo
+
+```bash
+PYTHONPATH=. python tests/test_registro_phase7.py
+```
+
+Cubre el alta, la emisión del token, la confirmación desde el enlace, el acceso con el
+correo, el rechazo mientras la cuenta no está confirmada, las validaciones del formulario,
+los duplicados, el token inválido, el caducado, el reutilizado y el reenvío. Usa una base de
+datos y un buzón temporales.
+
+### 11.4 Regresión del backend
 
 ```bash
 PYTHONPATH=. python tests/test_crud_phase5.py

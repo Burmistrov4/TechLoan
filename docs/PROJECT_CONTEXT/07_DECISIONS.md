@@ -70,7 +70,7 @@ Eliminar requiere confirmación visible mediante JavaScript.
 
 ## D-013 — Responsive
 
-La aplicación debe ser usable en móvil y escritorio.
+La aplicación debe ser usable en celular y escritorio.
 
 ## D-014 — Usuarios vs prestatarios
 
