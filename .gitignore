@@ -6,3 +6,4 @@ database/*.backup-*
 .env
 .task-flow-progress/
 .workbuddy-ai/
+*.zip

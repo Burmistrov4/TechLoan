@@ -56,37 +56,46 @@ consulta.
 `requirements.txt` sigue conteniendo únicamente `Flask` y `Werkzeug`. No se añadió
 ninguna dependencia.
 
-## Abiertas
+## Resueltas en la auditoría final (sesión 3)
 
-### Q-011 — ¿Se incluye `app/gui/` (Tkinter) en el paquete de entrega?
+### Q-011 — ¿Se incluye `app/gui/` (Tkinter) en el paquete de entrega? ✅ RESUELTA
 
-**Situación:** el PDF exige una aplicación web. Tkinter ya no es la interfaz
-principal, pero el código existe y funciona como prototipo histórico.
+**Decisión:** se incluye **intacto** en el ZIP, junto con el resto del código.
 
-**Opciones:**
+**Motivo:** no resta a la rúbrica y demuestra la evolución del proyecto (de ahí
+se reutilizaron los servicios y las reglas de negocio). La entrega sigue siendo
+la aplicación web, y así queda claro en el README y en `docs/GUIA_EXPOSICION.md`.
 
-1. Incluirlo y explicar en la exposición que fue el prototipo previo del que se
-   reutilizó todo el backend.
-2. Excluirlo del ZIP final para que la entrega muestre únicamente el stack pedido.
+**Acción tomada:** `app/gui/` (11 archivos `.py`) está en
+`TechLoan_Proyecto_Final_Programacion_III.zip` y **no se ha modificado ni
+eliminado**.
 
-**Recomendación:** opción 1. No resta y demuestra evolución del proyecto, siempre
-que quede claro que la entrega es la web.
+### Q-012 — Fechas de las reservas de demostración ✅ RESUELTA
 
-**Impacto:** bajo. No afecta a la rúbrica en ningún caso.
+**Decisión:** las fechas de prueba son **relativas a la fecha de ejecución**.
 
-**Acción:** requiere decisión de Lorenzo.
+`schema.sql` usa `date('now','localtime','+7 days')` y `+8 days` para las
+reservas, y `datetime('now','localtime','-N days')` para los préstamos.
 
-### Q-012 — Fechas de las reservas de demostración
+**Motivo:** elimina de raíz el problema de que los datos de demostración queden
+vencidos, sin importar cuándo se realice la exposición.
 
-**Situación:** `schema.sql` carga reservas en fechas concretas (2026-10-15 y
-2026-10-16). Si la exposición se realiza mucho después, esas reservas quedarán en
-el pasado.
+**Acción tomada:** `init_db.py` imprime las reservas cargadas y sugiere cómo
+demostrar el solapamiento (08:30 se rechaza) y la adyacencia exacta (10:20 se
+acepta).
 
-**Impacto:** cosmético. La regla que impide reservar en el pasado solo se aplica a
-la **creación**; los datos ya cargados siguen mostrándose con normalidad.
+### Q-013 — ¿Se entregan los documentos de trabajo del agente?
 
-**Acción:** si se desea, actualizar las fechas en `schema.sql` antes de la
-exposición y volver a ejecutar `python init_db.py`.
+**Situación:** `docs/PROMPT_AUTONOMOUS_AGENT.md` es un documento de instrucciones
+de trabajo, no documentación del proyecto.
+
+**Decisión por defecto:** se incluye, por transparencia.
+
+**Alternativa:** excluirlo del ZIP si se prefiere entregar solo documentación del
+proyecto. No afecta a la rúbrica en ningún caso.
+
+**Acción:** requiere decisión de Lorenzo si quiere cambiar el comportamiento por
+defecto.
 
 ## Riesgos
 

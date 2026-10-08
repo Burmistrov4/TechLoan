@@ -1,12 +1,12 @@
 # MEMORY — TECHLOAN
 
 > Memoria compacta para recuperar contexto cuando una sesión de IA pierda historial.
-> Última actualización: 2026-10-08 (sesión 2).
+> Última actualización: 2026-10-08 (sesión 3, auditoría final).
 
 ## Proyecto
 
-TechLoan es el proyecto final de Programación III (IUTEPI). **La entrega web ya
-está construida, probada y documentada.**
+TechLoan es el proyecto final de Programación III (IUTEPI). **La entrega web está
+terminada, verificada, documentada y empaquetada.** No quedan pendientes técnicos.
 
 ## Requisito del profesor
 
@@ -51,7 +51,9 @@ negocio son únicas.
 | JavaScript | `static/js/main.js` |
 | Pruebas web | `tests/test_web_phase6.py` |
 | Smoke moderno | `tests/smoke_test.py` |
+| Guía de exposición | `docs/GUIA_EXPOSICION.md` |
 | Capturas de verificación | `docs/capturas/` |
+| Paquete de entrega | `TechLoan_Proyecto_Final_Programacion_III.zip` |
 
 ## Cómo ejecutar
 
@@ -61,6 +63,10 @@ python run_server.py     # servidor en http://127.0.0.1:5000
 ```
 
 Usuarios: `admin` / `Admin123!` (ADMINISTRADOR) y `operador` / `Operador123!` (OPERADOR).
+
+Las fechas de los datos de prueba son **relativas a la fecha de ejecución**
+(`date('now','localtime','+N days')`), así que nunca quedan vencidas. `init_db.py`
+imprime las reservas cargadas y cómo demostrar el solapamiento.
 
 ## Cómo probar
 
@@ -88,8 +94,19 @@ La regresión backend son los archivos `tests/test_*_phase*.py` (8 archivos, tod
 
 ## Pendientes
 
-1. Repaso final de la rúbrica y ensayo del flujo de exposición.
-2. Decidir si `app/gui/` (Tkinter, prototipo legado) se incluye en el paquete final.
+Ninguno técnico. Solo preparación de la defensa:
+
+1. Ensayar el recorrido de `docs/GUIA_EXPOSICION.md` §3.
+2. Ejecutar `python init_db.py` el mismo día de la exposición.
+3. Opcional: decidir si se excluye `docs/PROMPT_AUTONOMOUS_AGENT.md` del ZIP
+   (documento de trabajo del agente, no documentación del proyecto).
+
+## Estado final verificado
+
+- Suite completa: **10 PASS / 0 FAIL** (también en copia limpia con venv nuevo).
+- Navegador real: **56/56 comprobaciones OK**, 148 respuestas, **cero 5xx**.
+- ZIP de entrega: íntegro, 142 archivos, 0 entradas prohibidas.
+- `app/gui/` (Tkinter) intacto y **dentro** del ZIP.
 
 ## Regla para agentes
 

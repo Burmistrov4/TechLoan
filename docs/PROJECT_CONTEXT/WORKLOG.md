@@ -127,3 +127,89 @@ No volver a desarrollar Tkinter salvo que sea necesario para conservar compatibi
 - Los tests de fase 5 usan la BD de trabajo y crean/eliminan registros. Se
   recomienda ejecutar `python init_db.py` después para dejar la BD en estado de
   demostración.
+
+---
+
+## 2026-10-08 (sesión 3) — Auditoría final y empaquetado para la entrega
+
+**Agente:** Aria (WorkBuddy AI).
+
+### Trabajo realizado
+
+**1. Fechas de demostración (corregido).** Las reservas y préstamos de prueba
+tenían fechas fijas que podían quedar vencidas. Ahora se calculan respecto a la
+fecha de ejecución:
+
+- reservas: `date('now','localtime','+7 days')` y `+8 days`;
+- préstamo activo: `datetime('now','localtime','-1 day')`;
+- préstamo devuelto: `-18 days` y `-16 days`.
+
+`init_db.py` imprime ahora las reservas cargadas y sugiere cómo demostrar el
+solapamiento (`08:30` se rechaza) y la adyacencia exacta (`10:20` se acepta).
+
+**2. Mejora de usabilidad detectada en la revisión visual.** Los desplegables de
+laboratorios, equipos, categorías y prestatarios mostraban **solo el
+identificador** (`LAB-01`, `EQ-001`, `V-12345678`), obligando a memorizar a qué
+registro correspondía cada uno. Ahora muestran código y nombre:
+`LAB-01 — Laboratorio de Informática 1`, `V-12345678 — María González`.
+
+**3. Revisión visual completa en navegador real.** Recorrido de extremo a extremo
+del flujo de exposición con Chromium: login (correcto e incorrecto), CRUD de las
+cinco entidades con mensajes de resultado, validación del servidor, edición,
+eliminación y devolución con confirmación JavaScript, solapamiento rechazado y
+adyacencia aceptada, duración personalizada, cambio de estado
+PRESTADO/DISPONIBLE, historial con filtros y estado vacío, restricción del rol
+operador y responsive en 375/768/1280 px.
+
+**4. Verificación de reconstrucción desde cero.** Exportación limpia con
+`git archive` a una carpeta temporal, entorno virtual nuevo, `pip install -r
+requirements.txt`, `python init_db.py`, suite completa y arranque real del
+servidor con login. Resultado: **10/10 PASS** y aplicación operativa.
+
+**5. Paquete de entrega.** `TechLoan_Proyecto_Final_Programacion_III.zip`
+(2,91 MB, 142 archivos). Verificado: sin `.venv`, sin `__pycache__`, sin `.pyc`,
+sin respaldos de BD, sin estado interno de agentes; incluye la base de datos de
+demostración (validada con `integrity_check: ok`), el prototipo Tkinter y las
+capturas de evidencia.
+
+**6. Documentación.** Nuevo `docs/GUIA_EXPOSICION.md` con el recorrido paso a
+paso, comandos exactos, plan de contingencia y respuestas a preguntas previsibles
+del profesor. README ampliado con la tabla de equivalencia entre la estructura
+sugerida por el enunciado y la del proyecto.
+
+### Evidencia de ejecución
+
+| Comando | Resultado |
+|---|---|
+| `python init_db.py` | 21 registros, `integrity_check: ok`, fechas de demo impresas |
+| Suite completa en el proyecto | 10 PASS / 0 FAIL |
+| Suite completa en copia limpia (venv nuevo) | 10 PASS / 0 FAIL |
+| Navegador real (56 comprobaciones) | **56/56 OK**, 148 respuestas, **0 errores 5xx** |
+| ZIP | integridad OK, 0 entradas prohibidas |
+
+### Incidencias encontradas y resueltas
+
+| Incidencia | Causa | Solución |
+|---|---|---|
+| Desplegables con solo el identificador | Se pasaba `'codigo'`/`'cedula'` como texto | Clave `etiqueta` con código y nombre |
+| `date('now')` podía desfasar un día | Usa UTC | `date('now','localtime',…)` |
+| Correos largos desbordaban la tarjeta en móvil | Falta de corte de palabra | `overflow-wrap: anywhere` + `min-width: 0` |
+
+> Las dos incidencias detectadas en la verificación en navegador (el menú
+> colapsado a 768 px y los 400/401 en consola) resultaron ser **aserciones
+> incorrectas del script de verificación**, no defectos de la aplicación: las 9
+> secciones del menú no caben a 768 px, y los 400/401 provienen de las pruebas
+> negativas deliberadas (login incorrecto, cédula duplicada, reserva solapada).
+
+### Siguiente acción exacta
+
+1. Ensayar el recorrido de `docs/GUIA_EXPOSICION.md` §3 y cronometrarlo.
+2. Regenerar la base de datos con `python init_db.py` el día de la exposición.
+3. Decisión abierta: si se quiere excluir `docs/PROMPT_AUTONOMOUS_AGENT.md` del
+   ZIP (es un documento de trabajo del agente, no documentación del proyecto).
+   Por defecto se incluye, por transparencia.
+
+### Estado
+
+**Proyecto terminado y empaquetado.** No quedan tareas técnicas pendientes.
+

@@ -1,7 +1,22 @@
 # 09 — CRITERIOS DE ACEPTACIÓN
 
-> Estado verificado el 2026-10-08. La evidencia de cada punto está en
-> `WORKLOG.md`. Todos los criterios del PDF están cubiertos.
+> Estado verificado el 2026-10-08 (auditoría final, sesión 3).
+> La evidencia de cada punto está en `WORKLOG.md`.
+> **Todos los criterios del PDF están cubiertos. No quedan pendientes técnicos.**
+
+## Auditoría final — resultados medidos
+
+| Verificación | Resultado |
+|---|---|
+| Suite completa en el proyecto | **10 PASS / 0 FAIL** |
+| Suite completa en copia limpia con venv nuevo | **10 PASS / 0 FAIL** |
+| Pruebas web (`test_web_phase6.py`) | 113 peticiones, **cero errores 500** |
+| Navegador real (Chromium/Playwright) | **56/56 comprobaciones OK** |
+| Respuestas HTTP observadas en el recorrido | 148, **cero 5xx** |
+| Excepciones de JavaScript | 0 |
+| Capturas de evidencia | 43 imágenes en `docs/capturas/` |
+| Paquete de entrega | ZIP íntegro, 142 archivos, 0 entradas prohibidas |
+| Reconstrucción desde cero (clon limpio) | init_db + suite + servidor + login: OK |
 
 ## Rúbrica
 
@@ -127,17 +142,39 @@
 - [x] Regresión backend: 8/8 archivos de prueba en PASS.
 - [x] Pruebas web: `FASE6_PRUEBA_WEB_COMPLETA_OK` (113 peticiones, cero 500).
 - [x] Smoke test moderno: `SMOKE_TEST_OK`.
-- [x] Verificación manual en navegador real: 31/31 comprobaciones OK.
+- [x] Verificación manual en navegador real: 56/56 comprobaciones OK.
 - [x] Capturas responsive en `docs/capturas/` (375, 768 y 1280 px).
+- [x] Reconstrucción verificada en copia limpia con entorno virtual nuevo.
 - [x] Cero errores críticos conocidos.
+
+## Empaquetado y entrega
+
+- [x] `TechLoan_Proyecto_Final_Programacion_III.zip` generado (2,91 MB, 142 archivos).
+- [x] Sin `.venv`, `__pycache__`, `*.pyc`, respaldos de BD ni estado interno de agentes.
+- [x] Incluye base de datos de demostración validada (`integrity_check: ok`).
+- [x] Incluye el prototipo Tkinter (`app/gui/`, 11 archivos).
+- [x] Incluye `schema.sql`, `README.md`, `init_db.py`, `requirements.txt`, tests y documentación.
+- [x] `docs/GUIA_EXPOSICION.md` con recorrido, contingencias y preguntas previsibles.
 
 ## Revisión final del flujo de exposición
 
-- [x] `python init_db.py` reconstruye la base de datos.
+- [x] `python init_db.py` reconstruye la base de datos e imprime las reservas de demostración.
 - [x] `python run_server.py` levanta el servidor en `http://127.0.0.1:5000`.
-- [x] Login como `admin` y como `operador`.
-- [x] CRUD completo demostrable en cada módulo.
-- [x] Reserva de 70 minutos y solapamiento rechazado.
-- [x] Préstamo y devolución con cambio de estado.
-- [x] Historial con filtros.
+- [x] Login como `admin` y como `operador` (probado en navegador real).
+- [x] CRUD completo demostrable en cada módulo, con mensajes de resultado.
+- [x] Reserva de 70 minutos con hora de finalización calculada en vivo.
+- [x] Solapamiento rechazado con mensaje claro; adyacencia exacta aceptada.
+- [x] Préstamo y devolución con cambio de estado verificado en pantalla.
+- [x] Historial con filtros y estado vacío amigable.
+- [x] Restricción administrativa del rol operador visible y verificada.
+- [x] Responsive correcto en 375, 768 y 1280 px (1/2/3 columnas en formularios).
 - [x] `schema.sql` y `README.md` presentes y correctos.
+
+## Experiencia de demostración
+
+- [x] Los desplegables muestran código **y** nombre (no solo el identificador).
+- [x] Todos los mensajes flash son claros y en español.
+- [x] El diálogo de confirmación nombra el registro concreto que se va a eliminar.
+- [x] Las fechas de demostración nunca quedan vencidas (son relativas a la fecha de ejecución).
+- [x] La navegación indica la sección activa y respeta los permisos del rol.
+- [x] Sin desbordamiento horizontal en móvil.

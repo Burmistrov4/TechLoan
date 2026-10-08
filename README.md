@@ -122,6 +122,30 @@ Proyecto Final de Python/
 
 ---
 
+### 3.1 Equivalencia con la estructura sugerida por el enunciado
+
+El PDF propone una arquitectura de directorios simplificada ("Se sugiere la siguiente
+arquitectura"). Se respeta su intención y se conserva, además, la organización modular del
+proyecto. Correspondencia directa:
+
+| Elemento sugerido en el enunciado | Dónde está en este proyecto |
+|---|---|
+| `app.py` — Servidor principal de Flask | `run_server.py` (punto de entrada) + `app/server.py` (`create_app`) |
+| `database.db` — Archivo de la base de datos | `database/techloan.db` |
+| `schema.sql` — Script de creación de tablas | `schema.sql` (raíz) |
+| `static/css/estilos.css` | `static/css/estilos.css` |
+| `static/js/main.js` | `static/js/main.js` |
+| `templates/base.html` | `templates/base.html` |
+| `templates/index.html` — Vista principal | `templates/index.html` (panel) + `templates/<entidad>/index.html` (listados) |
+| `templates/crear.html` — Formulario de inserción | `templates/<entidad>/form.html` (modo alta) |
+| `templates/editar.html` — Formulario de modificación | `templates/<entidad>/form.html` (modo edición) |
+| Rutas `/`, `/crear`, `/editar/<id>`, `/eliminar/<id>` | Implementadas literalmente para Prestatarios |
+
+La lógica de negocio no vive en `app.py`: está repartida en `app/services/`, de modo que la
+misma regla se comparte entre las rutas web y la API JSON, y no puede divergir.
+
+---
+
 ## 4. Instalación paso a paso
 
 ### 4.1 Requisitos previos
