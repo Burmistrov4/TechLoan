@@ -153,23 +153,57 @@ misma regla se comparte entre las rutas web y la API JSON, y no puede divergir.
 - Python 3.10 o superior (probado con Python 3.12).
 - `pip` disponible.
 
-### 4.2 Crear y activar un entorno virtual
+### 4.2 Arranque portable (recomendado)
+
+El proyecto **no depende de rutas absolutas de Python**. El archivo `start.py` detecta Python,
+crea un entorno virtual local `.venv` si no existe, instala las dependencias y levanta Flask.
+**No es necesario activar el entorno virtual manualmente.**
+
+Solo se necesita **Python 3.10 o superior** instalado y disponible en el PATH.
+
+**Windows — doble clic:**
+```text
+iniciar.bat
+```
+
+**Windows — PowerShell:**
+```powershell
+.\iniciar.ps1
+```
+
+**Linux / macOS:**
+```bash
+./iniciar.sh
+```
+
+También puede ejecutarse directamente:
+```bash
+python start.py
+```
+
+El lanzador calcula todas las rutas desde la carpeta del proyecto, por lo que funciona aunque
+la carpeta esté en otra unidad, tenga otro nombre o contenga espacios.
+
+> **Importante:** no copies la carpeta `.venv` de otra PC. Un entorno virtual contiene
+> referencias internas a la máquina donde fue creado. Al copiar el proyecto a otra PC,
+> elimina `.venv` y ejecuta `iniciar.bat` (o el lanzador correspondiente); se reconstruirá
+> automáticamente.
+
+### 4.3 Creación manual del entorno virtual (opcional)
 
 **Windows (PowerShell / CMD):**
-
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
 ```
 
 **Linux / macOS:**
-
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 4.3 Instalar las dependencias
+### 4.4 Instalar las dependencias
 
 ```bash
 pip install -r requirements.txt
@@ -232,6 +266,28 @@ sqlite3 database/techloan.db < schema.sql
 ---
 
 ## 6. Ejecutar el servidor
+
+Para un equipo nuevo se recomienda usar el lanzador portable:
+
+**Windows:**
+```text
+iniciar.bat
+```
+
+**PowerShell:**
+```powershell
+.\\iniciar.ps1
+```
+
+**Linux / macOS:**
+```bash
+./iniciar.sh
+```
+
+El lanzador crea o reutiliza el `.venv` local, instala las dependencias y ejecuta
+`run_server.py`. Si la base de datos todavía no existe, también ejecuta `init_db.py`.
+
+La ejecución manual sigue disponible:
 
 ```bash
 python run_server.py
