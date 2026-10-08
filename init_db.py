@@ -47,16 +47,44 @@ def init_database(db_path: Path) -> None:
         connection.commit()
 
         print(f"Base de datos reconstruida: {db_path}")
-        print("-" * 46)
+        print("-" * 58)
         for tabla in TABLAS:
             total = connection.execute(f"SELECT COUNT(*) FROM {tabla}").fetchone()[0]
             print(f"  {tabla:<22} {total:>4} registro(s)")
 
         integridad = connection.execute("PRAGMA integrity_check").fetchone()[0]
-        print("-" * 46)
+        print("-" * 58)
         print(f"  integrity_check: {integridad}")
+
+        _mostrar_datos_demostracion(connection)
     finally:
         connection.close()
+
+
+def _mostrar_datos_demostracion(connection: sqlite3.Connection) -> None:
+    """Imprime las fechas de las reservas de prueba.
+
+    Las fechas de ``schema.sql`` son relativas a la fecha de ejecución, así que
+    conviene saber exactamente cuáles quedaron cargadas para ensayar la
+    demostración (sobre todo el ejemplo de solapamiento).
+    """
+    filas = connection.execute(
+        """SELECT l.codigo, r.fecha, r.hora_inicio, r.hora_fin, r.duracion_minutos
+           FROM reservas r JOIN laboratorios l ON l.id = r.laboratorio_id
+           ORDER BY r.fecha, r.hora_inicio"""
+    ).fetchall()
+    if not filas:
+        return
+
+    print()
+    print("  Reservas de demostración (útiles para la exposición):")
+    for fila in filas:
+        print(
+            f"    {fila['codigo']}  {fila['fecha']}  "
+            f"{fila['hora_inicio']}-{fila['hora_fin']}  ({fila['duracion_minutos']} min)"
+        )
+    print("    Sugerencia: intenta reservar LAB-01 el mismo día a las 08:30")
+    print("    (debe rechazarse por solapamiento) y a las 10:20 (debe aceptarse).")
 
 
 def main() -> None:

@@ -14,6 +14,11 @@
 -- ADVERTENCIA: elimina los datos existentes de la base de datos de destino.
 -- No ejecutarlo sobre la base de datos de trabajo sin respaldo previo.
 --
+-- NOTA: las fechas de las reservas y de los préstamos de prueba se calculan
+-- respecto a la fecha de ejecución (date('now','localtime','+N days')), de modo
+-- que los datos de demostración siempre quedan vigentes y nunca aparecen
+-- vencidos durante la exposición.
+--
 -- Proyecto final de Programación III — IUTEPI.
 -- ============================================================================
 
@@ -233,24 +238,34 @@ VALUES
 
 -- ---------------------------------------------------------------------------
 -- Reservas (3 registros de prueba).
--- LAB-01 el 2026-10-15 tiene dos reservas ADYACENTES (08:00-09:10 y
--- 09:10-10:20): no se superponen, por lo que son válidas. Sirven como ejemplo
--- de la regla de solapamiento del sistema.
+--
+-- Las fechas se calculan con date('now','localtime','+N days') para que las
+-- reservas de demostración queden SIEMPRE en el futuro, sin importar cuándo se
+-- ejecute este script. Así la demostración nunca muestra datos vencidos.
+--
+-- LAB-01 (en 7 días) tiene dos reservas ADYACENTES (08:00-09:10 y 09:10-10:20):
+-- no se superponen, por lo que son válidas. Sirven para demostrar la regla de
+-- solapamiento: una tercera reserva a las 08:30 sería rechazada, y una a las
+-- 10:20 sería aceptada (adyacencia exacta).
 -- ---------------------------------------------------------------------------
 INSERT INTO reservas
     (laboratorio_id, prestatario_id, usuario_sistema_id, fecha, hora_inicio,
      hora_fin, duracion_minutos, estado, observaciones)
 VALUES
-    (1, 1, 1, '2026-10-15', '08:00', '09:10', 70, 'CONFIRMADA', 'Práctica de programación'),
-    (1, 2, 1, '2026-10-15', '09:10', '10:20', 70, 'CONFIRMADA', 'Clase de bases de datos'),
-    (2, 3, 2, '2026-10-16', '14:00', '15:30', 90, 'CONFIRMADA', 'Práctica de configuración de redes');
+    (1, 1, 1, date('now','localtime','+7 days'), '08:00', '09:10', 70, 'CONFIRMADA', 'Práctica de programación'),
+    (1, 2, 1, date('now','localtime','+7 days'), '09:10', '10:20', 70, 'CONFIRMADA', 'Clase de bases de datos'),
+    (2, 3, 2, date('now','localtime','+8 days'), '14:00', '15:30', 90, 'CONFIRMADA', 'Práctica de configuración de redes');
 
 -- ---------------------------------------------------------------------------
 -- Préstamos de equipos (2 registros de prueba: uno activo y uno devuelto).
+--
+-- El préstamo activo se registró ayer y el equipo EQ-003 sigue en estado
+-- PRESTADO. El préstamo devuelto se cerró hace unas semanas, para que el
+-- historial muestre una devolución con su fecha.
 -- ---------------------------------------------------------------------------
 INSERT INTO prestamos_equipos
     (equipo_id, prestatario_id, usuario_sistema_id, fecha_prestamo,
      fecha_devolucion, estado, observaciones)
 VALUES
-    (3, 3, 2, '2026-10-07 09:30:00', NULL,                  'ACTIVO',   'Préstamo para práctica de redes'),
-    (2, 1, 1, '2026-09-20 10:00:00', '2026-09-22 11:15:00', 'DEVUELTO', 'Préstamo para exposición');
+    (3, 3, 2, datetime('now','localtime','-1 day'),  NULL,                                    'ACTIVO',   'Préstamo para práctica de redes'),
+    (2, 1, 1, datetime('now','localtime','-18 days'), datetime('now','localtime','-16 days'), 'DEVUELTO', 'Préstamo para exposición');
