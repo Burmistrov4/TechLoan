@@ -18,7 +18,7 @@
     <div class="rejilla-campos">
       {{ f.lista('tipo', 'Tipo de operación', tipos, filtros.tipo or 'TODOS') }}
       {{ f.lista('estado', 'Estado', estados, filtros.estado or 'TODOS') }}
-      {{ f.lista_objetos('prestatario_id', 'Prestatario', prestatarios, 'id', 'cedula',
+      {{ f.lista_objetos('prestatario_id', 'Prestatario', prestatarios, 'id', 'etiqueta',
                          filtros.prestatario_id or '', vacio='— Todos —') }}
       {{ f.texto('recurso', 'Recurso', filtros.recurso, marcador='LAB-01 o EQ-001',
                  ayuda='Busca por código o nombre del laboratorio/equipo.') }}

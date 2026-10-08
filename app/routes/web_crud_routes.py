@@ -37,6 +37,22 @@ ESTADOS_EQUIPO = ("DISPONIBLE", "PRESTADO", "MANTENIMIENTO", "DANADO", "INACTIVO
 ROLES = ("ADMINISTRADOR", "OPERADOR")
 
 
+def _etiquetar_categorias():
+    """Categorías con una clave ``etiqueta`` para los desplegables."""
+    categorias = CategoriaService.list_all()
+    for categoria in categorias:
+        categoria["etiqueta"] = categoria["nombre"]
+    return categorias
+
+
+def _etiquetar_laboratorios():
+    """Laboratorios con una clave ``etiqueta`` (código y nombre juntos)."""
+    laboratorios = LaboratorioService.list_all()
+    for laboratorio in laboratorios:
+        laboratorio["etiqueta"] = f"{laboratorio['codigo']} — {laboratorio['nombre']}"
+    return laboratorios
+
+
 # ===========================================================================
 # PRESTATARIOS — entidad principal del CRUD (rutas del PDF incluidas)
 # ===========================================================================
@@ -276,8 +292,8 @@ def equipo_crear():
             flash(str(exc), "error")
             return render_template(
                 "equipos/form.html", modo="crear", registro=data,
-                categorias=CategoriaService.list_all(),
-                laboratorios=LaboratorioService.list_all(),
+                categorias=_etiquetar_categorias(),
+                laboratorios=_etiquetar_laboratorios(),
                 estados=ESTADOS_EQUIPO,
             ), 400
         flash("Equipo registrado correctamente.", "success")
@@ -285,8 +301,8 @@ def equipo_crear():
 
     return render_template(
         "equipos/form.html", modo="crear", registro={"estado": "DISPONIBLE"},
-        categorias=CategoriaService.list_all(),
-        laboratorios=LaboratorioService.list_all(),
+        categorias=_etiquetar_categorias(),
+        laboratorios=_etiquetar_laboratorios(),
         estados=ESTADOS_EQUIPO,
     )
 
@@ -312,8 +328,8 @@ def equipo_editar(id_):
             data["id"] = id_
             return render_template(
                 "equipos/form.html", modo="editar", registro=data,
-                categorias=CategoriaService.list_all(),
-                laboratorios=LaboratorioService.list_all(),
+                categorias=_etiquetar_categorias(),
+                laboratorios=_etiquetar_laboratorios(),
                 estados=ESTADOS_EQUIPO,
             ), 400
         flash("Equipo actualizado correctamente.", "success")
@@ -321,8 +337,8 @@ def equipo_editar(id_):
 
     return render_template(
         "equipos/form.html", modo="editar", registro=registro,
-        categorias=CategoriaService.list_all(),
-        laboratorios=LaboratorioService.list_all(),
+        categorias=_etiquetar_categorias(),
+        laboratorios=_etiquetar_laboratorios(),
         estados=ESTADOS_EQUIPO,
     )
 

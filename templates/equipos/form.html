@@ -23,9 +23,9 @@
                  ayuda='Entre 2 y 30 caracteres. Debe ser único.') }}
       {{ f.texto('nombre', 'Nombre del equipo', registro.nombre, requerido=true,
                  largo_max=100, minimo=2, marcador='Laptop Dell Latitude') }}
-      {{ f.lista_objetos('categoria_id', 'Categoría', categorias, 'id', 'nombre',
+      {{ f.lista_objetos('categoria_id', 'Categoría', categorias, 'id', 'etiqueta',
                          registro.categoria_id or '', vacio='— Sin categoría —') }}
-      {{ f.lista_objetos('laboratorio_id', 'Laboratorio', laboratorios, 'id', 'nombre',
+      {{ f.lista_objetos('laboratorio_id', 'Laboratorio', laboratorios, 'id', 'etiqueta',
                          registro.laboratorio_id or '', vacio='— Sin laboratorio —',
                          ayuda='Ubicación habitual del equipo (opcional).') }}
       {{ f.texto('marca', 'Marca', registro.marca, largo_max=50) }}

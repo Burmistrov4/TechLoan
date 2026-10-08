@@ -26,10 +26,10 @@
     {% endif %}
 
     <div class="rejilla-campos">
-      {{ f.lista_objetos('equipo_id', 'Equipo', equipos, 'id', 'codigo',
+      {{ f.lista_objetos('equipo_id', 'Equipo', equipos, 'id', 'etiqueta',
                          registro.equipo_id or '', requerido=true,
                          vacio='— Seleccione un equipo disponible —') }}
-      {{ f.lista_objetos('prestatario_id', 'Prestatario', prestatarios, 'id', 'cedula',
+      {{ f.lista_objetos('prestatario_id', 'Prestatario', prestatarios, 'id', 'etiqueta',
                          registro.prestatario_id or '', requerido=true,
                          vacio='— Seleccione un prestatario —') }}
     </div>

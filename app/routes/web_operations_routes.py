@@ -45,12 +45,23 @@ def _contexto_reserva(registro=None):
     laboratorios = [
         lab for lab in LaboratorioService.list_all() if lab["estado"] == "DISPONIBLE"
     ]
+    # Los desplegables muestran código y nombre para que no haya que memorizar
+    # a qué laboratorio o persona corresponde cada identificador.
+    for lab in laboratorios:
+        lab["etiqueta"] = f"{lab['codigo']} — {lab['nombre']}"
+
+    prestatarios = [
+        p for p in PrestatarioService.list_all() if p["estado"] == "ACTIVO"
+    ]
+    for prestatario in prestatarios:
+        prestatario["etiqueta"] = (
+            f"{prestatario['cedula']} — {prestatario['nombre']} {prestatario['apellido']}"
+        )
+
     return {
         "registro": registro or {},
         "laboratorios": laboratorios,
-        "prestatarios": [
-            p for p in PrestatarioService.list_all() if p["estado"] == "ACTIVO"
-        ],
+        "prestatarios": prestatarios,
         # Mapa usado por JavaScript para autocompletar la duración estándar
         # del laboratorio seleccionado.
         "duraciones": {str(lab["id"]): lab["duracion_estandar_minutos"] for lab in laboratorios},
@@ -159,14 +170,20 @@ def prestamos():
 
 
 def _contexto_prestamo(registro=None):
+    equipos = [e for e in EquipoService.list_all() if e["estado"] == "DISPONIBLE"]
+    for equipo in equipos:
+        equipo["etiqueta"] = f"{equipo['codigo']} — {equipo['nombre']}"
+
+    prestatarios = [p for p in PrestatarioService.list_all() if p["estado"] == "ACTIVO"]
+    for prestatario in prestatarios:
+        prestatario["etiqueta"] = (
+            f"{prestatario['cedula']} — {prestatario['nombre']} {prestatario['apellido']}"
+        )
+
     return {
         "registro": registro or {},
-        "equipos": [
-            e for e in EquipoService.list_all() if e["estado"] == "DISPONIBLE"
-        ],
-        "prestatarios": [
-            p for p in PrestatarioService.list_all() if p["estado"] == "ACTIVO"
-        ],
+        "equipos": equipos,
+        "prestatarios": prestatarios,
     }
 
 
@@ -252,12 +269,18 @@ def historial():
         error = str(exc)
         flash(error, "error")
 
+    prestatarios = PrestatarioService.list_all()
+    for prestatario in prestatarios:
+        prestatario["etiqueta"] = (
+            f"{prestatario['cedula']} — {prestatario['nombre']} {prestatario['apellido']}"
+        )
+
     return render_template(
         "historial/index.html",
         registros=registros,
         filtros=filtros,
         tipos=TIPOS_HISTORIAL,
         estados=ESTADOS_HISTORIAL,
-        prestatarios=PrestatarioService.list_all(),
+        prestatarios=prestatarios,
         error=error,
     )

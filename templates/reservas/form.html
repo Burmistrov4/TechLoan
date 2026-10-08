@@ -22,12 +22,12 @@
 
     <div class="rejilla-campos">
       {{ f.lista_objetos('laboratorio_id', 'Laboratorio', laboratorios, 'id',
-                         'codigo', registro.laboratorio_id or '', requerido=true,
+                         'etiqueta', registro.laboratorio_id or '', requerido=true,
                          vacio='— Seleccione un laboratorio —',
                          ayuda='Solo se muestran los laboratorios disponibles.') }}
 
       {{ f.lista_objetos('prestatario_id', 'Prestatario', prestatarios, 'id',
-                         'cedula', registro.prestatario_id or '', requerido=true,
+                         'etiqueta', registro.prestatario_id or '', requerido=true,
                          vacio='— Seleccione un prestatario —') }}
 
       {{ f.texto('fecha', 'Fecha', registro.fecha, tipo='date', requerido=true,
