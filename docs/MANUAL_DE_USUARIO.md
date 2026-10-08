@@ -148,6 +148,42 @@ Todos los listados funcionan igual, y eso es a propósito:
 - **Estado vacío**: si no hay registros, verás un mensaje que lo explica y, si procede, un
   botón para crear el primero.
 
+### 3.4 Lo que dicen los listados de un vistazo
+
+Los listados de **Equipos** y **Laboratorios** están pensados para responder las preguntas
+habituales sin necesidad de abrir cada registro:
+
+**Equipos — columna *Situación del préstamo***
+
+- **Disponible** → "Disponible para prestar".
+- **Prestado** → nombre de quien lo tiene, desde cuándo (con los días transcurridos), la
+  **fecha límite de devolución** y un distintivo de color según la cercanía del vencimiento:
+  - verde "Vence el DD/MM" cuando aún faltan días,
+  - amarillo "Vence mañana" o "Vence hoy" según corresponda,
+  - rojo "Vencido hace N días" cuando se pasó del plazo.
+  Además muestra el teléfono del prestatario para poder contactarlo y un botón **Devolver**
+  en la misma fila (visible si tu rol lo permite).
+- Otros estados (mantenimiento, dañado, inactivo) → trazo neutro.
+
+La fecha límite se calcula como `fecha del préstamo + DIAS_PRESTAMO_LIMITE` (7 días por
+defecto, configurable en `app/config.py`).
+
+**Laboratorios — columna *Ocupación***
+
+- **Ocupado ahora** (hay una reserva en este momento).
+- **Reservado hoy** (la próxima reserva es hoy, en una franja futura).
+- **Próxima reserva** (en días siguientes) → muestra la fecha, la franja `HH:MM–HH:MM` y
+  el nombre del prestatario.
+- Si hay más reservas dentro de los próximos 7 días, debajo aparece "N reservas en los
+  próximos 7 días" como señal de saturación.
+- Si está libre ahora: "Libre ahora · N reservas esta semana" o
+  "Libre, sin reservas próximas".
+
+Estas dos columnas se calculan con una sola consulta cada una
+(`PrestamoEquipoService.prestamos_activos_por_equipo` y
+`ReservationService.proximas_reservas_por_laboratorio`), de modo que añadir la información
+no enlentece el listado.
+
 ---
 
 ## 4. Tareas paso a paso
@@ -211,8 +247,12 @@ Nadie podrá prestarlo de nuevo hasta que vuelva.
 
 ### 4.7 Registrar una devolución
 
-En **Préstamos**, localiza el préstamo en la tabla de *Préstamos activos* y haz clic en
-**Devolver**. Confirma el diálogo.
+Tienes dos caminos:
+
+1. Desde **Préstamos**, localiza el préstamo en la tabla de *Préstamos activos* y haz
+   clic en **Devolver**. Confirma el diálogo.
+2. Desde el listado de **Equipos**, en la columna *Situación del préstamo*, usa el botón
+   **Devolver** que aparece junto al equipo prestado. También te pedirá confirmación.
 
 El equipo vuelve a **DISPONIBLE** y se guarda la fecha de devolución.
 

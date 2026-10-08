@@ -461,6 +461,39 @@ python run_server.py
 que permite enseñar el flujo completo en la defensa sin internet ni cuenta de correo, y
 también si el envío real falla.
 
+### 8.6 Listados enriquecidos: hasta cuándo y qué tan ocupado
+
+Los listados de **Equipos** y **Laboratorios** no se quedan en el estado: dicen
+**para cuándo** y **cómo viene la demanda**, para que la decisión se tome sin abrir cada
+registro.
+
+En `/equipos`, cada fila muestra una columna **Situación del préstamo**:
+
+- **PRESTADO** → quién lo tiene, desde cuándo (con los días transcurridos), la **fecha
+  límite de devolución** calculada a partir de `DIAS_PRESTAMO_LIMITE` (7 días por defecto)
+  y un distintivo de color:
+  - verde "Vence el DD/MM" cuando aún faltan días,
+  - amarillo "Vence mañana" / "Vence hoy" según corresponda,
+  - rojo "Vencido hace N días" cuando se pasó del plazo.
+  Incluye el teléfono del prestatario para poder contactarlo y un botón **Devolver** en la
+  misma fila.
+- **DISPONIBLE** → "Disponible para prestar".
+- Otros estados → trazo neutro.
+
+En `/laboratorios`, cada fila muestra una columna **Ocupación**:
+
+- **Ocupado ahora** (reserva en curso) / **Reservado hoy** (la próxima es hoy) /
+  **Próxima reserva** (en días siguientes), con la fecha, la franja horaria
+  `HH:MM–HH:MM` y el nombre del prestatario.
+- Cuando hay más reservas dentro de los próximos 7 días, se añade "N reservas en los
+  próximos 7 días" como señal de saturación.
+- Si está libre ahora: "Libre ahora · N reservas esta semana" o
+  "Libre, sin reservas próximas".
+
+Los datos los calculan `PrestamoEquipoService.prestamos_activos_por_equipo()` y
+`ReservationService.proximas_reservas_por_laboratorio()` en una sola consulta cada uno, de
+modo que añadir la columna no ralentiza el listado.
+
 ---
 
 ## 9. Seguridad implementada
@@ -593,6 +626,10 @@ información resumida y accesible sin salir del sistema.
 13. **Búsqueda global**: `Ctrl`+`K` y encontrar un registro concreto.
 14. **Tema oscuro** y **responsive** (375 / 768 / 1280 px).
 15. Mostrar `schema.sql`, `README.md` y ejecutar las pruebas.
+16. **Listados enriquecidos**: abrir `/equipos` y señalar la columna "Situación del
+    préstamo" (prestado a quién, desde cuándo y cuándo vence, con el botón *Devolver*);
+    abrir `/laboratorios` y señalar la columna "Ocupación" (próxima reserva, horario y
+    demanda de la semana).
 
 ---
 

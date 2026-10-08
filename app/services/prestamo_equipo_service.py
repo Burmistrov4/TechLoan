@@ -1,4 +1,6 @@
 from datetime import datetime
+
+from app.config import DIAS_PRESTAMO_LIMITE
 from app.database import get_connection
 
 class PrestamoEquipoService:
@@ -45,6 +47,48 @@ class PrestamoEquipoService:
             )
             db.execute("UPDATE equipos SET estado='PRESTADO' WHERE id=?", (equipo_id,))
             return cur.lastrowid
+
+    @staticmethod
+    def prestamos_activos_por_equipo(dias_limite=None):
+        """Préstamos en curso indexados por id de equipo.
+
+        Responde a la pregunta que el listado de equipos no contestaba: si un
+        equipo figura como PRESTADO, ¿a quién se le prestó, desde cuándo y para
+        cuándo? La fecha límite se calcula sumando los días permitidos a la
+        fecha del préstamo, y ``dias_restantes`` puede ser negativo cuando ya
+        se pasó del plazo.
+        """
+        limite = DIAS_PRESTAMO_LIMITE if dias_limite is None else int(dias_limite)
+
+        with get_connection() as db:
+            filas = db.execute(
+                """SELECT p.id AS prestamo_id, p.equipo_id, p.fecha_prestamo,
+                          p.observaciones,
+                          pr.nombre || ' ' || pr.apellido AS prestatario,
+                          pr.cedula, pr.telefono,
+                          CAST(julianday('now','localtime') - julianday(p.fecha_prestamo)
+                               AS INTEGER) AS dias_prestado,
+                          date(p.fecha_prestamo, '+' || ? || ' days') AS fecha_limite
+                     FROM prestamos_equipos p
+                     JOIN prestatarios pr ON pr.id = p.prestatario_id
+                    WHERE p.estado = 'ACTIVO'""",
+                (limite,),
+            ).fetchall()
+
+        hoy = datetime.now().date()
+        resultado = {}
+        for fila in filas:
+            dato = dict(fila)
+            try:
+                vence = datetime.strptime(dato["fecha_limite"], "%Y-%m-%d").date()
+                dato["dias_restantes"] = (vence - hoy).days
+            except (TypeError, ValueError):
+                dato["dias_restantes"] = None
+            dato["vencido"] = (
+                dato["dias_restantes"] is not None and dato["dias_restantes"] < 0
+            )
+            resultado[dato["equipo_id"]] = dato
+        return resultado
 
     @staticmethod
     def list_active():

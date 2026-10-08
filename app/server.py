@@ -40,6 +40,14 @@ def _wants_json():
     return request.path.startswith("/api/") or request.path.startswith("/health")
 
 
+def _register_filters(app):
+    """Filtros de plantilla disponibles en todo el proyecto."""
+    from app.routes.web_common import fecha_corta
+
+    app.jinja_env.filters["fecha_corta"] = fecha_corta
+    app.jinja_env.filters["dia_corto"] = lambda valor: fecha_corta(valor, con_anio=False)
+
+
 def _register_error_handlers(app):
     """Páginas de error amigables; nunca se muestra una traza al usuario."""
 
@@ -124,6 +132,7 @@ def create_app():
         }
 
     _register_error_handlers(app)
+    _register_filters(app)
     return app
 
 

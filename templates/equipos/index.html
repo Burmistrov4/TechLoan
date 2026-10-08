@@ -38,11 +38,13 @@
         {{ l.th('laboratorio_nombre', 'Laboratorio', listado) }}
         {{ l.th('serial', 'Serial', listado) }}
         {{ l.th('estado', 'Estado', listado) }}
+        <th scope="col">Situación del préstamo</th>
         <th scope="col" class="columna-acciones">Acciones</th>
       </tr>
     </thead>
     <tbody>
       {% for e in listado.filas %}
+      {% set prestamo = prestamos.get(e.id) %}
       <tr>
         <td data-etiqueta="Código"><span class="mono">{{ e.codigo }}</span></td>
         <td data-etiqueta="Equipo">
@@ -57,6 +59,47 @@
         <td data-etiqueta="Estado">
           <span class="insignia insignia--{{ e.estado | lower }}">{{ e.estado }}</span>
         </td>
+
+        {#-
+          Si el equipo está prestado, el listado responde a las tres preguntas
+          que importan: a quién, desde cuándo y para cuándo.
+        -#}
+        <td data-etiqueta="Situación del préstamo">
+          {% if prestamo %}
+          <div class="situacion">
+            <span class="situacion__titulo">
+              {{ ic.icono('prestamos', tamano=14) }} {{ prestamo.prestatario }}
+            </span>
+            <span class="dato-secundario">
+              {% if prestamo.dias_prestado %}
+              Prestado desde el {{ prestamo.fecha_prestamo | fecha_corta }}
+              ({{ prestamo.dias_prestado }} día{{ 's' if prestamo.dias_prestado != 1 }})
+              {% else %}
+              Prestado hoy
+              {% endif %}
+            </span>
+            <span class="insignia insignia--{{ 'vencido' if prestamo.vencido else 'atencion' }}">
+              {% if prestamo.vencido %}
+              Vencido hace {{ -prestamo.dias_restantes }} día{{ 's' if -prestamo.dias_restantes != 1 }}
+              {% elif prestamo.dias_restantes == 0 %}
+              Vence hoy
+              {% elif prestamo.dias_restantes == 1 %}
+              Vence mañana
+              {% else %}
+              Vence el {{ prestamo.fecha_limite | fecha_corta }}
+              {% endif %}
+            </span>
+            {% if prestamo.telefono %}
+            <span class="dato-secundario">{{ ic.icono('prestatarios', tamano=13) }} {{ prestamo.telefono }}</span>
+            {% endif %}
+          </div>
+          {% elif e.estado == 'DISPONIBLE' %}
+          <span class="dato-secundario">Disponible para prestar</span>
+          {% else %}
+          <span class="dato-secundario">—</span>
+          {% endif %}
+        </td>
+
         <td data-etiqueta="Acciones" class="columna-acciones">
           <div class="acciones-fila">
             {% if puede('prestamos.write') and e.estado == 'DISPONIBLE' %}
@@ -65,6 +108,17 @@
                title="Registrar un préstamo de este equipo">
               {{ ic.icono('prestamos') }} Prestar
             </a>
+            {% endif %}
+            {% if puede('prestamos.return') and prestamo %}
+            <form method="post" class="formulario-eliminar"
+                  action="{{ url_for('web.prestamo_devolver', id_=prestamo.prestamo_id) }}"
+                  data-confirmar="¿Registrar la devolución de {{ e.codigo }} — {{ e.nombre }}? El equipo volverá a estar DISPONIBLE.">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="boton boton--exito boton--pequeno"
+                      title="Registrar la devolución de este equipo">
+                {{ ic.icono('devolver') }} Devolver
+              </button>
+            </form>
             {% endif %}
             {% if puede('equipos.write') %}
             <a class="boton boton--secundario boton--pequeno"

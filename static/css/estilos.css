@@ -977,6 +977,41 @@ kbd {
 .insignia--tipo-prestamo { color: var(--aviso); background: var(--aviso-tenue); border-color: var(--aviso-borde); }
 .insignia--tipo-devolucion { color: var(--exito); background: var(--exito-tenue); border-color: var(--exito-borde); }
 
+/* --------------------------------------------------------------------------
+   Situación de un recurso
+   --------------------------------------------------------------------------
+   Bloque compacto con la información que decide una operación: quién tiene el
+   equipo y cuándo lo devuelve, o cuándo está ocupado un laboratorio. Se apila
+   en columna para que quepa tanto en una celda de tabla como en una tarjeta.
+   -------------------------------------------------------------------------- */
+.situacion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.situacion__titulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--t-md);
+  font-weight: 600;
+  color: var(--texto);
+  overflow-wrap: anywhere;
+}
+.situacion__titulo svg { width: 14px; height: 14px; color: var(--primario); flex: 0 0 auto; }
+
+.situacion .dato-secundario {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--t-xs);
+  overflow-wrap: anywhere;
+}
+.situacion .dato-secundario svg { width: 13px; height: 13px; flex: 0 0 auto; }
+
 /* ==========================================================================
    10. Tarjetas e indicadores
    ========================================================================== */

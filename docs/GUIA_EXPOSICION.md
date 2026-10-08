@@ -156,6 +156,13 @@ hash, nunca en texto plano."*
 Frase útil: *"El equipo queda relacionado con su categoría y su laboratorio mediante claves
 foráneas; el listado resuelve las relaciones y muestra los nombres."*
 
+Nota: al volver al listado de *Laboratorios*, fíjate en la nueva columna **Ocupación**:
+para los laboratorios con reservas próximas muestra el distintivo (*Ocupado ahora*,
+*Reservado hoy*, *Próxima reserva*), la fecha, la franja `HH:MM–HH:MM`, el prestatario
+y, si aplica, cuántas reservas hay en los próximos 7 días. Los que están libres lo dicen
+explícitamente (*Libre ahora · N reservas esta semana*). Así la decisión de dónde meter
+una práctica se toma sin abrir cada ficha.
+
 ### Paso 8 — Reservas: duración estándar y hora de finalización (2 min) ← **15 % JavaScript**
 
 *Reservas* → *Nueva reserva*.
@@ -182,7 +189,10 @@ foráneas; el listado resuelve las relaciones y muestra los nombres."*
 
 1. *Préstamos* → *Nuevo préstamo*: equipo `EQ-DEMO`, prestatario María González.
 2. Guardar → mensaje *"El equipo figura ahora como PRESTADO"*.
-3. Ve a *Equipos* y señala que **EQ-DEMO está en PRESTADO**.
+3. Ve a *Equipos* y señala que **EQ-DEMO está en PRESTADO**. Fíjate en la nueva columna
+   **Situación del préstamo**: muestra a quién se le prestó, desde cuándo y
+   **cuándo vence** (con el distintivo de color: "Vence el DD/MM", "Vence hoy",
+   "Vencido hace N días"). Ahí mismo está el botón **Devolver**.
 4. Vuelve a *Préstamos*, haz clic en *Devolver* → confirmación → mensaje
    *"El equipo vuelve a estar DISPONIBLE"*.
 5. Vuelve a *Equipos* y muestra que **EQ-DEMO está DISPONIBLE** otra vez.

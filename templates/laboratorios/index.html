@@ -38,11 +38,13 @@
         {{ l.th('capacidad', 'Capacidad', listado) }}
         {{ l.th('duracion_estandar_minutos', 'Duración estándar', listado) }}
         {{ l.th('estado', 'Estado', listado) }}
+        <th scope="col">Ocupación</th>
         <th scope="col" class="columna-acciones">Acciones</th>
       </tr>
     </thead>
     <tbody>
       {% for lab in listado.filas %}
+      {% set ocupa = ocupacion.get(lab.id) %}
       <tr>
         <td data-etiqueta="Código"><span class="mono">{{ lab.codigo }}</span></td>
         <td data-etiqueta="Nombre"><strong>{{ lab.nombre }}</strong></td>
@@ -52,6 +54,42 @@
         <td data-etiqueta="Estado">
           <span class="insignia insignia--{{ lab.estado | lower }}">{{ lab.estado }}</span>
         </td>
+
+        {#-
+          Si el laboratorio está libre, ¿hasta cuándo? Y si está ocupado, ¿hasta
+          qué hora? Es la información que faltaba para poder decidir sin abrir
+          la agenda aparte.
+        -#}
+        <td data-etiqueta="Ocupación">
+          {% if ocupa and ocupa.fecha %}
+          <div class="situacion">
+            <span class="insignia insignia--{{ 'vencido' if ocupa.en_curso else 'atencion' }}">
+              {% if ocupa.en_curso %}Ocupado ahora
+              {% elif ocupa.es_hoy %}Reservado hoy
+              {% else %}Próxima reserva{% endif %}
+            </span>
+            <span class="situacion__titulo">
+              {{ ic.icono('reloj', tamano=14) }}
+              {{ 'Hoy' if ocupa.es_hoy else ocupa.fecha | fecha_corta }},
+              {{ ocupa.hora_inicio }} – {{ ocupa.hora_fin }}
+            </span>
+            <span class="dato-secundario">{{ ocupa.prestatario }}</span>
+            {% if ocupa.total_semana > 1 %}
+            <span class="dato-secundario">
+              {{ ocupa.total_semana }} reservas en los próximos 7 días
+            </span>
+            {% endif %}
+          </div>
+          {% elif ocupa and ocupa.total_semana %}
+          <span class="dato-secundario">
+            Libre ahora · {{ ocupa.total_semana }} reserva{{ 's' if ocupa.total_semana != 1 }}
+            esta semana
+          </span>
+          {% else %}
+          <span class="dato-secundario">Libre, sin reservas próximas</span>
+          {% endif %}
+        </td>
+
         <td data-etiqueta="Acciones" class="columna-acciones">
           <div class="acciones-fila">
             {% if puede('reservas.write') and lab.estado == 'DISPONIBLE' %}

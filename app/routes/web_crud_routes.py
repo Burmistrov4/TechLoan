@@ -24,6 +24,7 @@ from flask import flash, redirect, render_template, request, url_for
 
 from app.routes.web_common import (
     exportar_csv,
+    fecha_corta,
     filtrar_texto,
     form_fields,
     permission_required,
@@ -31,10 +32,13 @@ from app.routes.web_common import (
     registrar_accion,
     web_bp,
 )
+from app.config import DIAS_PRESTAMO_LIMITE
 from app.services.categoria_service import CategoriaService
 from app.services.equipo_service import EquipoService
 from app.services.laboratorio_service import LaboratorioService
+from app.services.prestamo_equipo_service import PrestamoEquipoService
 from app.services.prestatario_service import PrestatarioService
+from app.services.reservation_service import ReservationService
 from app.services.usuario_service import UsuarioService
 
 # Valores admitidos por los CHECK de la base de datos. Se usan para poblar los
@@ -308,12 +312,17 @@ def categoria_eliminar(id_):
 @web_bp.get("/laboratorios")
 @permission_required("laboratorios.read")
 def laboratorios():
+    # La situación de cada laboratorio (próxima reserva y demanda de la semana)
+    # se resuelve en una sola consulta y se cruza aquí por id.
     listado = preparar_listado(
         LaboratorioService.list_all(),
         columnas_ordenables=tuple(clave for clave, _ in COLUMNAS_LABORATORIO),
     )
     return render_template(
-        "laboratorios/index.html", listado=listado, columnas=COLUMNAS_LABORATORIO
+        "laboratorios/index.html",
+        listado=listado,
+        columnas=COLUMNAS_LABORATORIO,
+        ocupacion=ReservationService.proximas_reservas_por_laboratorio(),
     )
 
 
@@ -408,11 +417,19 @@ def laboratorio_eliminar(id_):
 @web_bp.get("/equipos")
 @permission_required("equipos.read")
 def equipos():
+    # Si un equipo está PRESTADO, el listado debe decir a quién, desde cuándo y
+    # para cuándo: es la pregunta que un inventario tiene que responder.
     listado = preparar_listado(
         EquipoService.list_all(),
         columnas_ordenables=tuple(clave for clave, _ in COLUMNAS_EQUIPO),
     )
-    return render_template("equipos/index.html", listado=listado, columnas=COLUMNAS_EQUIPO)
+    return render_template(
+        "equipos/index.html",
+        listado=listado,
+        columnas=COLUMNAS_EQUIPO,
+        prestamos=PrestamoEquipoService.prestamos_activos_por_equipo(),
+        dias_limite=DIAS_PRESTAMO_LIMITE,
+    )
 
 
 @web_bp.get("/equipos/exportar")

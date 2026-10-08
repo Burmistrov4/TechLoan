@@ -226,6 +226,68 @@ class ReservationService:
         return sugerencias[:limite]
 
     @staticmethod
+    def proximas_reservas_por_laboratorio(dias=7):
+        """Situación de cada laboratorio, indexada por id.
+
+        Responde a lo que el listado de laboratorios no decía: si un laboratorio
+        está libre ahora, ¿hasta cuándo? Y si está ocupado, ¿hasta qué hora?
+
+        Devuelve, por laboratorio, la **próxima reserva** que empieza o está en
+        curso (con ``es_hoy`` y ``en_curso`` ya calculados) y cuántas reservas
+        tiene en los próximos ``dias``, que es la señal de saturación.
+        """
+        ahora = datetime.now()
+        hoy = ahora.strftime("%Y-%m-%d")
+        hora_actual = ahora.strftime("%H:%M")
+        hasta = (ahora + timedelta(days=dias)).strftime("%Y-%m-%d")
+
+        with get_connection() as db:
+            proximas = db.execute(
+                """SELECT r.laboratorio_id, r.fecha, r.hora_inicio, r.hora_fin,
+                          p.nombre || ' ' || p.apellido AS prestatario
+                     FROM reservas r
+                     JOIN prestatarios p ON p.id = r.prestatario_id
+                    WHERE r.estado IN ('CONFIRMADA', 'ACTIVA')
+                      AND r.fecha >= ?
+                      -- Las de hoy ya terminadas no cuentan como "próximas".
+                      AND NOT (r.fecha = ? AND r.hora_fin <= ?)
+                    ORDER BY r.fecha, r.hora_inicio""",
+                (hoy, hoy, hora_actual),
+            ).fetchall()
+
+            demanda = db.execute(
+                """SELECT laboratorio_id, COUNT(*) AS total
+                     FROM reservas
+                    WHERE estado IN ('CONFIRMADA', 'ACTIVA')
+                      AND fecha BETWEEN ? AND ?
+                    GROUP BY laboratorio_id""",
+                (hoy, hasta),
+            ).fetchall()
+
+        resultado = {
+            fila["laboratorio_id"]: {"total_semana": fila["total"]} for fila in demanda
+        }
+
+        for fila in proximas:
+            laboratorio_id = fila["laboratorio_id"]
+            dato = resultado.setdefault(laboratorio_id, {"total_semana": 0})
+            if "fecha" in dato:
+                continue  # ya se guardó la más próxima (vienen ordenadas)
+            dato.update(
+                {
+                    "fecha": fila["fecha"],
+                    "hora_inicio": fila["hora_inicio"],
+                    "hora_fin": fila["hora_fin"],
+                    "prestatario": fila["prestatario"],
+                    "es_hoy": fila["fecha"] == hoy,
+                    "en_curso": fila["fecha"] == hoy
+                    and fila["hora_inicio"] <= hora_actual < fila["hora_fin"],
+                }
+            )
+
+        return resultado
+
+    @staticmethod
     def list_all():
         with get_connection() as db:
             return [dict(r) for r in db.execute(

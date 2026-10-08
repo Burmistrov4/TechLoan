@@ -142,6 +142,21 @@ def parse_int(value, default=None):
         return default
 
 
+def fecha_corta(valor, con_anio=True):
+    """Da formato a una fecha ISO para mostrarla en pantalla.
+
+    ``'2026-10-15 08:00:00'`` → ``'15/10/2026'`` (o ``'15/10'`` sin el año).
+    Es tolerante: si el valor no tiene el formato esperado, lo devuelve tal cual
+    en lugar de fallar. Se expone a las plantillas como filtro ``fecha_corta``.
+    """
+    texto = str(valor or "").strip()
+    partes = texto[:10].split("-")
+    if len(partes) != 3 or not all(partes):
+        return texto or "—"
+    anio, mes, dia = partes
+    return f"{dia}/{mes}/{anio}" if con_anio else f"{dia}/{mes}"
+
+
 def safe_redirect_target(target):
     """Evita redirecciones abiertas: solo acepta rutas internas relativas."""
     if not target or not target.startswith("/") or target.startswith("//"):
