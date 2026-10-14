@@ -79,7 +79,7 @@ los permisos, las alertas y el token CSRF.
 
 ### Entregables académicos
 
-- `schema.sql` (raíz): 7 tablas, PK, FK, `CHECK`, 7 índices y **21 registros de
+- `schema.sql` (raíz): 9 tablas, PK, FK, `CHECK`, 12 índices y **26 registros de
   prueba** (mínimo exigido: 3).
   Las fechas de las reservas y préstamos de prueba son **relativas a la fecha de
   ejecución** (`date('now','localtime','+N days')`), por lo que **nunca quedan

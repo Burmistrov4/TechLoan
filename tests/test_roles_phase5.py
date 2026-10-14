@@ -1,3 +1,14 @@
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import _tempdb  # noqa: E402
+
+# Base de datos temporal: estas pruebas NUNCA tocan database/techloan.db.
+_tempdb.preparar("test_roles.db")
+
 from app.server import create_app
 from app.database import init_database, get_connection
 from app.services.usuario_service import UsuarioService

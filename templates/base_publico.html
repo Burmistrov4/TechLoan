@@ -17,9 +17,9 @@
       <b>TechLoan</b>
     </a>
     <nav class="publico__nav" aria-label="Navegación pública">
-      <a href="{{ url_for('web.portada') }}">Portada</a>
-      <a href="{{ url_for('web.portada') }}#modulos">Módulos</a>
-      <a href="{{ url_for('web.portada') }}#planes">Planes</a>
+      <a class="publico__nav-seccion" href="{{ url_for('web.portada') }}">Portada</a>
+      <a class="publico__nav-seccion" href="{{ url_for('web.portada') }}#modulos">Módulos</a>
+      <a class="publico__nav-seccion" href="{{ url_for('web.portada') }}#planes">Planes</a>
       <a href="{{ url_for('web.registro') }}">Crear cuenta</a>
       <a class="boton boton--marca boton--pequeno" href="{{ url_for('web.login') }}">Acceder</a>
     </nav>

@@ -51,6 +51,13 @@
 .publico__nav a:hover { color: var(--texto); }
 .publico__nav a.boton { color: #fff; }
 
+/* En pantallas estrechas el menú no cabe: se ocultan los enlaces a secciones de
+   la portada y se dejan solo «Crear cuenta» y «Acceder». */
+@media (max-width: 640px) {
+  .publico__nav { gap: var(--e-3); }
+  .publico__nav-seccion { display: none; }
+}
+
 .publico__contenido { flex: 1 0 auto; }
 
 .publico__pie {
@@ -111,7 +118,15 @@
   justify-content: center;
   padding: var(--e-8) var(--e-4);
 }
-.acceso__formulario .tarjeta-formulario { width: 100%; max-width: 430px; margin: 0; }
+.acceso__formulario .tarjeta-formulario { width: 100%; max-width: 460px; margin: 0; }
+
+/* La tarjeta de acceso es estrecha, así que los campos van en UNA sola columna,
+   igual que en el inicio de sesión. La rejilla multicolumna de estilos.css está
+   pensada para los formularios anchos del panel; aplicada aquí (2 columnas a
+   768px, 3 a 1280px) dejaba los campos apretados y partía en dos líneas las
+   etiquetas largas («Nombre de usuario», «Correo electrónico»), lo que
+   desalineaba los inputs. */
+.acceso__formulario .rejilla-campos { grid-template-columns: 1fr; }
 
 @media (min-width: 1024px) {
   .acceso { grid-template-columns: 1.05fr 1fr; }

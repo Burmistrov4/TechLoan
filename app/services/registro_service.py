@@ -23,7 +23,7 @@ from datetime import datetime, timedelta
 
 from werkzeug.security import generate_password_hash
 
-from app.config import HORAS_VALIDEZ_TOKEN, URL_BASE
+from app.config import HORAS_VALIDEZ_TOKEN, PASSWORD_HASH_MAX_LENGTH, URL_BASE
 from app.database import get_connection
 from app.services import correo_service
 
@@ -150,7 +150,7 @@ class RegistroService:
         email = datos["email"].strip().lower()
 
         password_hash = generate_password_hash(datos["password"])
-        if len(password_hash) > 255:
+        if len(password_hash) > PASSWORD_HASH_MAX_LENGTH:
             raise ValueError("El hash generado excede VARCHAR(255).")
 
         with get_connection() as db:

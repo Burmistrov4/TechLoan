@@ -81,7 +81,7 @@ python init_db.py
 
 Señala la salida: conteo por tabla e `integrity_check: ok`.
 Frase útil: *"La base de datos se puede reconstruir desde cero con un solo comando a partir
-de `schema.sql`, que incluye 21 registros de prueba."*
+de `schema.sql`, que incluye 26 registros de prueba."*
 
 ### Paso 2 — Arrancar el servidor y abrir la aplicación (1 min)
 
@@ -249,7 +249,18 @@ Reduce la ventana del navegador (o usa F12 → modo dispositivo) a ~375 px:
 - El menú se convierte en un botón que despliega con JavaScript.
 - **Las tablas se convierten en tarjetas** apiladas, sin perder información.
 
-### Paso 16 — Pruebas y cierre (1 min)
+### Paso 16 — Seguridad en vivo, pruebas y cierre (2 min)
+
+La forma más rápida de responder a «¿cómo demuestras el hash de las contraseñas y la
+inyección SQL?»:
+
+```bash
+python demostrar_seguridad.py
+```
+
+Muestra en un minuto, sin tocar la base de datos: el hash **scrypt** en
+`password_hash VARCHAR(255)`, el rechazo de datos inválidos y por qué la inyección SQL no
+funciona. Guion completo en `docs/DEMOSTRACION_SEGURIDAD.md`.
 
 ```bash
 PYTHONPATH=. python tests/test_web_phase6.py
@@ -257,7 +268,7 @@ PYTHONPATH=. python tests/test_web_phase6.py
 
 Muestra que pasa completo. Y cierra con:
 
-- `schema.sql` → 7 tablas, claves foráneas, índices y 21 registros de prueba.
+- `schema.sql` → tablas, claves foráneas, índices y registros de prueba.
 - `README.md` → instalación, inicialización, ejecución y descripción del problema.
 
 ---
@@ -284,16 +295,19 @@ sugerida en el enunciado. Las rutas `/`, `/crear`, `/editar/<id>` y `/eliminar/<
 literalmente.
 
 **¿Dónde está el `schema.sql`?**
-En la raíz. Contiene 7 tablas con claves primarias, foráneas y restricciones `CHECK`,
-7 índices y 21 registros de prueba (el enunciado pide mínimo 3).
+En la raíz. Contiene 9 tablas con claves primarias, foráneas y restricciones `CHECK`,
+12 índices y 26 registros de prueba (el enunciado pide mínimo 3).
 
 **¿Cómo evitas la inyección SQL?**
 Todas las consultas usan parámetros (`?`). Ninguna concatena datos del usuario.
-Se puede demostrar: `tests/test_security_phase5.py` lo verifica.
+Se demuestra en vivo con `python demostrar_seguridad.py` (intenta entrar con
+`admin' OR '1'='1` y lo rechaza); también lo verifica `tests/test_security_phase5.py`.
 
 **¿Las contraseñas están cifradas?**
-Se almacenan como hash `scrypt` de Werkzeug, en un campo `VARCHAR(255)`, como pedía la
-indicación. El hash nunca se envía al navegador.
+Se almacenan como **hash `scrypt`** de Werkzeug, en un campo **`VARCHAR(255)`**, como pedía
+la indicación. El hash nunca se envía al navegador. Se muestra en vivo con
+`python demostrar_seguridad.py`, o abriendo `database/techloan.db` con DB Browser for
+SQLite (columna `password_hash`). Ver `docs/GUIA_BASE_DE_DATOS.md`.
 
 **¿Qué pasa si dos personas reservan el mismo laboratorio a la misma hora?**
 El servicio comprueba solapamientos antes de insertar y rechaza la segunda reserva.

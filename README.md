@@ -61,6 +61,8 @@ Proyecto Final de Python/
 │
 ├── run_server.py                         # Punto de entrada: inicia el servidor Flask
 ├── init_db.py                            # Inicializa la base de datos desde schema.sql
+├── demostrar_seguridad.py                # Demuestra hash, validaciones e inyección SQL
+├── exportar_a_mysql.py                   # Volcado MySQL opcional (para phpMyAdmin)
 ├── schema.sql                            # Tablas, índices y datos de prueba
 ├── requirements.txt                      # Dependencias (Flask, Werkzeug)
 ├── README.md                             # Este documento
@@ -130,6 +132,8 @@ Proyecto Final de Python/
 ├── docs/
 │   ├── MANUAL_DE_USUARIO.md              # Manual de uso completo
 │   ├── GUIA_EXPOSICION.md                # Guion de la defensa
+│   ├── GUIA_BASE_DE_DATOS.md             # Cómo abrir la BD (SQLite) y el caso phpMyAdmin
+│   ├── DEMOSTRACION_SEGURIDAD.md         # Guion de la demo de hash/validaciones/SQLi
 │   ├── capturas/                         # Evidencia visual de la verificación
 │   └── PROJECT_CONTEXT/                  # Documentación de continuidad del proyecto
 │
@@ -247,6 +251,26 @@ Base de datos reconstruida: .../database/techloan.db
 Las fechas de los datos de prueba son **relativas al día de ejecución**
 (`date('now','localtime','+N days')`), así que las reservas de demostración **nunca quedan
 vencidas**.
+
+### 5.1 ¿Por qué phpMyAdmin no abre `techloan.db`?
+
+La base de datos es **SQLite3** (lo pide el enunciado), no MySQL. Un archivo `.db` de
+SQLite empieza por el texto `SQLite format 3`; al subirlo a phpMyAdmin, MariaDB intenta
+leerlo como SQL y responde:
+
+```
+#1064 - You have an error in your SQL syntax ... near 'SQLite format 3' at line 1
+```
+
+Es lo esperado al mezclar dos motores distintos, **no un fallo del proyecto**.
+
+- Para **revisar** la base de datos real: **DB Browser for SQLite** o
+  `python demostrar_seguridad.py`.
+- Para **verla en phpMyAdmin** (opcional): `python exportar_a_mysql.py` genera
+  `database/techloan_mysql.sql`, importable desde phpMyAdmin. La aplicación sigue
+  trabajando con SQLite.
+
+El detalle completo está en `docs/GUIA_BASE_DE_DATOS.md`.
 
 ---
 
@@ -512,6 +536,22 @@ modo que añadir la columna no ralentiza el listado.
 | Validación solo en el cliente | La validación de HTML5 y JavaScript es una mejora de usabilidad; la **definitiva** se ejecuta en el servidor. |
 | Pérdida de rastro | Registro de auditoría con autor, fecha, detalle e IP, independiente del ciclo de vida del usuario. |
 
+### 9.1 Cómo demostrarlo en la defensa
+
+```bash
+python demostrar_seguridad.py
+```
+
+Reúne, en un minuto y **sin modificar la base de datos**, las tres comprobaciones que
+suelen pedirse:
+
+1. las contraseñas se guardan como **hash scrypt** en `password_hash VARCHAR(255)`
+   (162 caracteres, nunca en claro);
+2. las **validaciones** del servidor rechazan datos inválidos;
+3. la **inyección SQL** no funciona: las consultas van parametrizadas.
+
+Guion completo y preguntas previsibles en `docs/DEMOSTRACION_SEGURIDAD.md`.
+
 ---
 
 ## 10. Interfaz, diseño y accesibilidad
@@ -548,6 +588,10 @@ planes y preguntas frecuentes. Todo con CSS y JavaScript propios.
 
 Todas se ejecutan desde la raíz del proyecto y necesitan `PYTHONPATH=.` para que el paquete
 `app` sea importable.
+
+> **Aislamiento:** cada prueba trabaja sobre una **base de datos temporal**
+> (`tests/_tempdb.py`), así que **nunca** alteran `database/techloan.db`. Se puede correr
+> la suite entera sin miedo a contaminar la base de datos que se entrega.
 
 ### 11.1 Verificación rápida
 
@@ -600,6 +644,8 @@ PYTHONPATH=. python tests/test_historial_phase4.py
 |---|---|
 | `docs/MANUAL_DE_USUARIO.md` | Manual de uso completo: tareas paso a paso, atajos, reglas, roles, solución de problemas y glosario |
 | `docs/GUIA_EXPOSICION.md` | Guion de la defensa: recorrido, plan de contingencia y preguntas previsibles |
+| `docs/GUIA_BASE_DE_DATOS.md` | Cómo abrir la base de datos SQLite y por qué phpMyAdmin da error `#1064` |
+| `docs/DEMOSTRACION_SEGURIDAD.md` | Guion de un minuto: hash de contraseñas, validaciones e inyección SQL |
 | `docs/PROJECT_CONTEXT/` | Estado del proyecto, decisiones, criterios de aceptación y registro de trabajo |
 | `docs/capturas/` | Evidencia visual de la verificación en navegador real |
 
@@ -630,6 +676,8 @@ información resumida y accesible sin salir del sistema.
     préstamo" (prestado a quién, desde cuándo y cuándo vence, con el botón *Devolver*);
     abrir `/laboratorios` y señalar la columna "Ocupación" (próxima reserva, horario y
     demanda de la semana).
+17. **Seguridad en vivo**: `python demostrar_seguridad.py` → hash de las contraseñas,
+    validaciones y por qué la inyección SQL no funciona.
 
 ---
 

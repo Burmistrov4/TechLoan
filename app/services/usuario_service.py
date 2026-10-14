@@ -1,5 +1,6 @@
 import re
 from werkzeug.security import check_password_hash, generate_password_hash
+from app.config import PASSWORD_HASH_MAX_LENGTH
 from app.database import get_connection
 
 ROLES = {"ADMINISTRADOR", "OPERADOR"}
@@ -41,7 +42,7 @@ class UsuarioService:
         if errors:
             raise ValueError(" ".join(errors))
         password_hash = generate_password_hash(data["password"])
-        if len(password_hash) > 255:
+        if len(password_hash) > PASSWORD_HASH_MAX_LENGTH:
             raise ValueError("El hash generado excede VARCHAR(255).")
         with get_connection() as db:
             try:
@@ -139,7 +140,7 @@ class UsuarioService:
                 raise ValueError("La nueva contraseña debe ser distinta de la actual.")
 
             nuevo_hash = generate_password_hash(password_nueva)
-            if len(nuevo_hash) > 255:
+            if len(nuevo_hash) > PASSWORD_HASH_MAX_LENGTH:
                 raise ValueError("El hash generado excede VARCHAR(255).")
 
             db.execute(
