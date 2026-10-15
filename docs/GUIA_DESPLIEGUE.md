@@ -70,7 +70,19 @@ El script clona el proyecto, crea el entorno virtual con **una versión fija**,
 instala las dependencias, crea la base de datos (solo si no existe), **comprueba
 que la aplicación se importa** (detecta errores antes de tocar el navegador) y
 escribe el archivo WSGI. Al terminar imprime los valores exactos del **único paso
-manual** que queda, ya con la versión de Python correcta incluida.
+manual** que queda, ya con la versión de Python correcta incluida, **la clave de
+sesión ya generada** y la URL de tu cuenta.
+
+Detalles que el script resuelve por ti:
+
+- Si el comando `python3.x` no está en el PATH de la consola, lo busca por **ruta
+  absoluta**; si el módulo `venv` falla, usa el paquete **`virtualenv`**.
+- La versión de Python del entorno virtual queda **fijada** y te dice cuál marcar.
+- Genera una **clave de sesión aleatoria** lista para pegar (no la inventes tú).
+
+> **Truco:** si ejecutas el script **otra vez** después de crear la aplicación web en
+> la pestaña *Web*, ya podrá escribir el archivo WSGI en `/var/www/` por ti, y solo
+> te quedará pulsar **Reload**.
 
 **Pasos manuales** (si prefieres verlo todo):
 
