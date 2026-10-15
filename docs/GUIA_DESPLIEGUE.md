@@ -24,7 +24,19 @@ waitress en Windows), a través de `wsgi.py`.
 Es la que mejor encaja con esta entrega: disco persistente (SQLite funciona tal
 cual), despliegue de Flask sin Docker y URL `tuusuario.pythonanywhere.com`.
 
-**Pasos:**
+**Vía automatizada.** Abre una consola **Bash** en PythonAnywhere y ejecuta:
+
+```bash
+git clone https://github.com/Burmistrov4/TechLoan.git
+bash TechLoan/deploy/desplegar_pythonanywhere.sh
+```
+
+Ese script clona el proyecto, crea el entorno virtual, instala las dependencias,
+crea la base de datos y escribe el archivo WSGI con tu usuario. Al terminar te
+imprime los valores exactos del **único paso manual** que queda (la pestaña Web).
+Si prefieres hacerlo a mano, estos son los pasos:
+
+**Pasos manuales:**
 
 1. Crea una cuenta en <https://www.pythonanywhere.com>.
 2. Abre una consola **Bash** y trae el proyecto:
@@ -81,7 +93,26 @@ El contenedor crea la base de datos solo si no existe (`[ -f database/techloan.d
 ## 3. Opción VPS (nginx + gunicorn + systemd)
 
 Para algo más "de verdad" y barato a largo plazo (Oracle Cloud Always Free,
-Hetzner ~4 €/mes…). En Ubuntu/Debian:
+Hetzner ~4 €/mes…). En Ubuntu/Debian limpio, todo se monta con **un solo comando**
+(como root):
+
+```bash
+# Con dominio (también configura TLS con Let's Encrypt):
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/Burmistrov4/TechLoan/main/deploy/desplegar_vps.sh) \
+     --dominio techloan.tudominio.com --correo tu@correo.com
+
+# Sin dominio (solo HTTP en la IP del VPS):
+sudo bash deploy/desplegar_vps.sh
+```
+
+El script instala los paquetes, clona el proyecto, crea la unidad de systemd, el
+sitio de nginx y, si diste un dominio, el certificado TLS. Al final te muestra la
+URL y los comandos útiles (`journalctl -u techloan -f`, etc.). Es **idempotente**:
+si lo vuelves a ejecutar, actualiza el código y **no** borra la base de datos.
+
+Si prefieres ver y pegar las piezas a mano, la siguiente sección las detalla.
+
+### Montaje manual del VPS
 
 ```bash
 sudo apt install python3-venv nginx

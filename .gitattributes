@@ -1,0 +1,11 @@
+# Normalización de fines de línea.
+* text=auto
+
+# Los scripts de shell se ejecutan en Linux/macOS: deben conservar LF.
+# Con CRLF aparecería el error `$'\r': command not found`.
+*.sh text eol=lf
+
+# Estos ficheros de despliegue también deben quedarse en LF en cualquier PC.
+Procfile text eol=lf
+Dockerfile text eol=lf
+.env.example text eol=lf
