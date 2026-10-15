@@ -172,22 +172,63 @@ Si responde `[OK]`, entonces configura Gmail así:
 1. Activa la **verificación en dos pasos** en la cuenta de Google.
 2. Crea una **contraseña de aplicación** en
    <https://myaccount.google.com/apppasswords> (16 caracteres). La contraseña
-   normal de Gmail **no** sirve para SMTP.
-3. Descomenta y rellena estas líneas en el archivo WSGI:
+   normal de Gmail **no** sirve para SMTP. Google solo la muestra **una vez**:
+   si la perdiste, genera otra (la anterior queda inutilizada).
+3. En el editor de PythonAnywhere, deja el archivo **con esta forma completa**
+   (copia y pega, cambiando solo TU_USUARIO, TU_CORREO y TU_CLAVE):
 
 ```python
-os.environ.setdefault("TECHLOAN_SMTP_HOST", "smtp.gmail.com")
-os.environ.setdefault("TECHLOAN_SMTP_PORT", "587")
-os.environ.setdefault("TECHLOAN_SMTP_USER", "lorenzoroca333@gmail.com")
-os.environ.setdefault("TECHLOAN_SMTP_PASSWORD", "la-contrasena-de-16-letras")
-os.environ.setdefault("TECHLOAN_SMTP_FROM", "lorenzoroca333@gmail.com")
+# -*- coding: utf-8 -*-
+import os
+import sys
+
+RUTA = "/home/TU_USUARIO/TechLoan"
+if RUTA not in sys.path:
+    sys.path.insert(0, RUTA)
+
+# --- Estas líneas van ANTES del import: config.py lee os.environ al importarse ---
+os.environ["TECHLOAN_SECRET_KEY"] = "la-clave-que-ya-tenias"
+os.environ["TECHLOAN_URL_BASE"] = "https://TU_USUARIO.pythonanywhere.com"
+
+# --- Correo real con Gmail ---
+os.environ["TECHLOAN_SMTP_HOST"] = "smtp.gmail.com"
+os.environ["TECHLOAN_SMTP_PORT"] = "587"
+os.environ["TECHLOAN_SMTP_USER"] = "TU_CORREO@gmail.com"
+os.environ["TECHLOAN_SMTP_PASSWORD"] = "tucclavede16letras"
+os.environ["TECHLOAN_SMTP_FROM"] = "TU_CORREO@gmail.com"
+
+from app.server import create_app
+
+application = create_app()
 ```
 
-4. Pulsa **Reload** y registra una cuenta de prueba.
+Detalles que hacen fallar:
+
+- La contraseña de aplicación de Google se muestra con espacios
+  (`abcd efgh ijkl mnop`). **Quítale los espacios** antes de pegarla.
+- Las cinco líneas nuevas tienen que quedar **por debajo** de `TECHLOAN_URL_BASE`
+  y **por encima** de `from app.server import create_app`. Si quedan debajo, la
+  app no las ve.
+- **Comprueba la URL**: si `TECHLOAN_URL_BASE` no es exactamente
+  `https://TU_USUARIO.pythonanywhere.com`, el enlace del correo apuntará a un
+  dominio que no existe y el usuario no podrá confirmar la cuenta.
+- Las variables son de tipo texto; el puerto en `"587"` entre comillas está bien
+  (la app lo convierte).
+
+4. Pulsa **Save** en el editor.
+5. Ve a la pestaña **Web** y pulsa el botón verde **Reload**.
+6. Registra una cuenta de prueba y revisa la bandeja (y el **spam**: Gmail a
+   veces tarda unos segundos o manda el primer correo a no deseados).
 
 > Aunque el SMTP falle, el registro **no se rompe**: `correo_service.py` atrapa
 > la excepción, deja copia en `database/buzon/` y el enlace sigue apareciendo en
 > pantalla. Por eso probarlo no tiene riesgo.
+
+> ⚠️ **No vuelvas a ejecutar `desplegar_pythonanywhere.sh` después de haber editado
+> el WSGV a mano**: regeneraría el archivo y perdería las líneas de SMTP que
+> escribiste (el script las deja comentadas). El script solo reutiliza la
+> `TECHLOAN_SECRET_KEY`; el resto lo reescribe entero. Si necesitas volver a
+> ejecutarlo, guarda antes una copia de tus líneas SMTP.
 
 ---
 
