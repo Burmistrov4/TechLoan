@@ -151,19 +151,58 @@ else
   exit 1
 fi
 
-# --- 7. Archivo WSGI ---------------------------------------------------------
+# --- 7. Archivo WSGI (aquí van las variables de entorno) ---------------------
+# IMPORTANTE: PythonAnywhere NO tiene una sección "Environment variables" en la
+# pestaña Web. La forma oficial de definirlas es el archivo WSGI, y tienen que
+# asignarse ANTES del import, porque app/config.py lee os.environ en cuanto se
+# importa (SECRET_KEY y URL_BASE son constantes de módulo).
 WSGI="/var/www/${USER_PA}_pythonanywhere_com_wsgi.py"
 RESPALDO="$PROYECTO/deploy/_wsgi_generado.py"
+
+# Reutilizar la clave si ya existe: regenerarla cerraría la sesión de todos.
+CLAVE=""
+if [ -n "${TECHLOAN_SECRET_KEY:-}" ]; then
+  CLAVE="$TECHLOAN_SECRET_KEY"
+  echo "==> Uso la clave de sesión que pasaste en TECHLOAN_SECRET_KEY."
+elif [ -f "$WSGI" ]; then
+  CLAVE="$(grep -oP 'TECHLOAN_SECRET_KEY", *"\K[^"]+' "$WSGI" 2>/dev/null | head -1 || true)"
+  [ -n "$CLAVE" ] && echo "==> Reutilizo la clave de sesión que ya estaba en el WSGI."
+fi
+if [ -z "$CLAVE" ]; then
+  if command -v openssl >/dev/null 2>&1; then
+    CLAVE="$(openssl rand -hex 32 2>/dev/null || true)"
+  fi
+  [ -n "$CLAVE" ] || CLAVE="$("$PYTHON_BIN" -c 'import secrets; print(secrets.token_hex(32))' 2>/dev/null || true)"
+  echo "==> Clave de sesión nueva generada."
+fi
 
 cat > "$RESPALDO" <<EOF
 # -*- coding: utf-8 -*-
 # Archivo WSGI de TechLoan. Generado por deploy/desplegar_pythonanywhere.sh
-# Pega este contenido en "WSGI configuration file" de la pestaña Web.
+#
+# En PythonAnywhere las variables de entorno se definen AQUÍ: la pestaña Web no
+# tiene una sección para ellas. Van ANTES del import de la aplicación, porque
+# app/config.py lee os.environ en el momento de importarse.
+import os
 import sys
 
 RUTA = "$PROYECTO"
 if RUTA not in sys.path:
     sys.path.insert(0, RUTA)
+
+os.environ.setdefault("TECHLOAN_SECRET_KEY", "$CLAVE")
+os.environ.setdefault("TECHLOAN_URL_BASE", "https://$USER_PA.pythonanywhere.com")
+
+# --- Correo real (opcional) --------------------------------------------------
+# Sin esto la aplicación funciona en MODO DEMOSTRACIÓN: guarda el correo en
+# database/buzon/ y muestra el enlace de confirmación en pantalla (perfecto para
+# la defensa). Si consigues un servidor SMTP que responda, descomenta y rellena:
+#
+# os.environ.setdefault("TECHLOAN_SMTP_HOST", "smtp.gmail.com")
+# os.environ.setdefault("TECHLOAN_SMTP_PORT", "587")
+# os.environ.setdefault("TECHLOAN_SMTP_USER", "tucorreo@gmail.com")
+# os.environ.setdefault("TECHLOAN_SMTP_PASSWORD", "contrasena-de-aplicacion")
+# os.environ.setdefault("TECHLOAN_SMTP_FROM", "tucorreo@gmail.com")
 
 from app.server import create_app
 
@@ -172,24 +211,14 @@ EOF
 
 if [ -w "$(dirname "$WSGI")" ]; then
   cp "$RESPALDO" "$WSGI"
-  echo "==> Archivo WSGI escrito en $WSGI"
-  PASO_WSGI="ya está escrito; solo revísalo"
+  echo "==> Archivo WSGI escrito en $WSGI (con las variables dentro)."
+  PASO_WSGI="ya está escrito y con las variables; solo revísalo"
 else
-  echo "==> Todavía no existe la carpeta /var/www: crea antes la aplicación web."
-  PASO_WSGI="pega el contenido de $RESPALDO"
+  echo "==> Todavía no existe /var/www: crea antes la aplicación web (paso 1)."
+  PASO_WSGI="abre el enlace y pega el contenido de $RESPALDO"
 fi
 
 # --- 8. Instrucciones finales ------------------------------------------------
-# Se genera una clave de sesión aleatoria lista para pegar (si no hay openssl,
-# se usa Python; nunca se inventa una "clave por defecto").
-CLAVE=""
-if command -v openssl >/dev/null 2>&1; then
-  CLAVE="$(openssl rand -hex 32 2>/dev/null || true)"
-fi
-if [ -z "$CLAVE" ]; then
-  CLAVE="$("$PYTHON_BIN" -c 'import secrets; print(secrets.token_hex(32))' 2>/dev/null || true)"
-fi
-
 cat <<EOF
 
 ================================================================
@@ -201,25 +230,29 @@ Queda UN paso manual: la pestaña "Web" de PythonAnywhere.
   2. En "Virtualenv", escribe:
        $PROYECTO/.venv
   3. En "WSGI configuration file": $PASO_WSGI
+     (ahí dentro van la clave de sesión y la URL; NO existe una sección
+      "Environment variables" en PythonAnywhere: eso es lo que hay que usar).
   4. En "Static files", añade (opcional, acelera las imágenes y el CSS):
        URL:  /static/
        Path: $PROYECTO/static/
-  5. En "Environment variables", añade estas dos:
-       TECHLOAN_SECRET_KEY = ${CLAVE:-<pega aqui una cadena aleatoria larga>}
-       TECHLOAN_URL_BASE   = https://$USER_PA.pythonanywhere.com
-  6. Pulsa el botón verde "Reload".
+  5. Pulsa el botón verde "Reload".
 
 Después comprueba:
   Salud: https://$USER_PA.pythonanywhere.com/health
   App:   https://$USER_PA.pythonanywhere.com/
 
+Sobre el correo: sin SMTP configurado la aplicación entra en MODO DEMOSTRACIÓN,
+guarda el mensaje en database/buzon/ y muestra el enlace en pantalla. El plan
+gratuito bloquea el SMTP saliente, así que para la defensa el modo demostración
+es lo más seguro (no depende de internet ni de una cuenta de correo).
+
 Notas del plan gratuito:
-  - Bloquea el internet saliente salvo una lista blanca (github.com y pypi.org
-    sí están permitidos, por eso este script funciona).
-  - Sin SMTP configurado, el correo de confirmación entra en modo demostración:
-    se guarda en database/buzon/ y el enlace aparece en pantalla.
-  - El dominio es $USER_PA.pythonanywhere.com (el plan gratuito no admite
-    dominio propio). 512 MB de disco: el proyecto ocupa unos 70 MB, de sobra.
+  - Internet saliente limitado a una lista blanca (github.com y pypi.org sí
+    están, por eso este script funciona).
+  - El dominio es $USER_PA.pythonanywhere.com (sin dominio propio).
+  - 512 MB de disco: el proyecto ocupa unos 70 MB, de sobra.
+  - La web se desactiva si no entras en 3 meses: pulsa "Run until 1 month from
+    today" en la pestaña Web de vez en cuando.
 
 TRUCO: si vuelves a ejecutar este script DESPUÉS de crear la aplicación web, ya
 podrá escribir el archivo WSGI por ti (paso 3) y solo tendrás que pulsar Reload.

@@ -306,6 +306,7 @@ La aplicación incluye todo lo necesario para desplegarse:
 | `deploy/desplegar_pythonanywhere.sh` | Despliegue en PythonAnywhere en un solo comando |
 | `deploy/desplegar_vps.sh` | Monta el VPS completo (nginx + gunicorn + systemd + TLS) |
 | `deploy/pythonanywhere_wsgi.py` | Plantilla del archivo WSGI de PythonAnywhere |
+| `deploy/diagnostico_correo.py` | Comprueba si el servidor puede enviar correo (SMTP) |
 
 **La regla que manda:** SQLite es un archivo, así que la plataforma debe tener
 **disco persistente**. Las gratuitas con disco efímero (o *serverless*) borran la base
@@ -330,6 +331,17 @@ pulsar **Reload** en la pestaña *Web*, que el propio script te indica cómo dej
 > que elijas en la pestaña *Web* deben ser **la misma**. El script fija una versión y te
 > dice exactamente cuál marcar. El plan gratuito da `tuusuario.pythonanywhere.com`,
 > 512 MB de disco y HTTPS; la base de datos vive en tu disco y **no se borra**.
+
+> ⚠️ **PythonAnywhere no tiene sección «Environment variables» en la pestaña Web.**
+> Las variables de entorno se definen **dentro del archivo WSGI**, antes del
+> `from app.server import create_app` (porque `app/config.py` las lee al importarse).
+> El script genera ese archivo ya con la forma correcta, incluida una clave de sesión
+> aleatoria. Si lo vuelves a ejecutar, **reutiliza** la clave en lugar de cambiarla.
+
+> **Correo de confirmación:** sin SMTP configurado la app entra en **modo demostración**
+> — guarda el mensaje en `database/buzon/` y muestra el enlace en pantalla, así que el
+> registro se completa igual. Para saber si el servidor permite correo real:
+> `python3 deploy/diagnostico_correo.py`. Ver `docs/GUIA_DESPLIEGUE.md` § 1.b.
 
 > En producción **no** se usa el servidor de desarrollo: se usa **gunicorn** a través de
 > `wsgi.py`. El host y el puerto se leen de `TECHLOAN_HOST` / `TECHLOAN_PORT` / `PORT`.
@@ -528,6 +540,12 @@ $env:TECHLOAN_SMTP_USER = "micorreo@gmail.com"
 $env:TECHLOAN_SMTP_PASSWORD = "clave-de-aplicacion"
 python run_server.py
 ```
+
+> **En PythonAnywhere** estas variables no se ponen en la pestaña *Web* (no existe esa
+> sección): van **dentro del archivo WSGI**, antes del import. Y Gmail exige una
+> **contraseña de aplicación** de 16 caracteres (la contraseña normal no funciona).
+> Antes de configurar nada, comprueba si el servidor puede enviar correo:
+> `python3 deploy/diagnostico_correo.py`. Detalle en `docs/GUIA_DESPLIEGUE.md` § 1.b.
 
 **Modo demostración (sin SMTP).** No se envía nada: el mensaje se guarda en
 `database/buzon/` y el enlace de confirmación se muestra en pantalla tras el registro. Es lo

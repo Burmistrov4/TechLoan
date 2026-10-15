@@ -106,19 +106,88 @@ Detalles que el script resuelve por ti:
 6. En **Static files**, mapea (opcional pero recomendado, para que nginx sirva el
    CSS y las imágenes sin pasar por Python):
    - URL `/static/` → `/home/TU_USUARIO/TechLoan/static/`
-7. **Environment variables** (botón *Add*):
-   - `TECHLOAN_SECRET_KEY` = una cadena aleatoria larga
-   - `TECHLOAN_URL_BASE` = `https://TU_USUARIO.pythonanywhere.com`
-8. Pulsa **Reload**.
+7. Pulsa **Reload**.
+
+> ⚠️ **PythonAnywhere NO tiene una sección «Environment variables» en la pestaña
+> Web.** Es un error frecuente: el paso aparece en muchas guías, pero ahí no
+> existe. Las variables se definen **dentro del archivo WSGI**, y tienen que
+> quedar **antes** del `from app.server import create_app`, porque
+> `app/config.py` lee `os.environ` en el momento de importarse (`SECRET_KEY` y
+> `URL_BASE` son constantes de módulo). Si las pones después, la aplicación
+> arranca en silencio con la clave por defecto `CAMBIAR_EN_PRODUCCION`, que está
+> publicada en este repositorio público. El script ya genera el WSGI con esa
+> forma correcta:
+>
+> ```python
+> import os, sys
+> RUTA = "/home/TU_USUARIO/TechLoan"
+> if RUTA not in sys.path:
+>     sys.path.insert(0, RUTA)
+>
+> os.environ.setdefault("TECHLOAN_SECRET_KEY", "<clave aleatoria>")
+> os.environ.setdefault("TECHLOAN_URL_BASE", "https://TU_USUARIO.pythonanywhere.com")
+>
+> from app.server import create_app
+> application = create_app()
+> ```
+>
+> Si vuelves a ejecutar `deploy/desplegar_pythonanywhere.sh` con la aplicación web
+> ya creada, **reutiliza la clave que ya estaba** (no la regenera, para no cerrar
+> las sesiones abiertas) y escribe el WSGI por ti.
 
 > **Si sale «Something went wrong» (error 502/504):** mira **Web → Error log**.
 > Las dos causas casi siempre son (a) la versión de Python del entorno virtual no
 > coincide con la de la pestaña Web, o (b) una ruta mal escrita en el WSGI.
 
-> **Aviso del plan gratuito:** bloquea internet saliente salvo una lista blanca,
-> así que el correo SMTP no se envía. La aplicación entra en **modo demostración**
-> (guarda el mensaje en `database/buzon/` y muestra el enlace en pantalla), que es
-> justo lo que se necesita para enseñar el flujo sin correo real.
+---
+
+## 1.b Correo: modo demostración o SMTP real
+
+**El correo de confirmación no llega porque no hay servidor de correo
+configurado.** No es un fallo: es el comportamiento previsto. La aplicación
+detecta que no hay `TECHLOAN_SMTP_HOST` y entra en **modo demostración**:
+
+- guarda el mensaje en `database/buzon/` (dentro del proyecto), y
+- muestra el enlace *«Confirmar mi cuenta ahora»* **en pantalla**.
+
+Es decir, **el registro funciona igual** y puedes completar el flujo entero sin
+correo. Para una defensa es lo más seguro: no depende de internet ni de que un
+servidor externo responda ese día.
+
+### ¿Se puede enviar correo de verdad con `lorenzoroca333@gmail.com`?
+
+Primero **mídelo**, no lo supongas. En la consola Bash de PythonAnywhere:
+
+```bash
+cd ~/TechLoan
+python3 deploy/diagnostico_correo.py
+```
+
+Ese script no envía nada ni pide contraseñas: solo comprueba si el servidor
+puede abrir el puerto 587. Si responde `[FALLA] TCP`, el plan gratuito está
+bloqueando la salida SMTP y el modo demostración es tu opción (y está bien).
+
+Si responde `[OK]`, entonces configura Gmail así:
+
+1. Activa la **verificación en dos pasos** en la cuenta de Google.
+2. Crea una **contraseña de aplicación** en
+   <https://myaccount.google.com/apppasswords> (16 caracteres). La contraseña
+   normal de Gmail **no** sirve para SMTP.
+3. Descomenta y rellena estas líneas en el archivo WSGI:
+
+```python
+os.environ.setdefault("TECHLOAN_SMTP_HOST", "smtp.gmail.com")
+os.environ.setdefault("TECHLOAN_SMTP_PORT", "587")
+os.environ.setdefault("TECHLOAN_SMTP_USER", "lorenzoroca333@gmail.com")
+os.environ.setdefault("TECHLOAN_SMTP_PASSWORD", "la-contrasena-de-16-letras")
+os.environ.setdefault("TECHLOAN_SMTP_FROM", "lorenzoroca333@gmail.com")
+```
+
+4. Pulsa **Reload** y registra una cuenta de prueba.
+
+> Aunque el SMTP falle, el registro **no se rompe**: `correo_service.py` atrapa
+> la excepción, deja copia en `database/buzon/` y el enlace sigue apareciendo en
+> pantalla. Por eso probarlo no tiene riesgo.
 
 ---
 
