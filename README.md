@@ -5,6 +5,8 @@
 Aplicación web desarrollada con **Flask + SQLite3 + Jinja2 + HTML5 + CSS3 + JavaScript
 Vanilla**, como proyecto final de la asignatura **Programación III** (IUTEPI).
 
+Repositorio: <https://github.com/Burmistrov4/TechLoan>
+
 Sin frameworks de frontend, sin servicios externos obligatorios y **funciona sin conexión
 a internet**.
 
@@ -59,12 +61,15 @@ problemas recurrentes:
 ```
 Proyecto Final de Python/
 │
-├── run_server.py                         # Punto de entrada: inicia el servidor Flask
+├── run_server.py                         # Punto de entrada local (servidor de desarrollo)
+├── wsgi.py                               # Punto de entrada WSGI para producción (gunicorn)
 ├── init_db.py                            # Inicializa la base de datos desde schema.sql
 ├── demostrar_seguridad.py                # Demuestra hash, validaciones e inyección SQL
 ├── exportar_a_mysql.py                   # Volcado MySQL opcional (para phpMyAdmin)
 ├── schema.sql                            # Tablas, índices y datos de prueba
-├── requirements.txt                      # Dependencias (Flask, Werkzeug)
+├── requirements.txt                      # Dependencias (Flask, Werkzeug, gunicorn)
+├── Procfile · Dockerfile · .env.example  # Configuración de despliegue
+├── deploy/pythonanywhere_wsgi.py         # Plantilla WSGI para PythonAnywhere
 ├── README.md                             # Este documento
 │
 ├── database/
@@ -284,6 +289,29 @@ Abre el navegador en **http://127.0.0.1:5000**.
 
 Verás la **portada pública** del producto. Haz clic en *Iniciar sesión* o ve a `/login`. Una vez
 dentro, `/` pasa a ser el panel de control.
+
+### 6.1 Despliegue en producción
+
+La aplicación incluye todo lo necesario para desplegarse:
+
+| Archivo | Para qué |
+|---|---|
+| `wsgi.py` | Punto de entrada WSGI (`app` / `application`) para gunicorn o PythonAnywhere |
+| `Procfile` | Arranque con gunicorn en plataformas tipo Heroku/Render |
+| `Dockerfile` · `.dockerignore` | Imagen lista para Fly.io, Render, Railway o un VPS |
+| `.env.example` | Plantilla de variables de entorno (clave de sesión, URL, SMTP) |
+| `deploy/pythonanywhere_wsgi.py` | Plantilla del archivo WSGI de PythonAnywhere |
+
+**La regla que manda:** SQLite es un archivo, así que la plataforma debe tener
+**disco persistente**. Las gratuitas con disco efímero (o *serverless*) borran la base
+de datos en cada despliegue.
+
+Recomendado: **PythonAnywhere** (gratuito, disco persistente, sin Docker). Alternativas:
+un VPS pequeño con `nginx + gunicorn`, o Docker con un volumen montado en `/app/database`.
+El paso a paso completo está en **`docs/GUIA_DESPLIEGUE.md`**.
+
+> En producción **no** se usa el servidor de desarrollo: se usa **gunicorn** a través de
+> `wsgi.py`. El host y el puerto se leen de `TECHLOAN_HOST` / `TECHLOAN_PORT` / `PORT`.
 
 ---
 
@@ -646,6 +674,7 @@ PYTHONPATH=. python tests/test_historial_phase4.py
 | `docs/GUIA_EXPOSICION.md` | Guion de la defensa: recorrido, plan de contingencia y preguntas previsibles |
 | `docs/GUIA_BASE_DE_DATOS.md` | Cómo abrir la base de datos SQLite y por qué phpMyAdmin da error `#1064` |
 | `docs/DEMOSTRACION_SEGURIDAD.md` | Guion de un minuto: hash de contraseñas, validaciones e inyección SQL |
+| `docs/GUIA_DESPLIEGUE.md` | Cómo publicar la app: PythonAnywhere, Docker y VPS, con las variables de entorno |
 | `docs/PROJECT_CONTEXT/` | Estado del proyecto, decisiones, criterios de aceptación y registro de trabajo |
 | `docs/capturas/` | Evidencia visual de la verificación en navegador real |
 

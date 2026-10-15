@@ -4,8 +4,11 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATABASE_PATH = BASE_DIR / "database" / "techloan.db"
 
-HOST = "127.0.0.1"
-PORT = 5000
+HOST = os.environ.get("TECHLOAN_HOST", "127.0.0.1")
+# En local se usa 127.0.0.1:5000. En producción, las plataformas (Render, Fly,
+# Railway, Heroku…) inyectan el puerto en la variable PORT y esperan que la app
+# escuche en 0.0.0.0. El bind lo hace gunicorn (ver wsgi.py, Procfile y Dockerfile).
+PORT = int(os.environ.get("TECHLOAN_PORT") or os.environ.get("PORT") or 5000)
 SECRET_KEY = os.environ.get("TECHLOAN_SECRET_KEY", "CAMBIAR_EN_PRODUCCION")
 
 DEFAULT_RESERVATION_MINUTES = 70

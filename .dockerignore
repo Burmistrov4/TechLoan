@@ -1,0 +1,11 @@
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+*.zip
+database/
+docs/capturas/
+.workbuddy-ai/
+.task-flow-progress/
+capturas_listas/
