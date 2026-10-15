@@ -8,4 +8,5 @@ database/buzon/
 .env
 .task-flow-progress/
 .workbuddy-ai/
+deploy/_wsgi_generado.py
 *.zip

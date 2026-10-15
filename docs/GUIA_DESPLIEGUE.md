@@ -24,6 +24,35 @@ waitress en Windows), a través de `wsgi.py`.
 Es la que mejor encaja con esta entrega: disco persistente (SQLite funciona tal
 cual), despliegue de Flask sin Docker y URL `tuusuario.pythonanywhere.com`.
 
+### Qué da y qué no da el plan gratuito
+
+| Concepto | Plan gratuito («Beginner», 0 $) |
+|---|---|
+| URL | `tuusuario.pythonanywhere.com` (sin dominio propio) |
+| Aplicaciones web | **1** |
+| Disco | **512 MB** (el proyecto ocupa ~70 MB, sobra) |
+| CPU | 100 s/día (de sobra para una demostración) |
+| Internet saliente | **solo lista blanca** — pero `github.com` y `pypi.org` **sí** están, así que el clonado y la instalación funcionan |
+| HTTPS | incluido |
+| Base de datos | SQLite en tu disco, **persistente** (no se borra) |
+
+### La regla que no se puede saltar: la versión de Python
+
+> El intérprete del **entorno virtual** y el que elijas en la **pestaña Web**
+> tienen que ser **exactamente el mismo**. Si no coinciden, PythonAnywhere
+> recarga con el error *«virtualenv is not compatible with this Python version»*
+> y la web no arranca.
+
+Por eso el script **fija una versión** y te dice cuál marcar. Elige la más alta
+disponible en tu cuenta (las versiones dependen de la *System image*):
+
+| System image | Python disponibles |
+|---|---|
+| `innit` (actual) | 3.7, 3.8, 3.9, **3.10, 3.11, 3.12, 3.13** |
+| `haggis` (antigua) | 2.7, 3.6, 3.7, 3.8, 3.9, 3.10 |
+
+Puedes ver la tuya en **Account → System image** (y actualizarla a `innit`).
+
 **Vía automatizada.** Abre una consola **Bash** en PythonAnywhere y ejecuta:
 
 ```bash
@@ -31,34 +60,48 @@ git clone https://github.com/Burmistrov4/TechLoan.git
 bash TechLoan/deploy/desplegar_pythonanywhere.sh
 ```
 
-Ese script clona el proyecto, crea el entorno virtual, instala las dependencias,
-crea la base de datos y escribe el archivo WSGI con tu usuario. Al terminar te
-imprime los valores exactos del **único paso manual** que queda (la pestaña Web).
-Si prefieres hacerlo a mano, estos son los pasos:
+Si tu cuenta no tuviera la última versión, pásala explícitamente:
 
-**Pasos manuales:**
+```bash
+PA_PYTHON=python3.10 bash TechLoan/deploy/desplegar_pythonanywhere.sh
+```
+
+El script clona el proyecto, crea el entorno virtual con **una versión fija**,
+instala las dependencias, crea la base de datos (solo si no existe), **comprueba
+que la aplicación se importa** (detecta errores antes de tocar el navegador) y
+escribe el archivo WSGI. Al terminar imprime los valores exactos del **único paso
+manual** que queda, ya con la versión de Python correcta incluida.
+
+**Pasos manuales** (si prefieres verlo todo):
 
 1. Crea una cuenta en <https://www.pythonanywhere.com>.
 2. Abre una consola **Bash** y trae el proyecto:
    ```bash
    git clone https://github.com/Burmistrov4/TechLoan.git
    cd TechLoan
-   python3 -m venv .venv
+   python3.13 -m venv .venv          # usa la MISMA versión del paso 3
    source .venv/bin/activate
    pip install -r requirements.txt
    python init_db.py          # crea la base de datos con los datos de prueba
    ```
 3. Pestaña **Web** → **Add a new web app** → **Manual configuration** →
-   **Python 3.10** (o la versión que ofrezca).
+   **Python 3.13** (exactamente la del paso 2).
 4. En **Virtualenv**, escribe la ruta: `/home/TU_USUARIO/TechLoan/.venv`.
-5. En **WSGI configuration file**, borra el contenido y pega lo de
-   `deploy/pythonanywhere_wsgi.py` (ajustando `USUARIO`).
-6. En **Static files**, mapea:
+5. En **WSGI configuration file**: en el script automático ya queda escrito en
+   `/var/www/TU_USUARIO_pythonanywhere_com_wsgi.py`. A mano, borra el contenido y
+   pega lo de `deploy/_wsgi_generado.py` (o `deploy/pythonanywhere_wsgi.py`
+   ajustando `USUARIO`).
+6. En **Static files**, mapea (opcional pero recomendado, para que nginx sirva el
+   CSS y las imágenes sin pasar por Python):
    - URL `/static/` → `/home/TU_USUARIO/TechLoan/static/`
 7. **Environment variables** (botón *Add*):
    - `TECHLOAN_SECRET_KEY` = una cadena aleatoria larga
    - `TECHLOAN_URL_BASE` = `https://TU_USUARIO.pythonanywhere.com`
 8. Pulsa **Reload**.
+
+> **Si sale «Something went wrong» (error 502/504):** mira **Web → Error log**.
+> Las dos causas casi siempre son (a) la versión de Python del entorno virtual no
+> coincide con la de la pestaña Web, o (b) una ruta mal escrita en el WSGI.
 
 > **Aviso del plan gratuito:** bloquea internet saliente salvo una lista blanca,
 > así que el correo SMTP no se envía. La aplicación entra en **modo demostración**
@@ -169,13 +212,31 @@ Copia `.env.example` como referencia.
 ## 5. Lista de comprobación antes de publicar
 
 - [ ] `TECHLOAN_SECRET_KEY` cambiada (no dejar `CAMBIAR_EN_PRODUCCION`).
+- [ ] La **versión de Python** del entorno virtual coincide con la de la pestaña Web.
 - [ ] `TECHLOAN_URL_BASE` con la URL real.
-- [ ] Base de datos creada en el servidor: `python init_db.py`.
-- [ ] El disco **persiste** entre despliegues (probar: reiniciar y ver que los
+- [ ] Base de datos creada en el servidor (`init_db.py`, lo hace el script).
+- [ ] El disco **persiste** entre despliegues (probar: recargar y ver que los
       datos siguen).
+- [ ] `/health` responde `200`.
 - [ ] Entrar con un usuario real y crear un registro; recargar y comprobar que
       sigue ahí.
-- [ ] `/health` responde `200`.
+- [ ] Se ve el **CSS** (si el panel sale «desnudo», falta el mapeo de `/static/`).
+
+### Cómo se verificó esta guía
+
+El despliegue se ensayó de punta a punta antes de publicarla: se generó el
+entorno virtual, se cargó el **archivo WSGI** con un servidor WSGI real y se
+pidieron las páginas contra él. Resultado:
+
+| Comprobación | Resultado |
+|---|---|
+| `/health` | `200` + `{"ok":true,...}` |
+| Portada, `/login`, `/registro` | `200` |
+| Rutas protegidas sin sesión | `302` → `/login` (correcto) |
+| Estáticos (`estilos.css`, `landing.css`, `favicon.svg`) | `200`, con su *content-type* |
+| Las **12** páginas del panel, con sesión iniciada | `200` |
+| Listados enriquecidos y fechas `DD/MM/YYYY` | presentes en el HTML |
+| Rutas registradas en la aplicación | 78 |
 
 ---
 

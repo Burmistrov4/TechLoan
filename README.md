@@ -69,7 +69,10 @@ Proyecto Final de Python/
 ├── schema.sql                            # Tablas, índices y datos de prueba
 ├── requirements.txt                      # Dependencias (Flask, Werkzeug, gunicorn)
 ├── Procfile · Dockerfile · .env.example  # Configuración de despliegue
-├── deploy/pythonanywhere_wsgi.py         # Plantilla WSGI para PythonAnywhere
+├── deploy/                               # Despliegue automatizado
+│   ├── desplegar_pythonanywhere.sh       #   PythonAnywhere en un comando
+│   ├── desplegar_vps.sh                  #   VPS: nginx + gunicorn + systemd + TLS
+│   └── pythonanywhere_wsgi.py            #   Plantilla WSGI para PythonAnywhere
 ├── README.md                             # Este documento
 │
 ├── database/
@@ -300,6 +303,8 @@ La aplicación incluye todo lo necesario para desplegarse:
 | `Procfile` | Arranque con gunicorn en plataformas tipo Heroku/Render |
 | `Dockerfile` · `.dockerignore` | Imagen lista para Fly.io, Render, Railway o un VPS |
 | `.env.example` | Plantilla de variables de entorno (clave de sesión, URL, SMTP) |
+| `deploy/desplegar_pythonanywhere.sh` | Despliegue en PythonAnywhere en un solo comando |
+| `deploy/desplegar_vps.sh` | Monta el VPS completo (nginx + gunicorn + systemd + TLS) |
 | `deploy/pythonanywhere_wsgi.py` | Plantilla del archivo WSGI de PythonAnywhere |
 
 **La regla que manda:** SQLite es un archivo, así que la plataforma debe tener
@@ -309,6 +314,22 @@ de datos en cada despliegue.
 Recomendado: **PythonAnywhere** (gratuito, disco persistente, sin Docker). Alternativas:
 un VPS pequeño con `nginx + gunicorn`, o Docker con un volumen montado en `/app/database`.
 El paso a paso completo está en **`docs/GUIA_DESPLIEGUE.md`**.
+
+**PythonAnywhere en dos comandos** (consola Bash de PythonAnywhere):
+
+```bash
+git clone https://github.com/Burmistrov4/TechLoan.git
+bash TechLoan/deploy/desplegar_pythonanywhere.sh
+```
+
+El script clona, crea el entorno virtual e instala todo, genera la base de datos,
+**comprueba que la aplicación se importa** y escribe el archivo WSGI. Solo queda
+pulsar **Reload** en la pestaña *Web*, que el propio script te indica cómo dejar lista.
+
+> ⚠️ **El detalle que rompe despliegues:** la versión de Python del *virtualenv* y la
+> que elijas en la pestaña *Web* deben ser **la misma**. El script fija una versión y te
+> dice exactamente cuál marcar. El plan gratuito da `tuusuario.pythonanywhere.com`,
+> 512 MB de disco y HTTPS; la base de datos vive en tu disco y **no se borra**.
 
 > En producción **no** se usa el servidor de desarrollo: se usa **gunicorn** a través de
 > `wsgi.py`. El host y el puerto se leen de `TECHLOAN_HOST` / `TECHLOAN_PORT` / `PORT`.
