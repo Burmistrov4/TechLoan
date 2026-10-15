@@ -180,6 +180,16 @@ else
 fi
 
 # --- 8. Instrucciones finales ------------------------------------------------
+# Se genera una clave de sesión aleatoria lista para pegar (si no hay openssl,
+# se usa Python; nunca se inventa una "clave por defecto").
+CLAVE=""
+if command -v openssl >/dev/null 2>&1; then
+  CLAVE="$(openssl rand -hex 32 2>/dev/null || true)"
+fi
+if [ -z "$CLAVE" ]; then
+  CLAVE="$("$PYTHON_BIN" -c 'import secrets; print(secrets.token_hex(32))' 2>/dev/null || true)"
+fi
+
 cat <<EOF
 
 ================================================================
@@ -194,8 +204,8 @@ Queda UN paso manual: la pestaña "Web" de PythonAnywhere.
   4. En "Static files", añade (opcional, acelera las imágenes y el CSS):
        URL:  /static/
        Path: $PROYECTO/static/
-  5. En "Environment variables", añade:
-       TECHLOAN_SECRET_KEY = (una cadena aleatoria larga)
+  5. En "Environment variables", añade estas dos:
+       TECHLOAN_SECRET_KEY = ${CLAVE:-<pega aqui una cadena aleatoria larga>}
        TECHLOAN_URL_BASE   = https://$USER_PA.pythonanywhere.com
   6. Pulsa el botón verde "Reload".
 
@@ -210,5 +220,8 @@ Notas del plan gratuito:
     se guarda en database/buzon/ y el enlace aparece en pantalla.
   - El dominio es $USER_PA.pythonanywhere.com (el plan gratuito no admite
     dominio propio). 512 MB de disco: el proyecto ocupa unos 70 MB, de sobra.
+
+TRUCO: si vuelves a ejecutar este script DESPUÉS de crear la aplicación web, ya
+podrá escribir el archivo WSGI por ti (paso 3) y solo tendrás que pulsar Reload.
 ================================================================
 EOF
