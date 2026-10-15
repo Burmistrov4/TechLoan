@@ -50,24 +50,43 @@ fi
 # Así el entorno virtual queda atado a una versión concreta y sabemos qué
 # marcar en la pestaña Web.
 PYTHON_BIN=""
+
 if [ -n "${PA_PYTHON:-}" ]; then
+  # El usuario lo forzó a mano.
   if command -v "$PA_PYTHON" >/dev/null 2>&1; then
+    PYTHON_BIN="$(command -v "$PA_PYTHON")"
+  elif [ -x "$PA_PYTHON" ]; then
     PYTHON_BIN="$PA_PYTHON"
   else
     echo "PA_PYTHON=$PA_PYTHON no existe en esta cuenta." >&2
     exit 1
   fi
 else
+  # 1) Como comando en el PATH (lo habitual en PythonAnywhere).
   for candidato in python3.13 python3.12 python3.11 python3.10 python3.9 python3 python; do
     if command -v "$candidato" >/dev/null 2>&1; then
-      PYTHON_BIN="$candidato"
+      PYTHON_BIN="$(command -v "$candidato")"
       break
     fi
   done
+  # 2) Por ruta absoluta, por si el comando no está en el PATH de la consola.
+  if [ -z "$PYTHON_BIN" ]; then
+    for ver in 13 12 11 10 9; do
+      for prefijo in /usr/bin /usr/local/bin /opt/python3.$ver/bin; do
+        if [ -x "$prefijo/python3.$ver" ]; then
+          PYTHON_BIN="$prefijo/python3.$ver"
+          break 2
+        fi
+      done
+    done
+  fi
 fi
 
 if [ -z "$PYTHON_BIN" ]; then
   echo "No encuentro ningún intérprete de Python 3 en esta cuenta." >&2
+  echo "Los que veo disponibles:" >&2
+  ls -1 /usr/bin/python3* /usr/local/bin/python3* 2>/dev/null >&2 || true
+  echo "Pásalo a mano: PA_PYTHON=/usr/bin/python3.10 bash deploy/desplegar_pythonanywhere.sh" >&2
   exit 1
 fi
 
@@ -90,7 +109,17 @@ if [ -d "$PROYECTO/.venv" ]; then
 fi
 
 if [ ! -d "$PROYECTO/.venv" ]; then
-  "$PYTHON_BIN" -m venv "$PROYECTO/.venv"
+  # Plan A: el módulo venv de la biblioteca estándar.
+  # Plan B: el paquete "virtualenv", que funciona aunque venv/pip falle
+  #         (pasa en algunas cuentas de PythonAnywhere).
+  if ! "$PYTHON_BIN" -m venv "$PROYECTO/.venv" 2>/dev/null; then
+    echo "    'python -m venv' falló; pruebo con el paquete virtualenv..."
+    rm -rf "$PROYECTO/.venv"
+    "$PYTHON_BIN" -m pip install --quiet --user virtualenv \
+      || "$PYTHON_BIN" -m pip install --quiet virtualenv
+    "$PYTHON_BIN" -m virtualenv -p "$PYTHON_BIN" "$PROYECTO/.venv" \
+      || "$PYTHON_BIN" -m virtualenv "$PROYECTO/.venv"
+  fi
 fi
 
 # PythonAnywhere es Linux: .venv/bin. En Windows (MSYS) sería .venv/Scripts; se
