@@ -13,6 +13,7 @@
      9.  Formulario de reserva: hora final, línea de tiempo y alternativas
      10. Contadores animados
      11. Protección contra el doble envío
+     12. Botón de ver/ocultar la contraseña
 
    Todas las comprobaciones de este archivo son una MEJORA de la experiencia de
    usuario: la validación y las reglas de negocio definitivas se ejecutan
@@ -660,6 +661,81 @@
   /* ========================================================================
      Arranque
      ====================================================================== */
+  /* ======================================================================
+     12. Botón de ver/ocultar la contraseña
+
+     Sin esto, quien escribe una contraseña con mayúsculas, números y símbolos
+     no puede comprobar qué tecleó: los puntos no permiten detectar un error.
+     El botón se añade a TODOS los input[type=password] de la página, así que
+     cubre registro, perfil y alta de usuarios sin tocar las plantillas.
+
+     Es solo una mejora de la experiencia: el valor que se envía al servidor es
+     exactamente el mismo, y la validación sigue siendo la del servidor.
+     ====================================================================== */
+  function inicializarVerContrasena() {
+    var OJO = "M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7zm0 " +
+              "11a4 4 0 110-8 4 4 0 010 8zm0-1.6a2.4 2.4 0 100-4.8 2.4 2.4 0 000 4.8z";
+    var OJO_TACHADO =
+      "M3 3l18 18M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7 1.6 0 3-.4 4.3-1M12 5c5 0 9 4.5 10 7-.4 1-1.2 2.2-2.3 3.4M12 16a4 4 0 01-4-4";
+
+    function icono(ruta) {
+      var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", "0 0 24 24");
+      svg.setAttribute("width", "18");
+      svg.setAttribute("height", "18");
+      svg.setAttribute("fill", "none");
+      svg.setAttribute("stroke", "currentColor");
+      svg.setAttribute("stroke-width", "1.7");
+      svg.setAttribute("stroke-linecap", "round");
+      svg.setAttribute("stroke-linejoin", "round");
+      svg.setAttribute("aria-hidden", "true");
+      var trazado = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      trazado.setAttribute("d", ruta);
+      svg.appendChild(trazado);
+      return svg;
+    }
+
+    var campos = document.querySelectorAll('input[type="password"]');
+    for (var i = 0; i < campos.length; i++) {
+      (function (campo) {
+        // No repetir el botón si la página ya lo trae.
+        if (campo.dataset.conBotonVer) { return; }
+        campo.dataset.conBotonVer = "1";
+
+        var boton = document.createElement("button");
+        boton.type = "button";
+        boton.className = "boton-ver-contrasena";
+        boton.setAttribute("aria-label", "Mostrar la contraseña");
+        boton.setAttribute("aria-pressed", "false");
+        boton.appendChild(icono(OJO));
+
+        boton.addEventListener("click", function () {
+          var visible = campo.type === "text";
+          campo.type = visible ? "password" : "text";
+          boton.setAttribute("aria-pressed", visible ? "false" : "true");
+          boton.setAttribute("aria-label", visible ? "Mostrar la contraseña"
+                                                   : "Ocultar la contraseña");
+          while (boton.firstChild) { boton.removeChild(boton.firstChild); }
+          boton.appendChild(icono(visible ? OJO : OJO_TACHADO));
+          campo.focus();
+        });
+
+        // El botón se coloca dentro de un envoltorio que contiene SOLO el input,
+        // para poder centrarlo sobre el campo sin depender de la altura del
+        // rótulo (.campo es una columna con el label encima).
+        var contenedor = campo.closest(".campo");
+        if (!contenedor) {
+          contenedor = campo.parentNode;
+        }
+        var envoltorio = document.createElement("span");
+        envoltorio.className = "campo-contrasena";
+        campo.parentNode.insertBefore(envoltorio, campo);
+        envoltorio.appendChild(campo);
+        envoltorio.appendChild(boton);
+      })(campos[i]);
+    }
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     inicializarTema();
     inicializarLateral();
@@ -672,5 +748,6 @@
     inicializarFormularioReserva();
     inicializarContadores();
     inicializarAntiDobleEnvio();
+    inicializarVerContrasena();
   });
 })();

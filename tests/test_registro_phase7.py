@@ -88,7 +88,7 @@ def test_alta_y_token():
 
     # El enlace de demostración aparece porque no hay SMTP configurado.
     afirmar(not correo_service.configurado(), "Sin SMTP, el servicio debe estar en modo demostración")
-    coincidencia = re.search(r'href="([^"]*/confirmar/[^"]+)"', html)
+    coincidencia = re.search(r'href="([^"]*/(?:confirmar|c)/[^"]+)"', html)
     afirmar(coincidencia, "En modo demostración debe mostrarse el enlace de confirmación")
     enlace = coincidencia.group(1)
 
@@ -119,6 +119,11 @@ def test_alta_y_token():
         afirmar(token is not None, "Debe emitirse un token de confirmación")
         afirmar(token["usado"] == 0, "El token recién emitido no puede estar usado")
         afirmar(enlace.endswith(token["token"]), "El enlace debe llevar el token emitido")
+
+    # El enlace debe caber en una linea de quoted-printable (76 caracteres),
+    # que es el limite a partir del cual el cuerpo del correo se parte.
+    afirmar(len(enlace) <= 76,
+            f"El enlace mide {len(enlace)} caracteres y se partiria en el correo")
 
     print("FASE7_ALTA_Y_TOKEN_OK")
     return enlace
@@ -274,7 +279,7 @@ def test_tokens_y_reenvio():
 
     respuesta = publicar(cliente, "/reenviar", {"email": "carlos.perez@correo.com"})
     afirmar(respuesta.status_code == 200, "El reenvío debe responder 200")
-    coincidencia = re.search(r'href="([^"]*/confirmar/[^"]+)"', texto(respuesta))
+    coincidencia = re.search(r'href="([^"]*/(?:confirmar|c)/[^"]+)"', texto(respuesta))
     afirmar(coincidencia, "El reenvío debe mostrar un enlace nuevo")
     enlace_nuevo = coincidencia.group(1)
     afirmar(enlace_nuevo.rsplit("/", 1)[-1] != token_caducado, "El enlace debe ser distinto")

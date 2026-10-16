@@ -307,6 +307,7 @@ La aplicación incluye todo lo necesario para desplegarse:
 | `deploy/desplegar_vps.sh` | Monta el VPS completo (nginx + gunicorn + systemd + TLS) |
 | `deploy/pythonanywhere_wsgi.py` | Plantilla del archivo WSGI de PythonAnywhere |
 | `deploy/diagnostico_correo.py` | Comprueba si el servidor puede enviar correo (SMTP) |
+| `deploy/diagnostico_registro.py` | Diagnóstico del ciclo de registro en producción |
 
 **La regla que manda:** SQLite es un archivo, así que la plataforma debe tener
 **disco persistente**. Las gratuitas con disco efímero (o *serverless*) borran la base
@@ -517,6 +518,16 @@ Si el enlace caduca o se pierde, `/reenviar` emite uno nuevo e invalida el anter
 **Sin confirmar no se entra**, y el mensaje de error lo explica. Ese aviso solo se muestra a
 quien ya acertó la contraseña, así que no revela si una cuenta existe.
 
+**Si el correo no llega**, la aplicación lo dice: no afirma «Correo enviado» sin
+comprobarlo. Si el servidor SMTP responde con un error, se avisa, se explica que la cuenta
+quedó creada y se ofrece el enlace para activarla, de modo que un fallo de correo nunca
+bloquea el registro. Para saber por qué falla en el servidor:
+`python3 deploy/diagnostico_registro.py`.
+
+**Ver la contraseña.** Los campos de contraseña (registro, perfil y alta de usuarios)
+tienen un botón de ojo que muestra y oculta lo escrito. Es una mejora de la interfaz:
+el valor que se envía y la validación del servidor no cambian.
+
 #### Configurar el correo saliente
 
 El único módulo que necesita hablar con el exterior es este. Se configura por variables de
@@ -714,6 +725,9 @@ PYTHONPATH=. python tests/test_historial_phase4.py
 | `docs/GUIA_BASE_DE_DATOS.md` | Cómo abrir la base de datos SQLite y por qué phpMyAdmin da error `#1064` |
 | `docs/DEMOSTRACION_SEGURIDAD.md` | Guion de un minuto: hash de contraseñas, validaciones e inyección SQL |
 | `docs/GUIA_DESPLIEGUE.md` | Cómo publicar la app: PythonAnywhere, Docker y VPS, con las variables de entorno |
+| `docs/CORRECCIONES_REGISTRO_Y_CORREO.md` | Fallos encontrados en registro y correo, con diagnóstico y pruebas |
+| `docs/ACTUALIZAR_EN_PRODUCCION.md` | Cómo subir un cambio a PythonAnywhere sin perder datos ni sesiones |
+| `docs/ESPECIFICACION_HORARIOS_Y_SECCIONES.md` | Especificación de la ampliación: secciones, semestres, asignación y PDF |
 | `docs/PROJECT_CONTEXT/` | Estado del proyecto, decisiones, criterios de aceptación y registro de trabajo |
 | `docs/capturas/` | Evidencia visual de la verificación en navegador real |
 

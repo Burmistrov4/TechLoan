@@ -42,6 +42,24 @@
     </h1>
     <p class="tarjeta-formulario__subtitulo">{{ mensaje }}</p>
 
+    {% if token_recibido %}
+    {#-
+      Se muestra el código que llegó en el enlace, recortado. No es un dato
+      sensible (el token es de un solo uso y ya no sirve), y sin él no se puede
+      depurar el fallo: permite buscarlo en la base de datos y saber si llegó
+      truncado, si caducó o si nunca existió.
+    -#}
+    <p class="nota-acceso" style="justify-content:center;margin-top:var(--e-4)">
+      {{ ic.icono('info', tamano=15) }}
+      <span>
+        Código recibido en el enlace:
+        <code>{{ token_recibido[:10] }}…{{ token_recibido[-6:] }}</code>
+        ({{ token_recibido | length }} caracteres; debe tener 32).
+        Si tiene menos, el enlace llegó cortado: pide uno nuevo.
+      </span>
+    </p>
+    {% endif %}
+
     <p style="margin:var(--e-6) 0 0;display:flex;gap:var(--e-3);justify-content:center;
               flex-wrap:wrap">
       <a class="boton boton--marca" href="{{ url_for('web.reenviar') }}">

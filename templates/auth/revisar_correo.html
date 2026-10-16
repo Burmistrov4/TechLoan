@@ -48,6 +48,34 @@
         variables <code>TECHLOAN_SMTP_*</code> (ver el README).
       </span>
     </p>
+    {% elif not resultado.correo.enviado %}
+    {#-
+      El envío falló de verdad (contraseña de aplicación inválida, el servidor
+      rechazó la conexión, se agotó la cuota de Gmail...). Antes la plantilla
+      decía "Correo enviado" sin comprobar nada, así que la persona se quedaba
+      esperando un mensaje que nunca llegaría. La cuenta SÍ quedó creada, así que
+      se ofrece el enlace directamente para no bloquear el registro.
+    -#}
+    <div class="aviso aviso--peligro" style="margin-top:var(--e-6)">
+      <strong>No se pudo enviar el correo.</strong>
+      El servidor de correo no aceptó el mensaje, así que el enlace no salió de
+      TechLoan. Tu cuenta quedó creada: actívala con el botón de abajo o
+      <a href="{{ url_for('web.reenviar') }}">pide un enlace nuevo</a>.
+    </div>
+
+    <p style="margin:var(--e-5) 0 0;text-align:center">
+      <a class="boton boton--marca boton--grande" href="{{ resultado.enlace }}">
+        {{ ic.icono('correcto', tamano=18) }} Confirmar mi cuenta ahora
+      </a>
+    </p>
+
+    <p class="nota-acceso">
+      {{ ic.icono('alerta', tamano=15) }}
+      <span>
+        Detalle del error para el administrador:
+        <code>{{ resultado.correo.error }}</code>
+      </span>
+    </p>
     {% else %}
     <div class="aviso aviso--exito" style="margin-top:var(--e-6)">
       <strong>Correo enviado.</strong>

@@ -38,7 +38,11 @@ def perfil():
         return redirect(url_for("web.login"))
 
     if request.method == "POST":
-        datos = form_fields("password_actual", "password_nueva", "password_repetida")
+        datos = form_fields(
+            "password_actual", "password_nueva", "password_repetida",
+            # Las contraseñas no se recortan: un espacio podría ser parte de la clave.
+            no_recortar=("password_actual", "password_nueva", "password_repetida"),
+        )
         try:
             UsuarioService.cambiar_password(
                 usuario["id"],

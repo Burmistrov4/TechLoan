@@ -155,7 +155,9 @@ def registro():
 def registro_post():
     """Crea la cuenta con el correo sin confirmar y manda el enlace."""
     datos = form_fields(
-        "nombre", "apellido", "username", "email", "password", "password_repetida"
+        "nombre", "apellido", "username", "email", "password", "password_repetida",
+        # Las contraseñas no se recortan: un espacio podría ser parte de la clave.
+        no_recortar=("password", "password_repetida"),
     )
 
     try:
@@ -181,13 +183,33 @@ def registro_post():
 
 
 @web_bp.get("/confirmar/<token>")
+@web_bp.get("/c/<token>")
 def confirmar(token):
-    """Activa la cuenta a la que pertenece el enlace del correo."""
+    """Activa la cuenta a la que pertenece el enlace del correo.
+
+    Hay dos rutas a propósito. La corta (``/c/<token>``) es la que se manda por
+    correo: con ella el enlace mide 69 caracteres y cabe en una sola línea, así
+    que la codificación quoted-printable del correo no lo parte. La larga
+    (``/confirmar/<token>``) se conserva para que sigan funcionando los enlaces
+    que se enviaron antes de existir la corta.
+    """
     try:
         resultado = RegistroService.confirmar(token)
     except ValueError as exc:
+        # Se deja rastro del intento fallido con el token recibido. Sin esto,
+        # "no se pudo confirmar" no se puede depurar: no hay forma de saber si el
+        # enlace llegó truncado, si el token caducó o si nunca existió.
+        registrar_accion(
+            "ACCEDER", "confirmacion", None,
+            f"Confirmación rechazada para el enlace «{token[:12]}…»: {exc}",
+        )
         return (
-            render_template("auth/confirmar.html", ok=False, mensaje=str(exc)),
+            render_template(
+                "auth/confirmar.html",
+                ok=False,
+                mensaje=str(exc),
+                token_recibido=token,
+            ),
             400,
         )
 

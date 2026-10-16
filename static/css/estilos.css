@@ -1868,3 +1868,52 @@ kbd {
   .tutorial__tarjeta,
   .tutorial__progreso { transition: none; }
 }
+
+/* ==========================================================================
+   Botón de ver/ocultar la contraseña
+   Lo añade JavaScript envolviendo cada input[type=password] en un
+   .campo-contrasena que contiene SOLO el campo. Así el botón se centra sobre
+   el input con independencia de la altura del rótulo que tenga encima.
+   ========================================================================== */
+.campo-contrasena {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+/* Se reserva sitio a la derecha para que el texto no se meta bajo el botón. */
+.campo-contrasena input {
+  padding-right: 2.6rem;
+}
+
+.boton-ver-contrasena {
+  position: absolute;
+  top: 50%;
+  right: 0.4rem;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  color: var(--texto-suave);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;   /* el proyecto no define variables de radio */
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.boton-ver-contrasena:hover {
+  color: var(--texto);
+  background: var(--fondo);
+}
+
+.boton-ver-contrasena:focus-visible {
+  outline: 2px solid var(--acento, currentColor);
+  outline-offset: 1px;
+}
+
+/* En la rejilla de dos columnas, el envoltorio debe ocupar toda la celda. */
+.rejilla-campos .campo-contrasena { width: 100%; }

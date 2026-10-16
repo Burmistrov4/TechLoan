@@ -31,6 +31,17 @@ from app.services import correo_service
 # privilegios desde el módulo de Usuarios.
 ROL_AUTORREGISTRO = "OPERADOR"
 
+# Bytes de entropia del token. 24 bytes = 192 bits, mas que suficiente para
+# un valor de un solo uso con caducidad de 24 horas.
+#
+# El tamano importa por un motivo poco evidente: el enlace de confirmacion
+# viaja en el cuerpo del correo, y el cuerpo se codifica en
+# quoted-printable, que PARTE cualquier linea de mas de 76 caracteres. Con 32
+# bytes el enlace media 88 caracteres y se partia por la mitad; con 24 bytes y
+# la ruta corta "/c/" mide 69 y entra en una sola linea, asi que ningun
+# cliente de correo puede truncarlo.
+TOKEN_BYTES = 24
+
 _RE_NOMBRE = r"[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]{2,50}"
 _RE_USERNAME = r"[A-Za-z0-9_]{4,20}"
 _RE_EMAIL = r"[^\s@]+@[^\s@]+\.[^\s@]+"
@@ -42,7 +53,7 @@ def _ahora():
 
 def _crear_token(db, usuario_id, tipo="CONFIRMACION"):
     """Emite un token nuevo, invalida los anteriores del mismo tipo y lo guarda."""
-    token = secrets.token_urlsafe(32)
+    token = secrets.token_urlsafe(TOKEN_BYTES)
     expiracion = (datetime.now() + timedelta(hours=HORAS_VALIDEZ_TOKEN)).strftime(
         "%Y-%m-%d %H:%M:%S"
     )
@@ -131,7 +142,7 @@ class RegistroService:
 
     @staticmethod
     def enlace_confirmacion(token):
-        return f"{URL_BASE}/confirmar/{token}"
+        return f"{URL_BASE}/c/{token}"
 
     @staticmethod
     def registrar(datos):

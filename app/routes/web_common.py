@@ -119,15 +119,25 @@ def can(permission):
 # ---------------------------------------------------------------------------
 # Lectura de formularios
 # ---------------------------------------------------------------------------
-def form_fields(*names, empty_to_none=()):
+def form_fields(*names, empty_to_none=(), no_recortar=()):
     """Extrae del formulario los campos indicados, ya recortados.
 
     Siempre devuelve cadenas (nunca ``None``) para que las validaciones de los
     servicios no fallen con ``AttributeError``. Los campos listados en
     ``empty_to_none`` se convierten a ``None`` cuando llegan vacíos, que es lo
     que esperan las columnas opcionales de la base de datos.
+
+    Los campos de ``no_recortar`` se devuelven **tal cual los escribió el
+    usuario**. Se usa para las contraseñas: recortarlas modificaba en silencio la
+    clave real (un espacio final desaparecía), de modo que el hash guardado no
+    correspondía a lo que la persona había tecleado. Los espacios sí son
+    caracteres válidos de una contraseña.
     """
-    data = {name: (request.form.get(name) or "").strip() for name in names}
+    preservar = set(no_recortar)
+    data = {}
+    for name in names:
+        valor = request.form.get(name) or ""
+        data[name] = valor if name in preservar else valor.strip()
     for name in empty_to_none:
         if data.get(name) == "":
             data[name] = None

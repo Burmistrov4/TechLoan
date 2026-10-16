@@ -20,6 +20,7 @@ import smtplib
 import sys
 from datetime import datetime
 from email.message import EmailMessage
+from email.utils import format_datetime, make_msgid
 
 from app.config import (
     BUZON_DIR,
@@ -95,8 +96,21 @@ def enviar(destinatario, asunto, texto, html=None):
 
     mensaje = EmailMessage()
     mensaje["Subject"] = asunto
-    mensaje["From"] = SMTP_FROM
+    # Remitente con nombre legible: "TechLoan" <correo>. Los filtros de spam
+    # puntúan mejor un From con nombre que un From que es solo una dirección.
+    mensaje["From"] = f"TechLoan <{SMTP_FROM}>"
     mensaje["To"] = destinatario
+    mensaje["Reply-To"] = SMTP_FROM
+    # Cabeceras que el RFC 5322 exige y que este servicio no estaba poniendo.
+    # Gmail las añade por su cuenta, pero receptores estrictos (Proton Mail,
+    # Outlook, muchos filtros corporativos) descartan o archivan como spam un
+    # mensaje sin Date o sin Message-ID propio. Es la diferencia entre "el
+    # correo llega a Gmail pero no a Proton".
+    mensaje["Date"] = format_datetime(datetime.now().astimezone())
+    mensaje["Message-ID"] = make_msgid(domain=SMTP_FROM.split("@")[-1])
+    # Declara que es un mensaje automático transaccional: mejora la
+    # entregabilidad frente a los filtros que penalizan el envío masivo.
+    mensaje["Auto-Submitted"] = "auto-generated"
     mensaje.set_content(texto)
     if html:
         mensaje.add_alternative(html, subtype="html")
