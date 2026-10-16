@@ -23,11 +23,39 @@ No envía correos, no modifica nada y no muestra la contraseña.
 """
 
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
 
-# Mismoorden que el archivo WSGI: la ruta del proyecto antes de importar la app.
+
+def _cargar_variables_wsgi():
+    """En PythonAnywhere las variables de entorno van en el archivo WSGI,
+    no en el entorno de la consola Bash. Este helper las extrae y las
+    inyecta en os.environ para que app.config las vea."""
+    user = os.environ.get("USER", "")
+    if not user:
+        return
+    wsgi = Path(f"/var/www/{user}_pythonanywhere_com_wsgi.py")
+    if not wsgi.exists():
+        return
+    texto = wsgi.read_text(encoding="utf-8")
+    # os.environ["X"] = "Y"  o  os.environ.setdefault("X", "Y")
+    for m in re.finditer(
+        r'os\.environ\[["\']([^"\']+)["\']\]\s*=\s*["\']([^"\']*)["\']',
+        texto,
+    ):
+        os.environ[m.group(1)] = m.group(2)
+    for m in re.finditer(
+        r'os\.environ\.setdefault\(["\']([^"\']+)["\']\s*,\s*["\']([^"\']*)["\']\)',
+        texto,
+    ):
+        os.environ.setdefault(m.group(1), m.group(2))
+
+
+_cargar_variables_wsgi()
+
+# Mismo orden que el archivo WSGI: la ruta del proyecto antes de importar la app.
 BASE_DIR = Path(__file__).resolve().parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
