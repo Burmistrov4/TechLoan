@@ -29,6 +29,7 @@ class HistorialService:
                 SELECT
                     'RESERVA' AS tipo,
                     r.id AS referencia_id,
+                    r.edicion_id AS edicion_id,
                     r.fecha || ' ' || r.hora_inicio AS fecha_operacion,
                     r.fecha AS fecha_base,
                     r.hora_inicio AS hora_inicio,
@@ -52,6 +53,7 @@ class HistorialService:
                 SELECT
                     'PRESTAMO' AS tipo,
                     pe.id AS referencia_id,
+                    pe.edicion_id AS edicion_id,
                     pe.fecha_prestamo AS fecha_operacion,
                     substr(pe.fecha_prestamo, 1, 10) AS fecha_base,
                     substr(pe.fecha_prestamo, 12, 5) AS hora_inicio,
@@ -76,6 +78,7 @@ class HistorialService:
                 SELECT
                     'DEVOLUCION' AS tipo,
                     pe.id AS referencia_id,
+                    pe.edicion_id AS edicion_id,
                     pe.fecha_devolucion AS fecha_operacion,
                     substr(pe.fecha_devolucion, 1, 10) AS fecha_base,
                     substr(pe.fecha_devolucion, 12, 5) AS hora_inicio,

@@ -1,0 +1,42 @@
+{% extends "base_app.html" %}
+{% import "parciales/iconos.html" as ic %}
+
+{% block titulo %}Ediciones{% endblock %}
+
+{% block contenido %}
+<div class="vista">
+  <div class="vista__encabezado">
+    <h1 class="vista__titulo">{{ ic.icono('libro') }} Ediciones</h1>
+    <p class="vista__subtitulo">Gestiona las instancias personalizadas del sistema.</p>
+  </div>
+
+  <div class="tarjeta">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Slug</th>
+          <th>Estado</th>
+          <th>Versión actual</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in ediciones %}
+        <tr>
+          <td><strong>{{ e.nombre }}</strong></td>
+          <td><code>{{ e.slug }}</code></td>
+          <td><span class="etiqueta etiqueta--{{ e.estado|lower }}">{{ e.estado }}</span></td>
+          <td>v{{ e.version_actual }}</td>
+          <td>
+            <a class="boton boton--pequeno" href="{{ url_for('web.edicion_configuracion', slug=e.slug) }}">Configurar</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="tabla__vacio">No hay ediciones.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

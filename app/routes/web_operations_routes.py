@@ -15,7 +15,9 @@ from flask import flash, jsonify, redirect, render_template, request, url_for
 
 from app.config import DIAS_PRESTAMO_LIMITE
 from app.routes.web_common import (
+    edicion_activa_id,
     exportar_csv,
+    filtrar_por_edicion,
     form_fields,
     parse_int,
     permission_required,
@@ -73,7 +75,7 @@ COLUMNAS_PRESTAMO = (
 @permission_required("reservas.read")
 def reservas():
     listado = preparar_listado(
-        ReservationService.list_all(),
+        filtrar_por_edicion(ReservationService.list_all()),
         columnas_ordenables=("fecha", "hora_inicio", "laboratorio_codigo",
                              "prestatario_apellido", "estado", "duracion_minutos"),
     )
@@ -84,7 +86,7 @@ def reservas():
 @permission_required("reservas.read")
 def reservas_exportar():
     registrar_accion("EXPORTAR", "listado", None, "Exportación del listado de reservas")
-    registros = ReservationService.list_all()
+    registros = filtrar_por_edicion(ReservationService.list_all())
     return exportar_csv(
         "techloan-reservas",
         [etiqueta for _, etiqueta in COLUMNAS_RESERVA],
@@ -97,14 +99,18 @@ def _contexto_reserva(registro=None):
     from datetime import datetime
 
     laboratorios = [
-        lab for lab in LaboratorioService.list_all() if lab["estado"] == "DISPONIBLE"
+        lab for lab in filtrar_por_edicion(LaboratorioService.list_all())
+        if lab["estado"] == "DISPONIBLE"
     ]
     # Los desplegables muestran código y nombre para que no haya que memorizar
     # a qué laboratorio o persona corresponde cada identificador.
     for lab in laboratorios:
         lab["etiqueta"] = f"{lab['codigo']} — {lab['nombre']}"
 
-    prestatarios = [p for p in PrestatarioService.list_all() if p["estado"] == "ACTIVO"]
+    prestatarios = [
+        p for p in filtrar_por_edicion(PrestatarioService.list_all())
+        if p["estado"] == "ACTIVO"
+    ]
     for prestatario in prestatarios:
         prestatario["etiqueta"] = (
             f"{prestatario['cedula']} — {prestatario['nombre']} {prestatario['apellido']}"
@@ -158,6 +164,7 @@ def reserva_crear():
                     data["hora_inicio"],
                     duracion,
                     data.get("observaciones") or "",
+                    edicion_id=edicion_activa_id(),
                 )
             except ValueError as exc:
                 error = str(exc)
@@ -266,11 +273,11 @@ def disponibilidad_json():
 @web_bp.get("/prestamos")
 @permission_required("prestamos.read")
 def prestamos():
-    activos = PrestamoEquipoService.list_active()
+    activos = filtrar_por_edicion(PrestamoEquipoService.list_active())
     for prestamo in activos:
         prestamo["vencido"] = (prestamo.get("dias_prestado") or 0) > DIAS_PRESTAMO_LIMITE
 
-    todos = PrestamoEquipoService.list_all()
+    todos = filtrar_por_edicion(PrestamoEquipoService.list_all())
     for prestamo in todos:
         prestamo["vencido"] = (
             prestamo["estado"] == "ACTIVO"
@@ -301,7 +308,7 @@ def prestamos():
 @permission_required("prestamos.read")
 def prestamos_exportar():
     registrar_accion("EXPORTAR", "listado", None, "Exportación del listado de préstamos")
-    registros = PrestamoEquipoService.list_all()
+    registros = filtrar_por_edicion(PrestamoEquipoService.list_all())
     return exportar_csv(
         "techloan-prestamos",
         [etiqueta for _, etiqueta in COLUMNAS_PRESTAMO],
@@ -310,11 +317,17 @@ def prestamos_exportar():
 
 
 def _contexto_prestamo(registro=None):
-    equipos = [e for e in EquipoService.list_all() if e["estado"] == "DISPONIBLE"]
+    equipos = [
+        e for e in filtrar_por_edicion(EquipoService.list_all())
+        if e["estado"] == "DISPONIBLE"
+    ]
     for equipo in equipos:
         equipo["etiqueta"] = f"{equipo['codigo']} — {equipo['nombre']}"
 
-    prestatarios = [p for p in PrestatarioService.list_all() if p["estado"] == "ACTIVO"]
+    prestatarios = [
+        p for p in filtrar_por_edicion(PrestatarioService.list_all())
+        if p["estado"] == "ACTIVO"
+    ]
     for prestatario in prestatarios:
         prestatario["etiqueta"] = (
             f"{prestatario['cedula']} — {prestatario['nombre']} {prestatario['apellido']}"
@@ -351,6 +364,7 @@ def prestamo_crear():
                     prestatario_id,
                     current_user()["id"],
                     data.get("observaciones") or "",
+                    edicion_id=edicion_activa_id(),
                 )
             except ValueError as exc:
                 error = str(exc)
@@ -410,7 +424,7 @@ def historial():
 
     registros = []
     try:
-        registros = HistorialService.list_all(**filtros)
+        registros = filtrar_por_edicion(HistorialService.list_all(**filtros))
     except ValueError as exc:
         flash(str(exc), "error")
 
@@ -420,7 +434,7 @@ def historial():
         por_pagina_por_defecto=15,
     )
 
-    prestatarios = PrestatarioService.list_all()
+    prestatarios = filtrar_por_edicion(PrestatarioService.list_all())
     for prestatario in prestatarios:
         prestatario["etiqueta"] = (
             f"{prestatario['cedula']} — {prestatario['nombre']} {prestatario['apellido']}"
@@ -440,7 +454,7 @@ def historial():
 @permission_required("historial.read")
 def historial_exportar():
     try:
-        registros = HistorialService.list_all(**_filtros_historial())
+        registros = filtrar_por_edicion(HistorialService.list_all(**_filtros_historial()))
     except ValueError:
         registros = []
     registrar_accion("EXPORTAR", "listado", None, "Exportación del historial de operaciones")

@@ -49,6 +49,20 @@ ESTADOS_LABORATORIO = ("DISPONIBLE", "MANTENIMIENTO", "INACTIVO")
 ESTADOS_EQUIPO = ("DISPONIBLE", "PRESTADO", "MANTENIMIENTO", "DANADO", "INACTIVO")
 ROLES = ("ADMINISTRADOR", "OPERADOR")
 
+
+def _edicion_id():
+    """Devuelve la edición activa de la sesión (default 1)."""
+    from flask import session
+    return session.get('edicion_id', 1)
+
+
+def _filtrar_por_edicion(registros, edicion_id=None):
+    """Filtra una lista de registros por edicion_id."""
+    if edicion_id is None:
+        edicion_id = _edicion_id()
+    return [r for r in registros if r.get('edicion_id', 1) == edicion_id]
+
+
 # Definición de columnas de cada listado: (clave, etiqueta).
 # La misma definición alimenta la cabecera ordenable de la tabla y la
 # exportación a CSV, de modo que ambas no pueden desincronizarse.
@@ -118,7 +132,7 @@ def _etiquetar_categorias():
 
 def _etiquetar_laboratorios():
     """Laboratorios con una clave ``etiqueta`` (código y nombre juntos)."""
-    laboratorios = LaboratorioService.list_all()
+    laboratorios = _filtrar_por_edicion(LaboratorioService.list_all())
     for laboratorio in laboratorios:
         laboratorio["etiqueta"] = f"{laboratorio['codigo']} — {laboratorio['nombre']}"
     return laboratorios
@@ -131,7 +145,7 @@ def _etiquetar_laboratorios():
 @permission_required("prestatarios.read")
 def prestatarios():
     listado = preparar_listado(
-        PrestatarioService.list_all(),
+        _filtrar_por_edicion(PrestatarioService.list_all()),
         columnas_ordenables=tuple(clave for clave, _ in COLUMNAS_PRESTATARIO),
     )
     return render_template(
@@ -144,7 +158,7 @@ def prestatarios():
 def prestatarios_exportar():
     return _exportar(
         "techloan-prestatarios", COLUMNAS_PRESTATARIO,
-        PrestatarioService.list_all(), "Exportación del listado de prestatarios",
+        _filtrar_por_edicion(PrestatarioService.list_all()), "Exportación del listado de prestatarios",
     )
 
 
@@ -157,6 +171,7 @@ def prestatario_crear():
             "cedula", "nombre", "apellido", "tipo", "telefono", "email", "estado",
             empty_to_none=("telefono", "email"),
         )
+        data["edicion_id"] = _edicion_id()
         try:
             nuevo_id = PrestatarioService.create(data)
         except ValueError as exc:
@@ -315,7 +330,7 @@ def laboratorios():
     # La situación de cada laboratorio (próxima reserva y demanda de la semana)
     # se resuelve en una sola consulta y se cruza aquí por id.
     listado = preparar_listado(
-        LaboratorioService.list_all(),
+        _filtrar_por_edicion(_filtrar_por_edicion(LaboratorioService.list_all())),
         columnas_ordenables=tuple(clave for clave, _ in COLUMNAS_LABORATORIO),
     )
     return render_template(
@@ -331,7 +346,7 @@ def laboratorios():
 def laboratorios_exportar():
     return _exportar(
         "techloan-laboratorios", COLUMNAS_LABORATORIO,
-        LaboratorioService.list_all(), "Exportación del listado de laboratorios",
+        _filtrar_por_edicion(_filtrar_por_edicion(LaboratorioService.list_all())), "Exportación del listado de laboratorios",
     )
 
 
@@ -343,6 +358,7 @@ def laboratorio_crear():
             "codigo", "nombre", "ubicacion", "capacidad",
             "duracion_estandar_minutos", "estado",
         )
+        data["edicion_id"] = _edicion_id()
         try:
             nuevo_id = LaboratorioService.create(data)
         except ValueError as exc:
@@ -420,7 +436,7 @@ def equipos():
     # Si un equipo está PRESTADO, el listado debe decir a quién, desde cuándo y
     # para cuándo: es la pregunta que un inventario tiene que responder.
     listado = preparar_listado(
-        EquipoService.list_all(),
+        _filtrar_por_edicion(_filtrar_por_edicion(EquipoService.list_all())),
         columnas_ordenables=tuple(clave for clave, _ in COLUMNAS_EQUIPO),
     )
     return render_template(
@@ -437,7 +453,7 @@ def equipos():
 def equipos_exportar():
     return _exportar(
         "techloan-equipos", COLUMNAS_EQUIPO,
-        EquipoService.list_all(), "Exportación del listado de equipos",
+        _filtrar_por_edicion(_filtrar_por_edicion(EquipoService.list_all())), "Exportación del listado de equipos",
     )
 
 
@@ -450,6 +466,7 @@ def equipo_crear():
             "laboratorio_id", "estado",
             empty_to_none=("categoria_id", "marca", "modelo", "serial", "laboratorio_id"),
         )
+        data["edicion_id"] = _edicion_id()
         try:
             nuevo_id = EquipoService.create(data)
         except ValueError as exc:

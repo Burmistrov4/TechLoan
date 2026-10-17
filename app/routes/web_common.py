@@ -152,6 +152,31 @@ def parse_int(value, default=None):
         return default
 
 
+# ---------------------------------------------------------------------------
+# Edición activa (multi-edición)
+# ---------------------------------------------------------------------------
+def edicion_activa_id():
+    """Devuelve el ``id`` de la edición activa de la sesión (por defecto 1).
+
+    El context processor de ``server.py`` fija ``session['edicion_id']`` en la
+    primera edición del usuario en cuanto se renderiza una plantilla; antes de
+    eso el valor por defecto coincide con la columna del esquema.
+    """
+    return session.get("edicion_id", 1)
+
+
+def filtrar_por_edicion(registros, edicion_id=None):
+    """Filtra una lista de registros por ``edicion_id``.
+
+    Los registros cuyo campo valga ``None`` (tablas globales o columnas sin
+    definir) se tratan como pertenecientes a la edición base (1), que es el valor
+    por defecto de la columna en el esquema.
+    """
+    if edicion_id is None:
+        edicion_id = edicion_activa_id()
+    return [r for r in registros if (r.get("edicion_id") or 1) == edicion_id]
+
+
 def fecha_corta(valor, con_anio=True):
     """Da formato a una fecha ISO para mostrarla en pantalla.
 

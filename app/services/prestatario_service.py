@@ -33,15 +33,15 @@ class PrestatarioService:
             try:
                 cur = db.execute(
                     """INSERT INTO prestatarios
-                    (cedula,nombre,apellido,tipo,telefono,email,estado)
-                    VALUES (?,?,?,?,?,?,?)""",
-                    (data["cedula"].strip(), data["nombre"].strip(), data["apellido"].strip(),
+                    (edicion_id, cedula,nombre,apellido,tipo,telefono,email,estado)
+                    VALUES (?,?,?,?,?,?,?,?)""",
+                    (int(data.get("edicion_id", 1)), data["cedula"].strip(), data["nombre"].strip(), data["apellido"].strip(),
                      data["tipo"], data.get("telefono"), data.get("email"), data.get("estado","ACTIVO"))
                 )
                 return cur.lastrowid
             except Exception as exc:
-                if "UNIQUE constraint failed: prestatarios.cedula" in str(exc):
-                    raise ValueError("La cédula ya está registrada.") from exc
+                if "UNIQUE constraint failed" in str(exc) and "cedula" in str(exc):
+                    raise ValueError("La cédula ya está registrada en esta edición.") from exc
                 raise
 
     @staticmethod
@@ -71,8 +71,8 @@ class PrestatarioService:
                      data["tipo"], data.get("telefono"), data.get("email"), data.get("estado","ACTIVO"), id_)
                 )
             except Exception as exc:
-                if "UNIQUE constraint failed: prestatarios.cedula" in str(exc):
-                    raise ValueError("La cédula ya está registrada.") from exc
+                if "UNIQUE constraint failed" in str(exc) and "cedula" in str(exc):
+                    raise ValueError("La cédula ya está registrada en esta edición.") from exc
                 raise
 
     @staticmethod

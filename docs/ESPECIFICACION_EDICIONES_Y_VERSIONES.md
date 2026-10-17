@@ -1,8 +1,9 @@
-# Especificación: Ediciones, versiones y peticiones del profesor Nelson
+# Especificación: Ediciones, versiones, peticiones del profesor Nelson y Visor Técnico SQLite3
 
-**Documento de traspaso para IA.** Está escrito para que otra IA (o desarrollador)
-pueda implementar la ampliación sin haber visto el proyecto. Incluye el estado
-actual, decisiones de diseño, modelo de datos, archivos a tocar y orden de trabajo.
+**Documento de traspaso para IA.** Escrito para que otra IA (o desarrollador)
+pueda implementar la ampliación sin haber visto el proyecto. Incluye diagnóstico
+real del estado actual, decisiones de diseño revisadas, modelo de datos,
+archivos a tocar y orden de trabajo.
 
 Proyecto: **TechLoan** — Flask + SQLite3 + Jinja2 + HTML/CSS/JS Vanilla.
 Desplegado en `lorodev.pythonanywhere.com`.
@@ -18,10 +19,11 @@ un profesor, escuela o centro.
 
 **Ejemplo concreto:**
 - **Edición base** (genérica): TechLoan tal como está hoy. Gestiona reservas y
-  préstamos de equipos.
+  préstamos de equipos. Slug: `base`. Nombre: "TechLoan Base".
 - **Edición "IUTEPI LABS"**: creada para las peticiones del profesor Nelson.
   Incluye secciones, semestres, asignación de horarios por materia, detección de
   choques de profesor, vista previa de rejilla semanal y exportación a PDF.
+  Slug: `iutepi-labs`. Nombre: "IUTEPI LABS".
 
 Cada edición:
 - Tiene su **propia landing/sección** en el sistema.
@@ -36,28 +38,32 @@ Cada edición:
 
 ---
 
-## 2. Estado actual verificado
+## 2. Estado actual verificado (sobre el código real)
 
 ### 2.1 Esquema de base de datos
 
-9 tablas en `schema.sql` (ver archivo completo; el esquema está duplicado en
-`app/database.py` con `CREATE TABLE IF NOT EXISTS`):
+9 tablas. El esquema está **duplicado**: `schema.sql` (reconstrucción completa)
+y `app/database.py` (`CREATE TABLE IF NOT EXISTS` + `_migrar()`). Cualquier
+cambio debe hacerse en **ambos**.
 
-| Tabla | Propósito | ¿Necesita edicion_id? |
-|---|---|---|
-| `usuarios_sistema` | Login, roles, confirmación de correo | **NO** (usuarios globales) |
-| `tokens_correo` | Tokens de un solo uso | **NO** (ligados a usuarios) |
-| `prestatarios` | Personas que reservan/piden préstamo | **SÍ** (cada edición tiene sus profesores/estudiantes) |
-| `categorias` | Clasificación de equipos | **NO** (compartidas) |
-| `laboratorios` | Espacios físicos reservables | **SÍ** (cada edición define los suyos) |
-| `equipos` | Recursos individuales prestables | **SÍ** (pero pueden heredarse de la edición base) |
-| `reservas` | Reservas de laboratorios | **SÍ** |
-| `prestamos_equipos` | Préstamos de equipos | **SÍ** |
-| `auditoria` | Registro de actividad | **SÍ** (con `edicion_id` opcional para filtrar) |
+```sql
+-- Hallazgos reales de schema.sql y app/database.py:
+--
+-- usuarios_sistema: password_hash VARCHAR(255) NOT NULL
+--                   username UNIQUE, email UNIQUE
+--
+-- prestatarios:     cedula TEXT NOT NULL UNIQUE
+-- laboratorios:     codigo TEXT NOT NULL UNIQUE
+-- equipos:          codigo TEXT NOT NULL UNIQUE, serial TEXT UNIQUE
+-- categorias:       nombre TEXT NOT NULL UNIQUE
+-- reservas:         sin UNIQUE
+-- prestamos_equipos: sin UNIQUE
+-- auditoria:        sin UNIQUE
+```
 
-**No existen**: `seccion`, `semestre`, `materia`, `periodo_academico`, `carrera`,
-`escuela`. Las 49 apariciones de la palabra "sección" son prosa en español, no
-columnas.
+Las restricciones UNIQUE actuales son **globales** (no por edición). Esto es un
+problema: si la edición "TechLoan Base" tiene `LAB-01`, la edición "IUTEPI LABS"
+no puede tener `LAB-01`.
 
 ### 2.2 Reservas hoy
 
@@ -77,6 +83,8 @@ CREATE TABLE reservas (
   compara con cantidad de estudiantes (no existe ese campo).
 - El solapamiento compara horas como texto (`hora_inicio < ?`). Funciona con
   `HH:MM` con cero; se rompe con `9:00` frente a `09:00`.
+- **No existe `dia_semana`**: las reservas son puntuales por fecha. El profesor
+  Nelson necesita horarios semestrales ("todos los lunes de 7:00 a 8:10").
 
 ### 2.3 Exportación
 
@@ -112,7 +120,7 @@ El mapa de permisos está en `app/services/auth_service.py` → `can()`.
 
 ---
 
-## 4. Modelo de datos: ediciones y versiones
+## 4. Modelo de datos: ediciones y versiones (CORREGIDO)
 
 ### 4.1 Tabla maestra: ediciones
 
@@ -120,24 +128,25 @@ El mapa de permisos está en `app/services/auth_service.py` → `can()`.
 CREATE TABLE ediciones (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre          TEXT    NOT NULL,          -- "IUTEPI LABS"
-    slug            TEXT    NOT NULL UNIQUE,   -- "iutepl-labs" (para URLs)
+    slug            TEXT    NOT NULL UNIQUE,   -- "iutepi-labs" (para URLs)
     descripcion     TEXT,
     estado          TEXT    NOT NULL DEFAULT 'ACTIVA'
                     CHECK (estado IN ('ACTIVA', 'ARCHIVADA', 'BORRADOR')),
-    -- La versión que se muestra por defecto cuando un usuario entra a esta edición.
     version_actual  INTEGER NOT NULL DEFAULT 1,
     fecha_creacion  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
-### 4.2 Control de versiones: edicion_versiones
+### 4.2 Control de versiones: edicion_versiones (CORREGIDO)
 
-Cada edición puede tener múltiples "revisiones". Una revisión es una **copia
-completa de la configuración y los datos** de esa edición en un momento dado.
-Esto permite:
-- Probar cambios sin romper la versión en producción.
-- Volver a una versión anterior si algo falla.
-- Comparar versiones.
+**Decisión arquitectónica:** las tablas operativas (`laboratorios`, `prestatarios`,
+`secciones`, `materias`, `reservas`) **solo llevan `edicion_id`** (no `version_id`).
+Esto mantiene las consultas CRUD limpias y rápidas. El versionado se hace mediante
+**snapshot JSON** en la tabla de versiones.
+
+Cuando se crea una nueva versión, el servicio `edicion_service.py` serializa en
+`snapshot_json` el estado completo de la edición. Al restaurar una versión, se
+deserializa el snapshot y se reemplazan los datos operativos de forma transaccional.
 
 ```sql
 CREATE TABLE edicion_versiones (
@@ -149,6 +158,9 @@ CREATE TABLE edicion_versiones (
                     CHECK (estado IN ('ACTIVA', 'ARCHIVADA')),
     creado_por      INTEGER NOT NULL,          -- usuario_sistema_id
     notas_cambios   TEXT,                      -- qué cambió respecto a la anterior
+    -- Estado completo de la edición en este momento (JSON).
+    -- Incluye: configuración, laboratorios, secciones, materias, reservas.
+    snapshot_json   TEXT    NOT NULL,
     fecha_creacion  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (edicion_id) REFERENCES ediciones(id) ON DELETE CASCADE,
     FOREIGN KEY (creado_por) REFERENCES usuarios_sistema(id),
@@ -156,28 +168,38 @@ CREATE TABLE edicion_versiones (
 );
 ```
 
-### 4.3 Configuración por edición y versión
+**Formato del snapshot JSON:**
+```json
+{
+  "configuracion": {"bloques_horarios": [...], "periodo_academico": "2026-2"},
+  "laboratorios": [{"codigo": "LAB-01", "nombre": "...", ...}],
+  "prestatarios": [...],
+  "secciones": [...],
+  "materias": [...],
+  "reservas": [...]
+}
+```
+
+### 4.3 Configuración por edición
 
 Almacena preferencias que difieren entre ediciones: bloques horarios, periodo
-académico, duración estándar, colores, etc.
+académico, duración estándar, colores, etc. Se carga desde la versión activa
+o se puede sobreescribir independientemente.
 
 ```sql
 CREATE TABLE edicion_configuracion (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     edicion_id  INTEGER NOT NULL,
-    version_id  INTEGER NOT NULL,              -- a qué revisión aplica
     clave       TEXT    NOT NULL,              -- 'bloques_horarios'
     valor       TEXT,                          -- JSON: '["07:00-08:10",...]'
     FOREIGN KEY (edicion_id) REFERENCES ediciones(id) ON DELETE CASCADE,
-    FOREIGN KEY (version_id) REFERENCES edicion_versiones(id) ON DELETE CASCADE,
-    UNIQUE (edicion_id, version_id, clave)
+    UNIQUE (edicion_id, clave)
 );
 ```
 
 ### 4.4 Relación usuarios ↔ ediciones
 
-Un usuario puede pertenecer a varias ediciones (p. ej. un operador que administra
-IUTEPI LABS y también la edición base).
+Un usuario puede pertenecer a varias ediciones.
 
 ```sql
 CREATE TABLE usuarios_ediciones (
@@ -193,25 +215,43 @@ CREATE TABLE usuarios_ediciones (
 );
 ```
 
-`ADMINISTRADOR_EDICION` puede gestionar solo su edición (no crear usuarios
-globales, no ver otras ediciones). `ADMINISTRADOR` global sigue viendo todo.
+`ADMINISTRADOR_EDICION` puede gestionar solo su edición. `ADMINISTRADOR` global
+sigue viendo todo.
 
-### 4.5 Datos filtrados por edición
+### 4.5 Datos filtrados por edición (UNIQUE compuesta)
 
-Las siguientes tablas añaden `edicion_id` y `version_id`:
+Las siguientes tablas añaden `edicion_id`. Las restricciones UNIQUE globales se
+convierten en **UNIQUE compuestas por edición**:
 
-| Tabla | edicion_id | version_id | Notas |
-|---|---|---|---|
-| `prestatarios` | SÍ | NO | Cada edición tiene sus propios profesores/estudiantes |
-| `laboratorios` | SÍ | NO | Capacidad, duración, etc. por edición |
-| `equipos` | SÍ | NO | Pueden copiarse de la edición base al crear una nueva |
-| `reservas` | SÍ | NO | Pertenece a la edición activa |
-| `prestamos_equipos` | SÍ | NO | Pertenece a la edición activa |
-| `auditoria` | opcional | NO | Para filtrar logs por edición |
+| Tabla | Cambio en UNIQUE |
+|---|---|
+| `prestatarios` | `UNIQUE (edicion_id, cedula)` (antes: `cedula UNIQUE` global) |
+| `laboratorios` | `UNIQUE (edicion_id, codigo)` (antes: `codigo UNIQUE` global) |
+| `equipos` | `UNIQUE (edicion_id, codigo)`; `UNIQUE (edicion_id, serial)` |
+| `secciones` | `UNIQUE (edicion_id, codigo_seccion, semestre, periodo_academico, carrera_o_escuela)` |
+| `materias` | `UNIQUE (edicion_id, codigo)` |
 
-**Tablas SIN edicion_id** (globales): `usuarios_sistema`, `tokens_correo`,
-`categorias`, `ediciones`, `edicion_versiones`, `edicion_configuracion`,
-`usuarios_ediciones`.
+**Nota:** `categorias` y `usuarios_sistema` siguen siendo globales (sin `edicion_id`).
+Los usuarios globales se asocian a ediciones mediante `usuarios_ediciones`.
+
+```sql
+ALTER TABLE prestatarios ADD COLUMN edicion_id INTEGER;
+ALTER TABLE laboratorios ADD COLUMN edicion_id INTEGER;
+ALTER TABLE equipos      ADD COLUMN edicion_id INTEGER;
+ALTER TABLE reservas     ADD COLUMN edicion_id INTEGER;
+ALTER TABLE prestamos_equipos ADD COLUMN edicion_id INTEGER;
+ALTER TABLE auditoria    ADD COLUMN edicion_id INTEGER;
+```
+
+Índices nuevos:
+```sql
+CREATE INDEX idx_prestatarios_edicion ON prestatarios (edicion_id);
+CREATE INDEX idx_laboratorios_edicion ON laboratorios (edicion_id);
+CREATE INDEX idx_equipos_edicion      ON equipos (edicion_id);
+CREATE INDEX idx_reservas_edicion     ON reservas (edicion_id);
+CREATE INDEX idx_prestamos_edicion    ON prestamos_equipos (edicion_id);
+CREATE INDEX idx_auditoria_edicion    ON auditoria (edicion_id);
+```
 
 ### 4.6 Secciones y semestres (petición del profesor Nelson)
 
@@ -225,12 +265,10 @@ CREATE TABLE secciones (
     carrera_o_escuela   TEXT    NOT NULL,
     cantidad_estimada   INTEGER,                   -- estudiantes previstos
     estado              TEXT    NOT NULL DEFAULT 'ACTIVA',
+    FOREIGN KEY (edicion_id) REFERENCES ediciones(id) ON DELETE CASCADE,
     UNIQUE (edicion_id, codigo_seccion, semestre, periodo_academico, carrera_o_escuela)
 );
 ```
-
-La unicidad es **compuesta y por edición**: `SA` en 1.er semestre de IUTEPI LABS
-y `SA` en 1.er semestre de otra edición son diferentes filas.
 
 ### 4.7 Materias (asignaturas)
 
@@ -243,11 +281,12 @@ CREATE TABLE materias (
     escuela         TEXT,
     semestre        INTEGER,
     estado          TEXT    NOT NULL DEFAULT 'ACTIVA',
+    FOREIGN KEY (edicion_id) REFERENCES ediciones(id) ON DELETE CASCADE,
     UNIQUE (edicion_id, codigo)
 );
 ```
 
-### 4.8 Ampliación de reservas
+### 4.8 Ampliación de reservas (día de semana + bloques horarios)
 
 ```sql
 ALTER TABLE reservas ADD COLUMN edicion_id INTEGER;
@@ -255,88 +294,96 @@ ALTER TABLE reservas ADD COLUMN seccion_id INTEGER;
 ALTER TABLE reservas ADD COLUMN materia_id INTEGER;
 ALTER TABLE reservas ADD COLUMN cantidad_estudiantes INTEGER;
 ALTER TABLE reservas ADD COLUMN periodo_academico TEXT;
+ALTER TABLE reservas ADD COLUMN dia_semana INTEGER;  -- 0=Lunes, 5=Sábado
 ```
 
 Índices nuevos:
 ```sql
-CREATE INDEX idx_reservas_edicion       ON reservas (edicion_id);
 CREATE INDEX idx_reservas_seccion       ON reservas (seccion_id);
 CREATE INDEX idx_reservas_profesor_fecha ON reservas (prestatario_id, fecha);
+CREATE INDEX idx_reservas_dia_semana    ON reservas (edicion_id, dia_semana, hora_inicio);
 ```
+
+**Bloques horarios:** se modelan como lista en `app/config.py` o como entidad:
+```python
+BLOQUES = [
+    ("07:00", "08:10"),
+    ("08:10", "09:20"),
+    # ...
+]
+```
+El selector de hora pasa de `<input type="time">` libre a `<select>` con bloques
+fijos. La duración estándar de 70 minutos encaja.
 
 ---
 
-## 5. Flujo de trabajo: crear una edición
+## 5. Visor Técnico SQLite3 y Auditoría de Contraseñas (NUEVO — Requerimiento del Profesor)
 
-### 5.1 Desde cero (v1)
+Ruta protegida (solo `ADMINISTRADOR`): `/sistema/visor-sqlite`
+
+Servicio de solo lectura: `app/services/db_inspector_service.py`
+
+### 5.1 Pestaña 1 — Verificación de Cifrado/Hashing de Contraseñas
+
+Muestra los registros reales de `usuarios_sistema`:
+- `id`, `nombre`, `email`, `rol`
+- **Valor crudo de `password_hash`**
+
+**Desglose visual automático** de cada hash Werkzeug:
+- **Algoritmo:** `scrypt` (o `pbkdf2:sha256` si se cambia en el futuro)
+- **Parámetros/Iteraciones:** `32768:8:1` (cost, blockSize, parallelization)
+- **Salt:** la parte entre `$`
+- **Hash criptográfico:** la parte final después del último `$`
+
+**Probador en vivo:**
+- Campo de texto: el profesor escribe una contraseña de prueba.
+- Botón "Generar hash": muestra cómo Werkzeug produce un hash **diferente cada
+  vez** gracias al salt aleatorio.
+- Mensaje explicativo: "El hash cambia en cada generación porque el salt es
+  aleatorio. Esto confirma que es irreversible: no se puede recuperar la
+  contraseña original a partir del hash."
+
+### 5.2 Pestaña 2 — Explorador de Tablas SQLite3
+
+- Lista todas las tablas reales consultando `sqlite_master`.
+- Muestra el DDL (`CREATE TABLE ...`) de cada tabla.
+- Muestra la cantidad de registros (`SELECT COUNT(*)`).
+- Permite previsualizar las últimas 50 filas.
+- Filtro opcional por `edicion_id` (si la tabla lo tiene).
+
+**Seguridad estricta:**
+- Solo lectura (`SELECT` parametrizado).
+- Lista blanca de tablas obtenida dinámicamente de `sqlite_master` (no hardcodeada).
+- **Sin formulario de SQL arbitrario**.
+- Ocultar columna `token` de `tokens_correo` (mostrar `substr(token,1,8)||'...'`).
+
+---
+
+## 6. Flujo de trabajo: crear una edición
+
+### 6.1 Desde cero (v1)
 
 1. Administrador global crea la edición: nombre, slug, descripción.
-2. Se crea automáticamente la versión 1 (vacia).
+2. Se crea automáticamente la versión 1 con `snapshot_json = '{}'`. Se marca como
+   `version_actual = 1`.
 3. Se asignan usuarios a la edición con rol `ADMINISTRADOR_EDICION` u `OPERADOR`.
 4. El administrador de edición configura: bloques horarios, periodo académico,
    duración estándar, etc.
 5. Carga laboratorios, prestatarios (profesores), secciones, materias.
 6. Empieza a crear reservas/asignaciones.
+7. Cuando quiere guardar un punto de control, crea una nueva versión:
+   el sistema serializa todo el estado actual en `snapshot_json`.
 
-### 5.2 Nueva versión (v1 → v2)
+### 6.2 Restaurar una versión anterior
 
-1. El administrador de edición pulsa "Crear nueva versión".
-2. El sistema copia TODA la configuración de `edicion_configuracion` de v1 a v2.
-3. El sistema copia TODOS los datos (laboratorios, prestatarios, secciones,
-   materias, reservas) de v1 a v2.
-4. El administrador trabaja en v2 sin afectar v1.
-5. Cuando v2 está lista, puede marcarse como `version_actual`.
-6. v1 se archiva (sus datos se conservan para consulta histórica).
-
-**Nota de implementación:** la copia de datos entre versiones puede hacerse con
-`INSERT INTO ... SELECT ...` en SQLite. Las tablas con `version_id` se copian
-automáticamente; las que solo tienen `edicion_id` necesitan una columna
-`version_id` adicional o una tabla de "snapshot".
-
-**Decisión de simplificación:** en la primera implementación, las tablas de datos
-(`laboratorios`, `prestatarios`, `reservas`, etc.) solo llevan `edicion_id`. El
-control de versiones se hace a nivel de **configuración** (`edicion_configuracion`)
-y de **datos maestros** (laboratorios, secciones). Las reservas históricas se
-conservan por su naturaleza (no se borran, solo cambian de estado). Si en el
-futuro se necesita versionado completo de datos, se añade `version_id`.
-
----
-
-## 6. Interfaz de usuario
-
-### 6.1 Selector de edición
-
-En `base_app.html`, junto al nombre del usuario, un desplegable:
-
-```
-[👤 Lorenzo Roca  ▼]  [📋 Edición: IUTEPI LABS  ▼]
-```
-
-El desplegable lista las ediciones a las que el usuario pertenece. Al cambiar,
-se guarda en sesión (`session['edicion_id']`) y se recarga la página. Todas las
-rutas CRUD filtran por `session['edicion_id']`.
-
-### 6.2 Panel de ediciones (solo ADMINISTRADOR global)
-
-Ruta: `/ediciones`
-- Lista de ediciones con estado, versión actual, cantidad de usuarios.
-- Botón "Crear edición".
-- Botón "Gestionar usuarios" por edición.
-
-### 6.3 Configuración de edición (ADMINISTRADOR_EDICION y global)
-
-Ruta: `/ediciones/<slug>/configuracion`
-- Periodo académico actual.
-- Bloques horarios (lista editable).
-- Duración estándar.
-- Campos a medida (clave/valor dinámico).
-
-### 6.4 Landing por edición
-
-Ruta pública: `/e/<slug>`
-- Muestra nombre, descripción, periodo académico, estadísticas de la edición
-  (cantidad de laboratorios, reservas activas, etc.).
-- Enlace al login (al entrar, se redirige a la edición correspondiente).
+1. El administrador de edición selecciona una versión archivada.
+2. El sistema deserializa `snapshot_json`.
+3. En una transacción:
+   - Borra los datos operativos actuales de la edición (laboratorios,
+     prestatarios, secciones, materias, reservas).
+   - Inserta los datos del snapshot.
+   - Actualiza `version_actual` en `ediciones`.
+4. La edición ahora refleja el estado de esa versión.
 
 ---
 
@@ -349,35 +396,24 @@ Ruta pública: `/e/<slug>`
 - Escuela/Carrera (de la sección o de la materia)
 - Semestre + Sección (`seccion_id`)
 - Cantidad de estudiantes (`cantidad_estudiantes`)
-- Día + Bloque horario (`fecha`, `hora_inicio`, `hora_fin`)
+- Día de semana (`dia_semana`: 0=Lunes, 5=Sábado) + Bloque horario
 - Laboratorio asignado (`laboratorio_id`)
+- Periodo académico (`periodo_academico`)
 
-### 7.2 Validaciones automáticas
+### 7.2 Validaciones automáticas (CORREGIDO)
 
 1. **Capacidad:** si `cantidad_estudiantes > laboratorios.capacidad`, rechazar
-   o mostrar advertencia.
-2. **Choque de laboratorio:** mismo `laboratorio_id + fecha + bloque` para dos
-   asignaciones `CONFIRMADA`/`ACTIVA`.
-3. **Choque de profesor:** mismo `prestatario_id + fecha + bloque` para dos
-   asignaciones distintas. **Esto hoy no existe.**
+   o mostrar advertencia clara.
+2. **Choque de laboratorio:** mismo `laboratorio_id + dia_semana + bloque` para
+   dos asignaciones `CONFIRMADA`/`ACTIVA`.
+3. **Choque de profesor:** mismo `prestatario_id + dia_semana + bloque` para dos
+   asignaciones distintas. **Esto hoy no existe y hay que añadirlo.**
 
-### 7.3 Bloques horarios
-
-Modelar como lista en `app/config.py` o como entidad:
-```python
-BLOQUES = [
-    ("07:00", "08:10"),
-    ("08:10", "09:20"),
-    # ...
-]
-```
-La duración estándar de 70 minutos encaja. El selector de hora en el formulario
-pasa de ser un `<input type="time">` libre a un `<select>` con bloques fijos.
-
-### 7.4 Normalización de horas
+### 7.3 Normalización de horas
 
 Convertir `hora_inicio`/`hora_fin` a minutos (`_a_minutos()` ya existe en
 `reservation_service.py`) antes de comparar, en vez de comparar cadenas.
+Asegurar formato `HH:MM` con cero a la izquierda.
 
 ---
 
@@ -424,36 +460,40 @@ Profesor, Bloques Horarios.
 
 ## 10. Archivos a modificar, en orden
 
-### Fase 1 — Esqueleto de ediciones
+### Fase 1 — Esqueleto de ediciones + Visor Técnico SQLite3
 
 | Archivo | Cambio |
 |---|---|
-| `schema.sql` | `DROP TABLE IF EXISTS` para tablas nuevas + `CREATE TABLE ediciones`, `edicion_versiones`, `edicion_configuracion`, `usuarios_ediciones` |
-| `schema.sql` | `ALTER TABLE` (o nuevas columnas) en `prestatarios`, `laboratorios`, `equipos`, `reservas`, `prestamos_equipos`, `auditoria` para añadir `edicion_id` |
-| `app/database.py` | Reflejar TODO en `init_database()` y `_migrar()` |
-| `app/models/entities.py` | `@dataclass Edicion`, `EdicionVersion`, `EdicionConfig`, `UsuarioEdicion`, `Seccion`, `Materia` |
-| `app/services/edicion_service.py` | **nuevo**: CRUD de ediciones, crear versión, cambiar versión activa |
-| `app/services/seccion_service.py` | **nuevo**: CRUD de secciones (filtrado por edición) |
-| `app/services/materia_service.py` | **nuevo**: CRUD de materias (filtrado por edición) |
-| `app/routes/web_ediciones_routes.py` | **nuevo**: rutas `/ediciones`, `/ediciones/<slug>`, `/ediciones/<slug>/configuracion` |
+| `schema.sql` | `DROP TABLE IF EXISTS` para tablas nuevas + `CREATE TABLE ediciones`, `edicion_versiones` (con `snapshot_json`), `edicion_configuracion`, `usuarios_ediciones` |
+| `schema.sql` | `ALTER TABLE` en `prestatarios`, `laboratorios`, `equipos`, `reservas`, `prestamos_equipos`, `auditoria` para añadir `edicion_id`; cambiar UNIQUE globales a compuestas por edición |
+| `schema.sql` | Insertar edición base: `INSERT INTO ediciones (nombre, slug, estado, version_actual) VALUES ('TechLoan Base', 'base', 'ACTIVA', 1)` |
+| `app/database.py` | Reflejar TODO en `init_database()` y `_migrar()`; migración: asignar `edicion_id = 1` a filas existentes |
+| `app/models/entities.py` | `@dataclass Edicion`, `EdicionVersion`, `EdicionConfig`, `UsuarioEdicion` |
+| `app/services/edicion_service.py` | **nuevo**: CRUD de ediciones, crear versión (serializar snapshot), restaurar versión (deserializar), cambiar versión activa |
+| `app/services/db_inspector_service.py` | **nuevo**: solo lectura, lista tablas desde `sqlite_master`, desglose de hash Werkzeug, probador en vivo |
+| `app/routes/web_ediciones_routes.py` | **nuevo**: `/ediciones`, `/ediciones/<slug>`, `/ediciones/<slug>/configuracion` |
+| `app/routes/web_inspector_routes.py` | **nuevo**: `/sistema/visor-sqlite` (solo ADMINISTRADOR) |
 | `app/routes/web_crud_routes.py` | Añadir filtro `edicion_id` en todas las consultas de listado |
 | `templates/ediciones/index.html` | **nuevo** |
 | `templates/ediciones/configuracion.html` | **nuevo** |
+| `templates/sistema/visor_sqlite.html` | **nuevo**: dos pestañas (hash de contraseñas + explorador de tablas) |
 | `templates/parciales/selector_edicion.html` | **nuevo**: macro del desplegable |
 | `templates/base_app.html` | Incluir el selector de edición en la barra superior |
-| `app/services/auth_service.py` | Añadir permisos `ediciones.read/write/delete`, `configuracion.read/write` |
+| `app/services/auth_service.py` | Añadir permisos `ediciones.read/write/delete`, `configuracion.read/write`, `sistema.inspector` |
+| `tests/test_ediciones.py` | **nuevo** |
+| `tests/test_db_inspector.py` | **nuevo** |
 
 ### Fase 2 — Secciones, materias y ampliación de reservas
 
 | Archivo | Cambio |
 |---|---|
-| `schema.sql` + `app/database.py` | `CREATE TABLE secciones`, `CREATE TABLE materias` |
-| `app/services/reservation_service.py` | Choque de profesor + validación de capacidad + filtro por edición |
+| `schema.sql` + `app/database.py` | `CREATE TABLE secciones`, `CREATE TABLE materias`; `ALTER TABLE reservas` (seccion_id, materia_id, cantidad_estudiantes, periodo_academico, dia_semana) |
+| `app/services/reservation_service.py` | Choque de profesor + validación de capacidad + filtro por edición + normalización `_a_minutos()` |
 | `app/services/disponibilidad_service.py` | Reflejar las mismas validaciones |
 | `app/routes/web_crud_routes.py` | Rutas CRUD para secciones y materias |
 | `templates/secciones/{form,index}.html` | **nuevos** |
 | `templates/materias/{form,index}.html` | **nuevos** |
-| `templates/reservas/form.html` | Añadir select de sección, materia, cantidad de estudiantes |
+| `templates/reservas/form.html` | Añadir select de sección, materia, cantidad de estudiantes, día de semana, bloque horario |
 
 ### Fase 3 — Vista previa (rejilla semanal)
 
@@ -478,12 +518,16 @@ Profesor, Bloques Horarios.
 
 1. **Inspeccionar antes de escribir.** Leer el código real.
 2. **Fases pequeñas y seguras.** Aprobación explícita antes de aplicar.
-3. **No hacer `git commit` ni `git push`** sin confirmación previa.
+3. **NO hacer `git commit` ni `git push`** sin confirmación previa.
 4. **PythonAnywhere compatible.** Todo paquete nuevo debe ser Python puro.
-5. **Las ediciones base existen desde el inicio.** Al crear la tabla `ediciones`,
-   se inserta automáticamente la edición "TechLoan Base" (slug: `base`) con
-   `id=1`. Todas las filas existentes en producción se asignan a `edicion_id=1`
-   en la migración `_migrar()`.
+5. **La edición base existe desde el inicio.** Al crear `ediciones`, se inserta
+   automáticamente la edición "TechLoan Base" (slug: `base`) con `id=1`. Todas
+   las filas existentes en producción se asignan a `edicion_id=1` en la migración
+   `_migrar()`.
+6. **Las UNIQUE globales se convierten en compuestas por edición.** Verificar que
+   la migración en `_migrar()` maneje correctamente la eliminación de índices
+   UNIQUE antiguos y la creación de los nuevos compuestos (SQLite no permite
+   `ALTER TABLE DROP CONSTRAINT`; puede requerir recrear la tabla).
 
 ---
 

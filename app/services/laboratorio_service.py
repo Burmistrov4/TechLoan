@@ -39,21 +39,25 @@ class LaboratorioService:
             try:
                 cur = db.execute(
                     """INSERT INTO laboratorios
-                    (codigo,nombre,ubicacion,capacidad,duracion_estandar_minutos,estado)
-                    VALUES (?,?,?,?,?,?)""",
-                    (data["codigo"].strip(),data["nombre"].strip(),data["ubicacion"].strip(),
+                    (edicion_id, codigo,nombre,ubicacion,capacidad,duracion_estandar_minutos,estado)
+                    VALUES (?,?,?,?,?,?,?)""",
+                    (int(data.get("edicion_id", 1)), data["codigo"].strip(),data["nombre"].strip(),data["ubicacion"].strip(),
                      int(data["capacidad"]),int(data.get("duracion_estandar_minutos",70)),
                      data.get("estado","DISPONIBLE"))
                 )
                 return cur.lastrowid
             except Exception as exc:
-                if "UNIQUE constraint failed: laboratorios.codigo" in str(exc):
-                    raise ValueError("El código de laboratorio ya existe.") from exc
+                if "UNIQUE constraint failed" in str(exc) and "codigo" in str(exc):
+                    raise ValueError("El código de laboratorio ya existe en esta edición.") from exc
                 raise
 
     @staticmethod
-    def list_all():
+    def list_all(edicion_id=None):
         with get_connection() as db:
+            if edicion_id is not None:
+                return [dict(r) for r in db.execute(
+                    "SELECT * FROM laboratorios WHERE edicion_id = ? ORDER BY codigo", (edicion_id,)
+                ).fetchall()]
             return [dict(r) for r in db.execute("SELECT * FROM laboratorios ORDER BY codigo").fetchall()]
 
     @staticmethod
@@ -77,8 +81,8 @@ class LaboratorioService:
                      data.get("estado","DISPONIBLE"),id_)
                 )
             except Exception as exc:
-                if "UNIQUE constraint failed: laboratorios.codigo" in str(exc):
-                    raise ValueError("El código de laboratorio ya existe.") from exc
+                if "UNIQUE constraint failed" in str(exc) and "codigo" in str(exc):
+                    raise ValueError("El código de laboratorio ya existe en esta edición.") from exc
                 raise
 
     @staticmethod

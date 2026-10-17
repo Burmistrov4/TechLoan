@@ -164,6 +164,17 @@
           </div>
         </div>
 
+        {% if ediciones_disponibles and ediciones_disponibles|length > 1 %}
+        <form method="post" action="{{ url_for('web.edicion_cambiar') }}" class="selector-edicion" style="display:inline-flex;align-items:center;gap:var(--e-2);margin-right:var(--e-3)">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+          <select name="edicion_id" onchange="this.form.submit()" class="campo__input" style="width:auto;padding-right:2rem;font-size:var(--t-sm)">
+            {% for e in ediciones_disponibles %}
+            <option value="{{ e.id }}" {% if edicion_actual and edicion_actual.id == e.id %}selected{% endif %}>{{ e.nombre }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        {% endif %}
+
         <div class="usuario" id="contenedor-usuario">
           <button type="button" class="usuario__disparador" id="boton-usuario"
                   aria-haspopup="true" aria-expanded="false">

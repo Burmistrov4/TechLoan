@@ -14,7 +14,7 @@ mismas reglas de negocio y validaciones.
 
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, session
 
 from app.config import SECRET_KEY
 from app.database import init_database
@@ -28,6 +28,8 @@ from app.routes import web_auth_routes  # noqa: F401
 from app.routes import web_crud_routes  # noqa: F401
 from app.routes import web_extra_routes  # noqa: F401
 from app.routes import web_operations_routes  # noqa: F401
+from app.routes import web_ediciones_routes  # noqa: F401
+from app.routes import web_inspector_routes  # noqa: F401
 from app.routes.web_common import csrf_token, web_bp
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -121,14 +123,31 @@ def create_app():
 
         from app.routes.web_common import alertas_actuales, can, url_con
         from app.security.permissions import current_user
+        from app.services.edicion_service import EdicionService
+
+        user = current_user()
+        ediciones = []
+        edicion_actual = None
+        if user:
+            ediciones = EdicionService.listar_por_usuario(user["id"])
+            edicion_id = session.get("edicion_id", 1)
+            for e in ediciones:
+                if e["id"] == edicion_id:
+                    edicion_actual = e
+                    break
+            if not edicion_actual and ediciones:
+                edicion_actual = ediciones[0]
+                session["edicion_id"] = edicion_actual["id"]
 
         return {
             "csrf_token": csrf_token,
-            "usuario_actual": current_user(),
+            "usuario_actual": user,
             "puede": can,
             "alertas": alertas_actuales(),
             "url_con": url_con,
             "anio": datetime.now().year,
+            "edicion_actual": edicion_actual,
+            "ediciones_disponibles": ediciones,
         }
 
     _register_error_handlers(app)

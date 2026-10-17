@@ -1,0 +1,15 @@
+{% extends "base_publico.html" %}
+{% import "parciales/iconos.html" as ic %}
+
+{% block titulo %}{{ edicion.nombre }}{% endblock %}
+
+{% block contenido %}
+<div class="acceso__envoltorio">
+  <div class="acceso__marca">
+    <img src="{{ url_for('static', filename='img/logo-mark.svg') }}" alt="" width="48" height="48">
+    <h1>TechLoan — {{ edicion.nombre }}</h1>
+    <p>{{ edicion.descripcion or 'Edición personalizada del sistema.' }}</p>
+  </div>
+  <a class="boton boton--marca boton--grande" href="{{ url_for('web.login') }}">Acceder al sistema</a>
+</div>
+{% endblock %}

@@ -1,0 +1,134 @@
+{% extends "base_app.html" %}
+{% import "parciales/iconos.html" as ic %}
+
+{% block titulo %}Visor SQLite3{% endblock %}
+
+{% block contenido %}
+<div class="vista">
+  <div class="vista__encabezado">
+    <h1 class="vista__titulo">{{ ic.icono('base') }} Visor Técnico SQLite3</h1>
+    <p class="vista__subtitulo">Auditoría de contraseñas y explorador de tablas (solo lectura).</p>
+  </div>
+
+  <div class="pestanas">
+    <button class="pestanas__boton activo" onclick="mostrarPestana('hash')">Hash de contraseñas</button>
+    <button class="pestanas__boton" onclick="mostrarPestana('tablas')">Explorador de tablas</button>
+  </div>
+
+  <div id="pestana-hash" class="pestana">
+    <div class="tarjeta">
+      <h2>usuarios_sistema — Verificación de hashing</h2>
+      <p class="nota-acceso">Cada contraseña se almacena como un hash irreversible con salt aleatorio.</p>
+      <div id="tabla-hash" style="overflow-x:auto">
+        <p>Cargando…</p>
+      </div>
+    </div>
+
+    <div class="tarjeta" style="margin-top:var(--e-6)">
+      <h2>Probador de hash</h2>
+      <p>Escribe una contraseña y observa cómo Werkzeug genera un hash <strong>diferente cada vez</strong> gracias al salt aleatorio.</p>
+      <div class="rejilla-campos" style="max-width:400px">
+        <div class="campo">
+          <label>Contraseña de prueba</label>
+          <input type="text" id="demo-password" class="campo__input" placeholder="Escribe algo…">
+        </div>
+      </div>
+      <button type="button" class="boton boton--marca" onclick="probarHash()">Generar hash</button>
+      <div id="demo-resultado" style="margin-top:var(--e-4)"></div>
+    </div>
+  </div>
+
+  <div id="pestana-tablas" class="pestana" style="display:none">
+    <div class="tarjeta">
+      <h2>Tablas de la base de datos</h2>
+      <div id="lista-tablas">
+        <p>Cargando…</p>
+      </div>
+    </div>
+    <div class="tarjeta" style="margin-top:var(--e-6)">
+      <h2>Vista previa</h2>
+      <div id="vista-tabla">
+        <p>Selecciona una tabla arriba.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function mostrarPestana(id) {
+  document.querySelectorAll('.pestana').forEach(p => p.style.display = 'none');
+  document.getElementById('pestana-' + id).style.display = 'block';
+  document.querySelectorAll('.pestanas__boton').forEach(b => b.classList.remove('activo'));
+  event.target.classList.add('activo');
+  if (id === 'hash') cargarHash();
+  if (id === 'tablas') cargarTablas();
+}
+
+async function cargarHash() {
+  const r = await fetch('{{ url_for("web.visor_usuarios") }}');
+  const d = await r.json();
+  const div = document.getElementById('tabla-hash');
+  let html = '<table class="tabla"><thead><tr><th>ID</th><th>Nombre</th><th>Correo</th><th>Rol</th><th>Algoritmo</th><th>Parámetros</th><th>Salt</th><th>Hash</th></tr></thead><tbody>';
+  for (const u of d.usuarios) {
+    const h = u.desglose || {};
+    html += `<tr><td>${u.id}</td><td>${u.nombre} ${u.apellido}</td><td>${u.email}</td><td>${u.rol}</td>`;
+    html += `<td>${h.algoritmo || '—'}</td><td>${h.parametros || '—'}</td><td><code>${(h.salt || '').substring(0,16)}…</code></td>`;
+    html += `<td><code style="font-size:11px">${(h.hash || '').substring(0,24)}…</code></td></tr>`;
+  }
+  html += '</tbody></table>';
+  div.innerHTML = html;
+}
+
+async function probarHash() {
+  const pwd = document.getElementById('demo-password').value;
+  const r = await fetch('{{ url_for("web.visor_probar_hash") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: '_csrf_token={{ csrf_token() }}&password=' + encodeURIComponent(pwd)
+  });
+  const d = await r.json();
+  const h = d.desglose || {};
+  document.getElementById('demo-resultado').innerHTML = `
+    <div class="aviso aviso--info">
+      <strong>Hash generado:</strong> <code style="word-break:break-all">${d.hash}</code><br>
+      <strong>Algoritmo:</strong> ${h.algoritmo || '—'} | <strong>Salt:</strong> ${h.salt || '—'}<br>
+      <em>Cada vez que pulses «Generar hash» obtendrás un resultado distinto. Eso confirma que el salt es aleatorio y el hash es irreversible.</em>
+    </div>`;
+}
+
+async function cargarTablas() {
+  const r = await fetch('{{ url_for("web.visor_tablas") }}');
+  const d = await r.json();
+  const div = document.getElementById('lista-tablas');
+  let html = '<div class="rejilla-campos">';
+  for (const t of d.tablas) {
+    html += `<div class="campo" style="cursor:pointer" onclick="verTabla('${t.name}')">`;
+    html += `<strong>${t.name}</strong> <span class="etiqueta">${t.registros} filas</span>`;
+    html += `<pre style="font-size:11px;overflow-x:auto"><code>${(t.sql || '').substring(0,200)}…</code></pre>`;
+    html += `</div>`;
+  }
+  html += '</div>';
+  div.innerHTML = html;
+}
+
+async function verTabla(nombre) {
+  const r = await fetch('{{ url_for("web.visor_tabla_preview", nombre="__nombre__") }}'.replace('__nombre__', nombre));
+  const d = await r.json();
+  const div = document.getElementById('vista-tabla');
+  if (d.error) { div.innerHTML = `<p class="aviso aviso--error">${d.error}</p>`; return; }
+  let html = '<table class="tabla"><thead><tr>';
+  for (const c of d.columnas) html += `<th>${c}</th>`;
+  html += '</tr></thead><tbody>';
+  for (const fila of d.filas) {
+    html += '<tr>';
+    for (const c of d.columnas) html += `<td>${fila[c] !== null ? fila[c] : '<em>null</em>'}</td>`;
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  div.innerHTML = html;
+}
+
+// Cargar hash al abrir
+cargarHash();
+</script>
+{% endblock %}

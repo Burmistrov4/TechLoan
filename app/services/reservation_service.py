@@ -37,7 +37,7 @@ class ReservationService:
 
     @staticmethod
     def create_reservation(laboratorio_id, prestatario_id, usuario_sistema_id,
-                           fecha, hora_inicio, duracion_minutos, observaciones=""):
+                           fecha, hora_inicio, duracion_minutos, observaciones="", edicion_id=1):
         if duracion_minutos <= 0 or duracion_minutos > 1440:
             raise ValueError("La duración debe estar entre 1 y 1440 minutos.")
 
@@ -94,10 +94,10 @@ class ReservationService:
 
             cur = db.execute(
                 """INSERT INTO reservas
-                (laboratorio_id,prestatario_id,usuario_sistema_id,fecha,hora_inicio,
+                (edicion_id, laboratorio_id,prestatario_id,usuario_sistema_id,fecha,hora_inicio,
                  hora_fin,duracion_minutos,observaciones)
-                VALUES (?,?,?,?,?,?,?,?)""",
-                (laboratorio_id, prestatario_id, usuario_sistema_id, fecha, hora_inicio,
+                VALUES (?,?,?,?,?,?,?,?,?)""",
+                (int(edicion_id), laboratorio_id, prestatario_id, usuario_sistema_id, fecha, hora_inicio,
                  hora_fin, duracion_minutos, (observaciones or "").strip() or None)
             )
             return cur.lastrowid

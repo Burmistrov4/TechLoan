@@ -5,7 +5,7 @@ from app.database import get_connection
 
 class PrestamoEquipoService:
     @staticmethod
-    def create(equipo_id, prestatario_id, usuario_sistema_id, observaciones=""):
+    def create(equipo_id, prestatario_id, usuario_sistema_id, observaciones="", edicion_id=1):
         with get_connection() as db:
             equipment = db.execute(
                 "SELECT id, estado FROM equipos WHERE id=?", (equipo_id,)
@@ -40,9 +40,9 @@ class PrestamoEquipoService:
 
             cur = db.execute(
                 """INSERT INTO prestamos_equipos
-                (equipo_id,prestatario_id,usuario_sistema_id,fecha_prestamo,estado,observaciones)
-                VALUES (?,?,?,?, 'ACTIVO', ?)""",
-                (equipo_id, prestatario_id, usuario_sistema_id,
+                (edicion_id, equipo_id,prestatario_id,usuario_sistema_id,fecha_prestamo,estado,observaciones)
+                VALUES (?,?,?,?,?, 'ACTIVO', ?)""",
+                (int(edicion_id), equipo_id, prestatario_id, usuario_sistema_id,
                  datetime.now().strftime("%Y-%m-%d %H:%M:%S"), observaciones.strip())
             )
             db.execute("UPDATE equipos SET estado='PRESTADO' WHERE id=?", (equipo_id,))

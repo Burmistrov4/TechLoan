@@ -28,6 +28,9 @@ PRAGMA foreign_keys = ON;
 -- Limpieza: se eliminan primero las tablas dependientes (hijas) y al final las
 -- independientes (padres), para respetar las restricciones de clave foránea.
 -- ----------------------------------------------------------------------------
+DROP TABLE IF EXISTS usuarios_ediciones;
+DROP TABLE IF EXISTS edicion_configuracion;
+DROP TABLE IF EXISTS edicion_versiones;
 DROP TABLE IF EXISTS auditoria;
 DROP TABLE IF EXISTS tokens_correo;
 DROP TABLE IF EXISTS prestamos_equipos;
@@ -36,6 +39,7 @@ DROP TABLE IF EXISTS equipos;
 DROP TABLE IF EXISTS categorias;
 DROP TABLE IF EXISTS laboratorios;
 DROP TABLE IF EXISTS prestatarios;
+DROP TABLE IF EXISTS ediciones;
 DROP TABLE IF EXISTS usuarios_sistema;
 
 -- ============================================================================
@@ -63,6 +67,67 @@ CREATE TABLE usuarios_sistema (
 );
 
 -- ============================================================================
+-- 2. ediciones — Instancias personalizadas del sistema (multiedición)
+-- ============================================================================
+CREATE TABLE ediciones (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre          TEXT    NOT NULL,          -- "IUTEPI LABS"
+    slug            TEXT    NOT NULL UNIQUE,   -- "iutepi-labs" (para URLs)
+    descripcion     TEXT,
+    estado          TEXT    NOT NULL DEFAULT 'ACTIVA'
+                    CHECK (estado IN ('ACTIVA', 'ARCHIVADA', 'BORRADOR')),
+    version_actual  INTEGER NOT NULL DEFAULT 1,
+    fecha_creacion  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
+-- 3. edicion_versiones — Control de versiones/revisiones por edición
+-- ============================================================================
+CREATE TABLE edicion_versiones (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    edicion_id      INTEGER NOT NULL,
+    numero_version  INTEGER NOT NULL,          -- 1, 2, 3...
+    nombre_version  TEXT,                      -- "Inicial", "Con secciones"...
+    estado          TEXT    NOT NULL DEFAULT 'ACTIVA'
+                    CHECK (estado IN ('ACTIVA', 'ARCHIVADA')),
+    creado_por      INTEGER NOT NULL,          -- usuario_sistema_id
+    notas_cambios   TEXT,                      -- qué cambió respecto a la anterior
+    -- Estado completo de la edición en este momento (JSON).
+    snapshot_json   TEXT    NOT NULL DEFAULT '{}',
+    fecha_creacion  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (edicion_id) REFERENCES ediciones(id) ON DELETE CASCADE,
+    FOREIGN KEY (creado_por) REFERENCES usuarios_sistema(id),
+    UNIQUE (edicion_id, numero_version)
+);
+
+-- ============================================================================
+-- 4. edicion_configuracion — Preferencias por edición
+-- ============================================================================
+CREATE TABLE edicion_configuracion (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    edicion_id  INTEGER NOT NULL,
+    clave       TEXT    NOT NULL,              -- 'bloques_horarios'
+    valor       TEXT,                          -- JSON: '["07:00-08:10",...]'
+    FOREIGN KEY (edicion_id) REFERENCES ediciones(id) ON DELETE CASCADE,
+    UNIQUE (edicion_id, clave)
+);
+
+-- ============================================================================
+-- 5. usuarios_ediciones — Relación usuarios ↔ ediciones
+-- ============================================================================
+CREATE TABLE usuarios_ediciones (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_sistema_id  INTEGER NOT NULL,
+    edicion_id          INTEGER NOT NULL,
+    rol_en_edicion      TEXT    NOT NULL DEFAULT 'OPERADOR'
+                    CHECK (rol_en_edicion IN ('ADMINISTRADOR_EDICION', 'OPERADOR')),
+    fecha_union         TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_sistema_id) REFERENCES usuarios_sistema(id) ON DELETE CASCADE,
+    FOREIGN KEY (edicion_id)         REFERENCES ediciones(id)        ON DELETE CASCADE,
+    UNIQUE (usuario_sistema_id, edicion_id)
+);
+
+-- ============================================================================
 -- TOKENS DE UN SOLO USO (confirmación de cuenta y recuperación de contraseña)
 -- ----------------------------------------------------------------------------
 -- El token se guarda en claro a propósito: es un valor aleatorio de un solo uso
@@ -82,23 +147,25 @@ CREATE TABLE tokens_correo (
 );
 
 -- ============================================================================
--- 2. prestatarios — Personas que reciben reservas o préstamos
+-- 6. prestatarios — Personas que reciben reservas o préstamos
 --    (no necesitan cuenta en el sistema)
 -- ============================================================================
 CREATE TABLE prestatarios (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    cedula    TEXT NOT NULL UNIQUE,
+    edicion_id INTEGER NOT NULL DEFAULT 1,
+    cedula    TEXT NOT NULL,
     nombre    TEXT NOT NULL,
     apellido  TEXT NOT NULL,
     tipo      TEXT NOT NULL CHECK (tipo IN ('ESTUDIANTE', 'PROFESOR', 'EMPLEADO', 'OTRO')),
     telefono  TEXT,
     email     TEXT,
     estado    TEXT NOT NULL DEFAULT 'ACTIVO'
-              CHECK (estado IN ('ACTIVO', 'INACTIVO'))
+              CHECK (estado IN ('ACTIVO', 'INACTIVO')),
+    UNIQUE (edicion_id, cedula)
 );
 
 -- ============================================================================
--- 3. categorias — Clasificación de los equipos
+-- 7. categorias — Clasificación de los equipos (GLOBAL, sin edicion_id)
 -- ============================================================================
 CREATE TABLE categorias (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,11 +174,12 @@ CREATE TABLE categorias (
 );
 
 -- ============================================================================
--- 4. laboratorios — Espacios físicos reservables
+-- 8. laboratorios — Espacios físicos reservables
 -- ============================================================================
 CREATE TABLE laboratorios (
     id                        INTEGER PRIMARY KEY AUTOINCREMENT,
-    codigo                    TEXT    NOT NULL UNIQUE,
+    edicion_id                INTEGER NOT NULL DEFAULT 1,
+    codigo                    TEXT    NOT NULL,
     nombre                    TEXT    NOT NULL,
     ubicacion                 TEXT    NOT NULL,
     capacidad                 INTEGER NOT NULL CHECK (capacidad > 0),
@@ -119,34 +187,39 @@ CREATE TABLE laboratorios (
     duracion_estandar_minutos INTEGER NOT NULL DEFAULT 70
                               CHECK (duracion_estandar_minutos > 0),
     estado                    TEXT    NOT NULL DEFAULT 'DISPONIBLE'
-                              CHECK (estado IN ('DISPONIBLE', 'MANTENIMIENTO', 'INACTIVO'))
+                              CHECK (estado IN ('DISPONIBLE', 'MANTENIMIENTO', 'INACTIVO')),
+    UNIQUE (edicion_id, codigo)
 );
 
 -- ============================================================================
--- 5. equipos — Recursos individuales prestables
+-- 9. equipos — Recursos individuales prestables
 -- ============================================================================
 CREATE TABLE equipos (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    codigo          TEXT NOT NULL UNIQUE,
+    edicion_id      INTEGER NOT NULL DEFAULT 1,
+    codigo          TEXT NOT NULL,
     nombre          TEXT NOT NULL,
     categoria_id    INTEGER,
     marca           TEXT,
     modelo          TEXT,
-    serial          TEXT UNIQUE,
+    serial          TEXT,
     laboratorio_id  INTEGER,
     estado          TEXT NOT NULL DEFAULT 'DISPONIBLE'
                     CHECK (estado IN ('DISPONIBLE', 'PRESTADO', 'MANTENIMIENTO', 'DANADO', 'INACTIVO')),
     FOREIGN KEY (categoria_id)   REFERENCES categorias(id),
-    FOREIGN KEY (laboratorio_id) REFERENCES laboratorios(id)
+    FOREIGN KEY (laboratorio_id) REFERENCES laboratorios(id),
+    UNIQUE (edicion_id, codigo),
+    UNIQUE (edicion_id, serial)
 );
 
 -- ============================================================================
--- 6. reservas — Reservas de laboratorios por franja horaria
---    Regla de negocio: un mismo laboratorio no puede tener dos reservas
---    (CONFIRMADA/ACTIVA) cuyos intervalos se superpongan.
+-- 10. reservas — Reservas de laboratorios por franja horaria
+--     Regla de negocio: un mismo laboratorio no puede tener dos reservas
+--     (CONFIRMADA/ACTIVA) cuyos intervalos se superpongan.
 -- ============================================================================
 CREATE TABLE reservas (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    edicion_id          INTEGER NOT NULL DEFAULT 1,
     laboratorio_id      INTEGER NOT NULL,
     prestatario_id      INTEGER NOT NULL,
     -- Usuario del sistema que registró la reserva (se toma de la sesión,
@@ -166,12 +239,13 @@ CREATE TABLE reservas (
 );
 
 -- ============================================================================
--- 7. prestamos_equipos — Préstamos individuales de equipos y sus devoluciones
---    Al prestar:  equipos.estado = 'PRESTADO'
---    Al devolver: equipos.estado = 'DISPONIBLE'
+-- 11. prestamos_equipos — Préstamos individuales de equipos y sus devoluciones
+--     Al prestar:  equipos.estado = 'PRESTADO'
+--     Al devolver: equipos.estado = 'DISPONIBLE'
 -- ============================================================================
 CREATE TABLE prestamos_equipos (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    edicion_id          INTEGER NOT NULL DEFAULT 1,
     equipo_id           INTEGER NOT NULL,
     prestatario_id      INTEGER NOT NULL,
     usuario_sistema_id  INTEGER NOT NULL,
@@ -186,7 +260,7 @@ CREATE TABLE prestamos_equipos (
 );
 
 -- ============================================================================
--- 8. auditoria — Registro de actividad (quién hizo qué y cuándo)
+-- 12. auditoria — Registro de actividad (quién hizo qué y cuándo)
 --
 --    Nota de diseño: ``usuario_id`` NO tiene clave foránea a propósito. Un
 --    registro de auditoría debe sobrevivir a la eliminación del usuario y
@@ -195,6 +269,7 @@ CREATE TABLE prestamos_equipos (
 -- ============================================================================
 CREATE TABLE auditoria (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    edicion_id        INTEGER,
     usuario_id        INTEGER,
     usuario_username  TEXT NOT NULL,
     accion            TEXT NOT NULL
@@ -223,6 +298,13 @@ CREATE INDEX idx_auditoria_entidad       ON auditoria (entidad, entidad_id);
 CREATE INDEX idx_auditoria_usuario       ON auditoria (usuario_id);
 CREATE INDEX idx_tokens_token            ON tokens_correo (token);
 CREATE INDEX idx_tokens_usuario          ON tokens_correo (usuario_id, tipo);
+-- Índices por edición (nuevos)
+CREATE INDEX idx_prestatarios_edicion    ON prestatarios (edicion_id);
+CREATE INDEX idx_laboratorios_edicion    ON laboratorios (edicion_id);
+CREATE INDEX idx_equipos_edicion         ON equipos (edicion_id);
+CREATE INDEX idx_reservas_edicion        ON reservas (edicion_id);
+CREATE INDEX idx_prestamos_edicion       ON prestamos_equipos (edicion_id);
+CREATE INDEX idx_auditoria_edicion       ON auditoria (edicion_id);
 
 -- ============================================================================
 -- DATOS INICIALES Y DE PRUEBA
@@ -248,17 +330,43 @@ VALUES
      'OPERADOR', 'ACTIVO');
 
 -- ---------------------------------------------------------------------------
--- Prestatarios (4 registros de prueba).
+-- Ediciones iniciales.
 -- ---------------------------------------------------------------------------
-INSERT INTO prestatarios (cedula, nombre, apellido, tipo, telefono, email, estado)
+INSERT INTO ediciones (nombre, slug, descripcion, estado, version_actual)
 VALUES
-    ('V-12345678', 'María',    'González', 'ESTUDIANTE', '0414-1111111', 'maria.gonzalez@correo.com',  'ACTIVO'),
-    ('V-23456789', 'José',     'Tarazón',  'PROFESOR',   '0414-2222222', 'jose.tarazon@correo.com',    'ACTIVO'),
-    ('V-34567890', 'Sleither', 'Vásquez',  'ESTUDIANTE', '0414-3333333', 'sleither.vasquez@correo.com','ACTIVO'),
-    ('V-45678901', 'Adrián',   'Cedeño',   'EMPLEADO',   '0414-4444444', 'adrian.cedeno@correo.com',   'ACTIVO');
+    ('TechLoan Base', 'base', 'Edición genérica del sistema de gestión de laboratorios.', 'ACTIVA', 1),
+    ('IUTEPI LABS', 'iutepi-labs', 'Edición a medida para gestión de horarios y secciones de laboratorios IUTEPI.', 'ACTIVA', 1);
 
 -- ---------------------------------------------------------------------------
--- Categorías de equipos (3 registros de prueba).
+-- Versiones iniciales de cada edición.
+-- ---------------------------------------------------------------------------
+INSERT INTO edicion_versiones (edicion_id, numero_version, nombre_version, estado, creado_por, notas_cambios, snapshot_json)
+VALUES
+    (1, 1, 'Inicial', 'ACTIVA', 1, 'Versión base del sistema.', '{}'),
+    (2, 1, 'Inicial', 'ACTIVA', 1, 'Versión inicial de IUTEPI LABS.', '{}');
+
+-- ---------------------------------------------------------------------------
+-- Asignar usuarios a ediciones.
+-- ---------------------------------------------------------------------------
+INSERT INTO usuarios_ediciones (usuario_sistema_id, edicion_id, rol_en_edicion)
+VALUES
+    (1, 1, 'ADMINISTRADOR_EDICION'),
+    (1, 2, 'ADMINISTRADOR_EDICION'),
+    (2, 1, 'OPERADOR'),
+    (2, 2, 'OPERADOR');
+
+-- ---------------------------------------------------------------------------
+-- Prestatarios (4 registros de prueba, edición 1).
+-- ---------------------------------------------------------------------------
+INSERT INTO prestatarios (edicion_id, cedula, nombre, apellido, tipo, telefono, email, estado)
+VALUES
+    (1, 'V-12345678', 'María',    'González', 'ESTUDIANTE', '0414-1111111', 'maria.gonzalez@correo.com',  'ACTIVO'),
+    (1, 'V-23456789', 'José',     'Tarazón',  'PROFESOR',   '0414-2222222', 'jose.tarazon@correo.com',    'ACTIVO'),
+    (1, 'V-34567890', 'Sleither', 'Vásquez',  'ESTUDIANTE', '0414-3333333', 'sleither.vasquez@correo.com','ACTIVO'),
+    (1, 'V-45678901', 'Adrián',   'Cedeño',   'EMPLEADO',   '0414-4444444', 'adrian.cedeno@correo.com',   'ACTIVO');
+
+-- ---------------------------------------------------------------------------
+-- Categorías de equipos (3 registros de prueba, GLOBAL).
 -- ---------------------------------------------------------------------------
 INSERT INTO categorias (nombre, descripcion)
 VALUES
@@ -267,72 +375,59 @@ VALUES
     ('Redes',       'Routers, switches y equipos de conectividad');
 
 -- ---------------------------------------------------------------------------
--- Laboratorios (3 registros de prueba).
+-- Laboratorios (3 registros de prueba, edición 1).
 -- ---------------------------------------------------------------------------
 INSERT INTO laboratorios
-    (codigo, nombre, ubicacion, capacidad, duracion_estandar_minutos, estado)
+    (edicion_id, codigo, nombre, ubicacion, capacidad, duracion_estandar_minutos, estado)
 VALUES
-    ('LAB-01', 'Laboratorio de Informática 1', 'Edificio A - Planta Baja', 30, 70, 'DISPONIBLE'),
-    ('LAB-02', 'Laboratorio de Redes',         'Edificio A - Planta Alta', 20, 90, 'DISPONIBLE'),
-    ('LAB-03', 'Laboratorio de Electrónica',   'Edificio B - Planta Baja', 25, 70, 'MANTENIMIENTO');
+    (1, 'LAB-01', 'Laboratorio de Informática 1', 'Edificio A - Planta Baja', 30, 70, 'DISPONIBLE'),
+    (1, 'LAB-02', 'Laboratorio de Redes',         'Edificio A - Planta Alta', 20, 90, 'DISPONIBLE'),
+    (1, 'LAB-03', 'Laboratorio de Electrónica',   'Edificio B - Planta Baja', 25, 70, 'MANTENIMIENTO');
 
 -- ---------------------------------------------------------------------------
--- Equipos (4 registros de prueba).
--- EQ-003 aparece como PRESTADO porque tiene un préstamo ACTIVO más abajo:
--- los datos de prueba respetan la coherencia de estados del sistema.
+-- Equipos (4 registros de prueba, edición 1).
+-- EQ-003 aparece como PRESTADO porque tiene un préstamo ACTIVO más abajo.
 -- ---------------------------------------------------------------------------
 INSERT INTO equipos
-    (codigo, nombre, categoria_id, marca, modelo, serial, laboratorio_id, estado)
+    (edicion_id, codigo, nombre, categoria_id, marca, modelo, serial, laboratorio_id, estado)
 VALUES
-    ('EQ-001', 'Laptop Dell Latitude',     1, 'Dell',  'Latitude 3420',   'SN-DL-001', 1, 'DISPONIBLE'),
-    ('EQ-002', 'Proyector Epson',          2, 'Epson', 'PowerLite X49',   'SN-EP-002', 2, 'DISPONIBLE'),
-    ('EQ-003', 'Switch Cisco 24 puertos',  3, 'Cisco', 'Catalyst 2960',   'SN-CS-003', 2, 'PRESTADO'),
-    ('EQ-004', 'Monitor LG 24 pulgadas',   1, 'LG',    '24MK430H-B',      'SN-LG-004', 1, 'DISPONIBLE');
+    (1, 'EQ-001', 'Laptop Dell Latitude',     1, 'Dell',  'Latitude 3420',   'SN-DL-001', 1, 'DISPONIBLE'),
+    (1, 'EQ-002', 'Proyector Epson',          2, 'Epson', 'PowerLite X49',   'SN-EP-002', 2, 'DISPONIBLE'),
+    (1, 'EQ-003', 'Switch Cisco 24 puertos',  3, 'Cisco', 'Catalyst 2960',   'SN-CS-003', 2, 'PRESTADO'),
+    (1, 'EQ-004', 'Monitor LG 24 pulgadas',   1, 'LG',    '24MK430H-B',      'SN-LG-004', 1, 'DISPONIBLE');
 
 -- ---------------------------------------------------------------------------
--- Reservas (3 registros de prueba).
+-- Reservas (3 registros de prueba, edición 1).
 --
 -- Las fechas se calculan con date('now','localtime','+N days') para que las
--- reservas de demostración queden SIEMPRE en el futuro, sin importar cuándo se
--- ejecute este script. Así la demostración nunca muestra datos vencidos.
---
--- LAB-01 (en 7 días) tiene dos reservas ADYACENTES (08:00-09:10 y 09:10-10:20):
--- no se superponen, por lo que son válidas. Sirven para demostrar la regla de
--- solapamiento: una tercera reserva a las 08:30 sería rechazada, y una a las
--- 10:20 sería aceptada (adyacencia exacta).
+-- reservas de demostración queden SIEMPRE en el futuro.
 -- ---------------------------------------------------------------------------
 INSERT INTO reservas
-    (laboratorio_id, prestatario_id, usuario_sistema_id, fecha, hora_inicio,
+    (edicion_id, laboratorio_id, prestatario_id, usuario_sistema_id, fecha, hora_inicio,
      hora_fin, duracion_minutos, estado, observaciones)
 VALUES
-    (1, 1, 1, date('now','localtime','+7 days'), '08:00', '09:10', 70, 'CONFIRMADA', 'Práctica de programación'),
-    (1, 2, 1, date('now','localtime','+7 days'), '09:10', '10:20', 70, 'CONFIRMADA', 'Clase de bases de datos'),
-    (2, 3, 2, date('now','localtime','+8 days'), '14:00', '15:30', 90, 'CONFIRMADA', 'Práctica de configuración de redes');
+    (1, 1, 1, 1, date('now','localtime','+7 days'), '08:00', '09:10', 70, 'CONFIRMADA', 'Práctica de programación'),
+    (1, 1, 2, 1, date('now','localtime','+7 days'), '09:10', '10:20', 70, 'CONFIRMADA', 'Clase de bases de datos'),
+    (1, 2, 3, 2, date('now','localtime','+8 days'), '14:00', '15:30', 90, 'CONFIRMADA', 'Práctica de configuración de redes');
 
 -- ---------------------------------------------------------------------------
--- Préstamos de equipos (2 registros de prueba: uno activo y uno devuelto).
---
--- El préstamo activo se registró ayer y el equipo EQ-003 sigue en estado
--- PRESTADO. El préstamo devuelto se cerró hace unas semanas, para que el
--- historial muestre una devolución con su fecha.
+-- Préstamos de equipos (2 registros de prueba, edición 1).
 -- ---------------------------------------------------------------------------
 INSERT INTO prestamos_equipos
-    (equipo_id, prestatario_id, usuario_sistema_id, fecha_prestamo,
+    (edicion_id, equipo_id, prestatario_id, usuario_sistema_id, fecha_prestamo,
      fecha_devolucion, estado, observaciones)
 VALUES
-    (3, 3, 2, datetime('now','localtime','-1 day'),  NULL,                                    'ACTIVO',   'Préstamo para práctica de redes'),
-    (2, 1, 1, datetime('now','localtime','-18 days'), datetime('now','localtime','-16 days'), 'DEVUELTO', 'Préstamo para exposición');
+    (1, 3, 3, 2, datetime('now','localtime','-1 day'),  NULL,                                    'ACTIVO',   'Préstamo para práctica de redes'),
+    (1, 2, 1, 1, datetime('now','localtime','-18 days'), datetime('now','localtime','-16 days'), 'DEVUELTO', 'Préstamo para exposición');
 
 -- ---------------------------------------------------------------------------
--- Registro de actividad (5 registros de prueba).
--- Reflejan las operaciones que originaron los datos anteriores, para que la
--- página de auditoría muestre información real desde el primer arranque.
+-- Registro de actividad (5 registros de prueba, edición 1).
 -- ---------------------------------------------------------------------------
 INSERT INTO auditoria
-    (usuario_id, usuario_username, accion, entidad, entidad_id, descripcion, direccion_ip, fecha)
+    (edicion_id, usuario_id, usuario_username, accion, entidad, entidad_id, descripcion, direccion_ip, fecha)
 VALUES
-    (1, 'admin', 'CREAR', 'prestatario', 1, 'Alta del prestatario V-12345678 (María González)', '127.0.0.1', datetime('now','localtime','-20 days')),
-    (1, 'admin', 'CREAR', 'laboratorio', 1, 'Alta del laboratorio LAB-01 (Laboratorio de Informática 1)', '127.0.0.1', datetime('now','localtime','-19 days')),
-    (1, 'admin', 'CREAR', 'equipo', 2, 'Alta del equipo EQ-002 (Proyector Epson)', '127.0.0.1', datetime('now','localtime','-18 days')),
-    (2, 'operador', 'DEVOLVER', 'prestamo', 2, 'Devolución del equipo EQ-002 (Proyector Epson)', '127.0.0.1', datetime('now','localtime','-16 days')),
-    (2, 'operador', 'CREAR', 'prestamo', 1, 'Préstamo del equipo EQ-003 (Switch Cisco 24 puertos) a V-34567890', '127.0.0.1', datetime('now','localtime','-1 day'));
+    (1, 1, 'admin', 'CREAR', 'prestatario', 1, 'Alta del prestatario V-12345678 (María González)', '127.0.0.1', datetime('now','localtime','-20 days')),
+    (1, 1, 'admin', 'CREAR', 'laboratorio', 1, 'Alta del laboratorio LAB-01 (Laboratorio de Informática 1)', '127.0.0.1', datetime('now','localtime','-19 days')),
+    (1, 1, 'admin', 'CREAR', 'equipo', 2, 'Alta del equipo EQ-002 (Proyector Epson)', '127.0.0.1', datetime('now','localtime','-18 days')),
+    (1, 2, 'operador', 'DEVOLVER', 'prestamo', 2, 'Devolución del equipo EQ-002 (Proyector Epson)', '127.0.0.1', datetime('now','localtime','-16 days')),
+    (1, 2, 'operador', 'CREAR', 'prestamo', 1, 'Préstamo del equipo EQ-003 (Switch Cisco 24 puertos) a V-34567890', '127.0.0.1', datetime('now','localtime','-1 day'));

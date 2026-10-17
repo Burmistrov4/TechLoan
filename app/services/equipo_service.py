@@ -35,9 +35,9 @@ class EquipoService:
             try:
                 cur = db.execute(
                     """INSERT INTO equipos
-                    (codigo,nombre,categoria_id,marca,modelo,serial,laboratorio_id,estado)
-                    VALUES (?,?,?,?,?,?,?,?)""",
-                    (data["codigo"].strip(),data["nombre"].strip(),
+                    (edicion_id, codigo,nombre,categoria_id,marca,modelo,serial,laboratorio_id,estado)
+                    VALUES (?,?,?,?,?,?,?,?,?)""",
+                    (int(data.get("edicion_id", 1)), data["codigo"].strip(),data["nombre"].strip(),
                      int(data["categoria_id"]) if data.get("categoria_id") else None,
                      (data.get("marca") or "").strip() or None,
                      (data.get("modelo") or "").strip() or None,
@@ -47,10 +47,10 @@ class EquipoService:
                 )
                 return cur.lastrowid
             except Exception as exc:
-                if "UNIQUE constraint failed: equipos.codigo" in str(exc):
-                    raise ValueError("El código de equipo ya existe.") from exc
-                if "UNIQUE constraint failed: equipos.serial" in str(exc):
-                    raise ValueError("El serial ya existe.") from exc
+                if "UNIQUE constraint failed" in str(exc) and "codigo" in str(exc):
+                    raise ValueError("El código de equipo ya existe en esta edición.") from exc
+                if "UNIQUE constraint failed" in str(exc) and "serial" in str(exc):
+                    raise ValueError("El serial ya existe en esta edición.") from exc
                 raise
 
     @staticmethod
@@ -89,10 +89,10 @@ class EquipoService:
                      data.get("estado","DISPONIBLE"),id_)
                 )
             except Exception as exc:
-                if "UNIQUE constraint failed: equipos.codigo" in str(exc):
-                    raise ValueError("El código de equipo ya existe.") from exc
-                if "UNIQUE constraint failed: equipos.serial" in str(exc):
-                    raise ValueError("El serial ya existe.") from exc
+                if "UNIQUE constraint failed" in str(exc) and "codigo" in str(exc):
+                    raise ValueError("El código de equipo ya existe en esta edición.") from exc
+                if "UNIQUE constraint failed" in str(exc) and "serial" in str(exc):
+                    raise ValueError("El serial ya existe en esta edición.") from exc
                 raise
 
     @staticmethod

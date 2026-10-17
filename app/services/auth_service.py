@@ -72,6 +72,9 @@ class AuthService:
                 "reservas.read", "reservas.write",
                 "prestamos.read", "prestamos.write", "prestamos.return",
                 "historial.read", "auditoria.read",
+                "ediciones.read", "ediciones.write", "ediciones.delete",
+                "configuracion.read", "configuracion.write",
+                "sistema.inspector",
             },
             "OPERADOR": {
                 "prestatarios.read", "prestatarios.write",
@@ -79,6 +82,7 @@ class AuthService:
                 "reservas.read", "reservas.write",
                 "prestamos.read", "prestamos.write", "prestamos.return",
                 "historial.read",
+                "ediciones.read", "configuracion.read",
             },
         }
         return bool(user and permission in permissions.get(user.get("rol"), set()))
