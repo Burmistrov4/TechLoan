@@ -87,6 +87,8 @@ class EdicionService:
             "configuracion": config,
             "laboratorios": fetch("laboratorios"),
             "prestatarios": fetch("prestatarios"),
+            "secciones": fetch("secciones"),
+            "materias": fetch("materias"),
             "equipos": fetch("equipos"),
             "reservas": fetch("reservas"),
             "prestamos_equipos": fetch("prestamos_equipos"),
@@ -137,10 +139,15 @@ class EdicionService:
             db.execute("DELETE FROM equipos WHERE edicion_id = ?", (edicion_id,))
             db.execute("DELETE FROM laboratorios WHERE edicion_id = ?", (edicion_id,))
             db.execute("DELETE FROM prestatarios WHERE edicion_id = ?", (edicion_id,))
+            # secciones y materias se borran tras las reservas (que las referencian).
+            db.execute("DELETE FROM secciones WHERE edicion_id = ?", (edicion_id,))
+            db.execute("DELETE FROM materias WHERE edicion_id = ?", (edicion_id,))
 
             # 2. Insertar preservando id (SQLite permite si no hay autoincrement conflict)
-            # Nota: para tablas con FOREIGN KEY, los ids deben coincidir.
-            for tabla in ("prestatarios", "laboratorios", "equipos", "reservas", "prestamos_equipos"):
+            # Nota: para tablas con FOREIGN KEY, los ids deben coincidir. Las secciones
+            # y materias se insertan ANTES de las reservas, que las referencian.
+            for tabla in ("prestatarios", "laboratorios", "secciones", "materias",
+                          "equipos", "reservas", "prestamos_equipos"):
                 filas = snapshot.get(tabla, [])
                 if not filas:
                     continue

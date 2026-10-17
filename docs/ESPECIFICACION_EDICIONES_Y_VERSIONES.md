@@ -10,6 +10,65 @@ Desplegado en `lorodev.pythonanywhere.com`.
 
 ---
 
+## 0. Estado de implementación (actualizado 2026-10-17)
+
+- **Fase 1 — Multi-edición, versiones con snapshot y Visor SQLite3: COMPLETADA**
+  (commit local `eede99f`). Incluye `ediciones`, `edicion_versiones`
+  (`snapshot_json`), `edicion_configuracion`, `usuarios_ediciones`, `edicion_id`
+  en las tablas operativas con `UNIQUE (edicion_id, …)`, selector de edición
+  (`POST /ediciones/cambiar` + context processor), `edicion_service`,
+  `db_inspector_service` y migración idempotente (`_migrar`) con
+  `PRAGMA index_list/index_info` + `legacy_alter_table=ON`.
+
+- **Fase 2 — Secciones, materias, reservas semestrales y motor de choques:
+  COMPLETADA** (pendiente de commit). Estado real:
+
+  - **Tablas nuevas** `secciones` y `materias`
+    (`UNIQUE (edicion_id, codigo_seccion, semestre, periodo_academico,
+    carrera_o_escuela)` y `UNIQUE (edicion_id, codigo)` respectivamente).
+    Regex de `codigo_seccion`: `^[A-Z0-9]{1,4}(-[A-Z0-9]{1,3})?$` (admite `SA`,
+    `SB`, `SA-A`, `SAA`).
+  - **Columnas finales de `reservas`** (Fase 2): `tipo_reserva`
+    `TEXT NOT NULL DEFAULT 'PUNTUAL' CHECK (tipo_reserva IN ('PUNTUAL','SEMESTRAL'))`,
+    `seccion_id` (FK opcional), `materia_id` (FK opcional), `dia_semana`
+    `INTEGER CHECK (dia_semana BETWEEN 0 AND 5)` (**0=Lunes..5=Sábado**, con
+    `date.weekday()`), `periodo_academico TEXT`, `cantidad_estudiantes INTEGER`.
+    `fecha` se mantiene también en semestrales como referencia de inicio.
+    Índices: `idx_reservas_seccion`, `idx_reservas_materia`,
+    `idx_reservas_profesor_fecha (prestatario_id, dia_semana)`,
+    `idx_reservas_lab_dia (laboratorio_id, dia_semana)`.
+  - **Motor de choques** (`reservation_service.create_reservation`): compara
+    siempre en **minutos** (`_a_minutos`, corrige `'9:30'` vs `'09:00'`).
+    - Puntual↔Puntual: misma `fecha` + bloque solapado (mismo `laboratorio_id`).
+    - Semestral↔Semestral: mismo `dia_semana` **y** mismo `periodo_academico`.
+    - **Cruce Puntual↔Semestral**: si `date.weekday(fecha) == dia_semana` y
+      comparten `periodo_academico` (mismo laboratorio → choque).
+    - **Choque de profesor**: mismo `prestatario_id` en distinto `laboratorio_id`
+      y franja solapada, **solo si `tipo = 'PROFESOR'`** (un estudiante en dos
+      laboratorios a la misma hora sigue permitido).
+    - **Capacidad**: `cantidad_estudiantes` (o `seccion.cantidad_estimada`) vs
+      `laboratorios.capacidad`; si excede, `ReservaInvalida` expone `.sugerencias`
+      = laboratorios de la edición con cupo suficiente.
+    - **Bloques horarios**: `obtener_bloques_edicion()` lee
+      `edicion_configuracion['bloques_horarios']` (JSON `"HH:MM-HH:MM"`) con
+      fallback a bloques de 70 min (07:00–21:00). No rechaza por bloque: solo
+      informa/sugiere (así no rompe las reservas de 45/70 min existentes).
+  - **UI**: CRUD de `secciones`/`materias` (listados + formularios, menú lateral)
+    y formulario de reserva con conmutador **Semestral/Puntual**, campos
+    condicionales (día, periodo, sección, materia), cantidad y bloque de
+    laboratorios alternativos. Filtro Jinja `nombre_dia` (0..6 → español).
+  - **Snapshot/restore** de versiones incluye `secciones` y `materias`
+    (preserva ids).
+  - **Seed IUTEPI LABS (edicion_id=2)**: secciones `SA` 1.º, `SA` 2.º y `SA-A`;
+    3 materias; laboratorios con capacidad 20/30/40; 1 asignación SEMESTRAL y 1
+    reserva PUNTUAL de ejemplo.
+
+- **Fase 3 — Vista previa (rejilla semanal): EN CURSO** (ver §8 y §10).
+
+- **Fase 4 — PDF con fpdf2: PENDIENTE.**
+
+---
+
 ## 1. Contexto de negocio: ¿qué es una "edición"?
 
 El landing de TechLoan tiene un plan "Avanzado — A medida" que menciona "varios

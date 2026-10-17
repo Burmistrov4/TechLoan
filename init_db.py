@@ -26,6 +26,8 @@ TABLAS = (
     "prestatarios",
     "categorias",
     "laboratorios",
+    "secciones",
+    "materias",
     "equipos",
     "reservas",
     "prestamos_equipos",

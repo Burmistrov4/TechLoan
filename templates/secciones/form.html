@@ -1,0 +1,40 @@
+{% extends "base_app.html" %}
+{% import "parciales/formulario.html" as f %}
+{% block titulo %}{{ 'Editar sección' if modo == 'editar' else 'Nueva sección' }}{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>{{ 'Editar sección' if modo == 'editar' else 'Nueva sección' }}</h1>
+    <p class="encabezado__subtitulo">
+      Los campos marcados con <span class="obligatorio">*</span> son obligatorios.
+    </p>
+  </div>
+</section>
+
+<section class="tarjeta-formulario">
+  <form method="post" class="formulario" id="formulario-principal"
+        action="{{ url_for('web.seccion_editar', id_=registro.id) if modo == 'editar' else url_for('web.seccion_crear') }}"
+        data-validar>
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+    <div class="rejilla-campos">
+      {{ f.texto('codigo_seccion', 'Código de sección', registro.codigo_seccion, requerido=true,
+                 marcador='SA, SB, SA-A…', patron='[A-Z0-9]{1,4}(-[A-Z0-9]{1,3})?',
+                 ayuda='Ejemplos: SA, SB, SA-A, SAA.') }}
+      {{ f.lista('semestre', 'Semestre', semestres, registro.semestre, requerido=true,
+                 vacio='— Seleccione —') }}
+      {{ f.texto('periodo_academico', 'Periodo académico', registro.periodo_academico,
+                 requerido=true, marcador='2026-2', largo_max=12) }}
+      {{ f.texto('carrera_o_escuela', 'Carrera o escuela', registro.carrera_o_escuela,
+                 marcador='Escuela de Sistemas', largo_max=80, ayuda='Opcional.') }}
+      {{ f.texto('cantidad_estimada', 'Cantidad estimada de estudiantes',
+                 registro.cantidad_estimada, tipo='number', minimo=0, paso=1,
+                 ayuda='Opcional. Se usa para validar la capacidad del laboratorio.') }}
+      {{ f.lista('estado', 'Estado', estados, registro.estado or 'ACTIVA', requerido=true) }}
+    </div>
+
+    {{ f.acciones('Guardar sección', url_for('web.secciones')) }}
+  </form>
+</section>
+{% endblock %}

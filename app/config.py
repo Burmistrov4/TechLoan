@@ -23,6 +23,19 @@ UMBRAL_SATURACION = 5
 # Franja de apertura de los laboratorios, usada para sugerir horarios libres.
 HORA_APERTURA = "07:00"
 HORA_CIERRE = "21:00"
+
+# Días de la semana indexados como date.weekday(): 0=Lunes .. 6=Domingo.
+# Las reservas SEMESTRALES (clases regulares) usan 0..5 (Lunes a Sábado).
+# El filtro Jinja «nombre_dia» lo usa para mostrar el nombre en español.
+DIAS_SEMANA = {
+    0: "Lunes",
+    1: "Martes",
+    2: "Miércoles",
+    3: "Jueves",
+    4: "Viernes",
+    5: "Sábado",
+    6: "Domingo",
+}
 # Resultados por página en los listados.
 FILAS_POR_PAGINA = 10
 

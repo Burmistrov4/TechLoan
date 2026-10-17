@@ -1,0 +1,36 @@
+{% extends "base_app.html" %}
+{% import "parciales/formulario.html" as f %}
+{% block titulo %}{{ 'Editar materia' if modo == 'editar' else 'Nueva materia' }}{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>{{ 'Editar materia' if modo == 'editar' else 'Nueva materia' }}</h1>
+    <p class="encabezado__subtitulo">
+      Los campos marcados con <span class="obligatorio">*</span> son obligatorios.
+    </p>
+  </div>
+</section>
+
+<section class="tarjeta-formulario">
+  <form method="post" class="formulario" id="formulario-principal"
+        action="{{ url_for('web.materia_editar', id_=registro.id) if modo == 'editar' else url_for('web.materia_crear') }}"
+        data-validar>
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+    <div class="rejilla-campos">
+      {{ f.texto('codigo', 'Código', registro.codigo, requerido=true,
+                 marcador='SIS-101', patron='[A-Za-z0-9._\\-]{2,20}',
+                 ayuda='Entre 2 y 20 caracteres alfanuméricos.') }}
+      {{ f.texto('nombre', 'Nombre', registro.nombre, requerido=true, largo_max=100) }}
+      {{ f.texto('escuela', 'Escuela', registro.escuela,
+                 marcador='Escuela de Sistemas', largo_max=80, ayuda='Opcional.') }}
+      {{ f.lista('semestre', 'Semestre', semestres, registro.semestre,
+                 vacio='— Sin semestre —') }}
+      {{ f.lista('estado', 'Estado', estados, registro.estado or 'ACTIVA', requerido=true) }}
+    </div>
+
+    {{ f.acciones('Guardar materia', url_for('web.materias')) }}
+  </form>
+</section>
+{% endblock %}

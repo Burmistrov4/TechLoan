@@ -30,6 +30,8 @@ from app.routes import web_extra_routes  # noqa: F401
 from app.routes import web_operations_routes  # noqa: F401
 from app.routes import web_ediciones_routes  # noqa: F401
 from app.routes import web_inspector_routes  # noqa: F401
+from app.routes import web_seccion_routes  # noqa: F401
+from app.routes import web_materia_routes  # noqa: F401
 from app.routes.web_common import csrf_token, web_bp
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -44,10 +46,22 @@ def _wants_json():
 
 def _register_filters(app):
     """Filtros de plantilla disponibles en todo el proyecto."""
+    from app.config import DIAS_SEMANA
     from app.routes.web_common import fecha_corta
 
     app.jinja_env.filters["fecha_corta"] = fecha_corta
     app.jinja_env.filters["dia_corto"] = lambda valor: fecha_corta(valor, con_anio=False)
+
+    def nombre_dia(valor):
+        """0..6 → 'Lunes'..'Domingo' (para reservas semestrales)."""
+        if valor in (None, ""):
+            return "—"
+        try:
+            return DIAS_SEMANA.get(int(valor), "—")
+        except (TypeError, ValueError):
+            return "—"
+
+    app.jinja_env.filters["nombre_dia"] = nombre_dia
 
 
 def _register_error_handlers(app):

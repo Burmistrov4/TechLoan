@@ -35,6 +35,8 @@ DROP TABLE IF EXISTS auditoria;
 DROP TABLE IF EXISTS tokens_correo;
 DROP TABLE IF EXISTS prestamos_equipos;
 DROP TABLE IF EXISTS reservas;
+DROP TABLE IF EXISTS secciones;
+DROP TABLE IF EXISTS materias;
 DROP TABLE IF EXISTS equipos;
 DROP TABLE IF EXISTS categorias;
 DROP TABLE IF EXISTS laboratorios;
@@ -126,6 +128,46 @@ CREATE TABLE usuarios_ediciones (
     FOREIGN KEY (edicion_id)         REFERENCES ediciones(id)        ON DELETE CASCADE,
     UNIQUE (usuario_sistema_id, edicion_id)
 );
+
+-- ============================================================================
+-- 5b. secciones — Secciones académicas por edición (petición del prof. Nelson)
+--     La misma sección (p.ej. «SA») puede existir en varios semestres, periodos
+--     o escuelas sin colisionar gracias a la UNIQUE compuesta.
+-- ============================================================================
+CREATE TABLE secciones (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    edicion_id        INTEGER NOT NULL DEFAULT 1,
+    codigo_seccion    TEXT    NOT NULL,          -- «SA», «SB», «SA-A», «SAA»
+    semestre          INTEGER NOT NULL CHECK (semestre BETWEEN 1 AND 10),
+    periodo_academico TEXT    NOT NULL,          -- «2026-2»
+    carrera_o_escuela TEXT    NOT NULL DEFAULT '',
+    cantidad_estimada INTEGER CHECK (cantidad_estimada IS NULL OR cantidad_estimada >= 0),
+    estado            TEXT    NOT NULL DEFAULT 'ACTIVA'
+                      CHECK (estado IN ('ACTIVA', 'INACTIVA')),
+    fecha_creacion    TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (edicion_id) REFERENCES ediciones(id) ON DELETE CASCADE,
+    UNIQUE (edicion_id, codigo_seccion, semestre, periodo_academico, carrera_o_escuela)
+);
+
+-- ============================================================================
+-- 5c. materias — Materias por edición
+-- ============================================================================
+CREATE TABLE materias (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    edicion_id     INTEGER NOT NULL DEFAULT 1,
+    codigo         TEXT    NOT NULL,             -- «SIS-101»
+    nombre         TEXT    NOT NULL,
+    escuela        TEXT    NOT NULL DEFAULT '',
+    semestre       INTEGER CHECK (semestre IS NULL OR semestre BETWEEN 1 AND 10),
+    estado         TEXT    NOT NULL DEFAULT 'ACTIVA'
+                   CHECK (estado IN ('ACTIVA', 'INACTIVA')),
+    fecha_creacion TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (edicion_id) REFERENCES ediciones(id) ON DELETE CASCADE,
+    UNIQUE (edicion_id, codigo)
+);
+
+CREATE INDEX idx_secciones_edicion ON secciones (edicion_id);
+CREATE INDEX idx_materias_edicion  ON materias  (edicion_id);
 
 -- ============================================================================
 -- TOKENS DE UN SOLO USO (confirmación de cuenta y recuperación de contraseña)
@@ -233,9 +275,21 @@ CREATE TABLE reservas (
                         CHECK (estado IN ('CONFIRMADA', 'ACTIVA', 'FINALIZADA', 'CANCELADA')),
     observaciones       TEXT,
     fecha_registro      TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- --- Multi-edición: secciones, materias y horarios (Fase 2) ---
+    tipo_reserva        TEXT    NOT NULL DEFAULT 'PUNTUAL'
+                        CHECK (tipo_reserva IN ('PUNTUAL', 'SEMESTRAL')),
+    seccion_id          INTEGER,                    -- FK opcional a secciones
+    materia_id          INTEGER,                    -- FK opcional a materias
+    dia_semana          INTEGER                    -- 0=Lunes..5=Sábado (semestral)
+                        CHECK (dia_semana IS NULL OR dia_semana BETWEEN 0 AND 5),
+    periodo_academico   TEXT,                       -- «2026-2»
+    cantidad_estudiantes INTEGER
+                        CHECK (cantidad_estudiantes IS NULL OR cantidad_estudiantes >= 0),
     FOREIGN KEY (laboratorio_id)     REFERENCES laboratorios(id),
     FOREIGN KEY (prestatario_id)     REFERENCES prestatarios(id),
-    FOREIGN KEY (usuario_sistema_id) REFERENCES usuarios_sistema(id)
+    FOREIGN KEY (usuario_sistema_id) REFERENCES usuarios_sistema(id),
+    FOREIGN KEY (seccion_id)         REFERENCES secciones(id),
+    FOREIGN KEY (materia_id)         REFERENCES materias(id)
 );
 
 -- ============================================================================
@@ -289,6 +343,11 @@ CREATE TABLE auditoria (
 CREATE INDEX idx_reservas_lab_fecha      ON reservas (laboratorio_id, fecha);
 CREATE INDEX idx_reservas_prestatario    ON reservas (prestatario_id);
 CREATE INDEX idx_reservas_usuario        ON reservas (usuario_sistema_id);
+-- Índices de la Fase 2: choques por sección, materia, profesor y laboratorio
+CREATE INDEX idx_reservas_seccion        ON reservas (seccion_id);
+CREATE INDEX idx_reservas_materia        ON reservas (materia_id);
+CREATE INDEX idx_reservas_profesor_fecha ON reservas (prestatario_id, dia_semana);
+CREATE INDEX idx_reservas_lab_dia        ON reservas (laboratorio_id, dia_semana);
 CREATE INDEX idx_prestamos_equipo_estado ON prestamos_equipos (equipo_id, estado);
 CREATE INDEX idx_prestamos_prestatario   ON prestamos_equipos (prestatario_id);
 CREATE INDEX idx_equipos_categoria       ON equipos (categoria_id);
@@ -431,3 +490,73 @@ VALUES
     (1, 1, 'admin', 'CREAR', 'equipo', 2, 'Alta del equipo EQ-002 (Proyector Epson)', '127.0.0.1', datetime('now','localtime','-18 days')),
     (1, 2, 'operador', 'DEVOLVER', 'prestamo', 2, 'Devolución del equipo EQ-002 (Proyector Epson)', '127.0.0.1', datetime('now','localtime','-16 days')),
     (1, 2, 'operador', 'CREAR', 'prestamo', 1, 'Préstamo del equipo EQ-003 (Switch Cisco 24 puertos) a V-34567890', '127.0.0.1', datetime('now','localtime','-1 day'));
+
+-- ============================================================================
+-- DATOS DE DEMOSTRACIÓN DE LA EDICIÓN «IUTEPI LABS» (edicion_id = 2)
+--
+-- Pensados para que el profesor Nelson pruebe el horario semestral de inmediato:
+-- secciones, materias y laboratorios con distinta capacidad, más una asignación
+-- SEMESTRAL (clase regular) y una reserva PUNTUAL (evaluación). Los id se
+-- resuelven por subconsulta para no depender del orden de AUTOINCREMENT.
+-- ============================================================================
+
+-- Profesores de la edición IUTEPI LABS.
+INSERT INTO prestatarios
+    (edicion_id, cedula, nombre, apellido, tipo, telefono, email, estado)
+VALUES
+    (2, 'V-10000001', 'Nelson', 'Mendoza', 'PROFESOR', '0414-1000001', 'nelson.mendoza@iutepi.edu', 'ACTIVO'),
+    (2, 'V-10000002', 'Carla',  'Duarte',   'PROFESOR', '0414-1000002', 'carla.duarte@iutepi.edu',   'ACTIVO');
+
+-- Laboratorios de la edición IUTEPI LABS con capacidades 20, 30 y 40.
+-- Reusan los códigos «LAB-*» de la edición base: con el UNIQUE por edición ya
+-- no colisionan (demuestra el aislamiento entre ediciones).
+INSERT INTO laboratorios
+    (edicion_id, codigo, nombre, ubicacion, capacidad, duracion_estandar_minutos, estado)
+VALUES
+    (2, 'LAB-01', 'Laboratorio de Sistemas I',      'Edificio IUTEPI - PB', 20, 70, 'DISPONIBLE'),
+    (2, 'LAB-02', 'Laboratorio de Redes IUTEPI',    'Edificio IUTEPI - PA', 30, 70, 'DISPONIBLE'),
+    (2, 'LAB-03', 'Laboratorio de Cómputo General', 'Edificio IUTEPI - P2', 40, 70, 'DISPONIBLE');
+
+-- Secciones: «SA» en 1.º y 2.º semestre (ya no chocan) + subsección «SA-A».
+INSERT INTO secciones
+    (edicion_id, codigo_seccion, semestre, periodo_academico, carrera_o_escuela, cantidad_estimada, estado)
+VALUES
+    (2, 'SA',   1, '2026-2', 'Escuela de Sistemas', 25, 'ACTIVA'),
+    (2, 'SA',   2, '2026-2', 'Escuela de Sistemas', 18, 'ACTIVA'),
+    (2, 'SA-A', 1, '2026-2', 'Escuela de Sistemas', 12, 'ACTIVA');
+
+-- Materias de Escuela de Sistemas y Escuelas Generales.
+INSERT INTO materias
+    (edicion_id, codigo, nombre, escuela, semestre, estado)
+VALUES
+    (2, 'SIS-101', 'Programación I',    'Escuela de Sistemas',   1, 'ACTIVA'),
+    (2, 'SIS-204', 'Bases de Datos',    'Escuela de Sistemas',   2, 'ACTIVA'),
+    (2, 'GEN-110', 'Matemática General','Escuelas Generales',    1, 'ACTIVA');
+
+-- Asignación SEMESTRAL: clase regular de Programación I (sección SA, 1.er semestre),
+-- todos los lunes (dia_semana=0) de 07:00 a 09:10 en LAB-01 (capacidad 20, 25 estudiantes
+-- de referencia de la sección; el control de capacidad se valida al crear/editar).
+INSERT INTO reservas
+    (edicion_id, tipo_reserva, laboratorio_id, prestatario_id, usuario_sistema_id,
+     fecha, dia_semana, periodo_academico, seccion_id, materia_id, cantidad_estudiantes,
+     hora_inicio, hora_fin, duracion_minutos, estado, observaciones)
+VALUES
+    (2, 'SEMESTRAL',
+     (SELECT id FROM laboratorios WHERE edicion_id=2 AND codigo='LAB-01'),
+     (SELECT id FROM prestatarios WHERE edicion_id=2 AND cedula='V-10000001'), 1,
+     date('now','localtime','+0 days'), 0, '2026-2',
+     (SELECT id FROM secciones WHERE edicion_id=2 AND codigo_seccion='SA' AND semestre=1),
+     (SELECT id FROM materias  WHERE edicion_id=2 AND codigo='SIS-101'),
+     25, '07:00', '09:10', 140, 'CONFIRMADA', 'Clase semestral de Programación I (SA)');
+
+-- Reserva PUNTUAL: evaluación en LAB-02, dentro del mismo periodo.
+INSERT INTO reservas
+    (edicion_id, tipo_reserva, laboratorio_id, prestatario_id, usuario_sistema_id,
+     fecha, dia_semana, periodo_academico, seccion_id, materia_id, cantidad_estudiantes,
+     hora_inicio, hora_fin, duracion_minutos, estado, observaciones)
+VALUES
+    (2, 'PUNTUAL',
+     (SELECT id FROM laboratorios WHERE edicion_id=2 AND codigo='LAB-02'),
+     (SELECT id FROM prestatarios WHERE edicion_id=2 AND cedula='V-10000002'), 1,
+     date('now','localtime','+30 days'), NULL, '2026-2',
+     NULL, NULL, 30, '14:00', '16:00', 120, 'CONFIRMADA', 'Evaluación puntual (LAB-02)');

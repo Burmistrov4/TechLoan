@@ -1,0 +1,79 @@
+{% extends "base_app.html" %}
+{% import "parciales/iconos.html" as ic %}
+{% import "parciales/listado.html" as l with context %}
+{% block titulo %}Materias{% endblock %}
+
+{% block contenido %}
+<section class="encabezado">
+  <div>
+    <h1>Materias</h1>
+    <p class="encabezado__subtitulo">
+      Materias de la edición activa, asociadas a una escuela y semestre.
+    </p>
+  </div>
+  {% if puede('materias.write') %}
+  <div class="encabezado__acciones">
+    <a class="boton boton--marca" href="{{ url_for('web.materia_crear') }}">
+      {{ ic.icono('mas') }} Nueva materia
+    </a>
+  </div>
+  {% endif %}
+</section>
+
+{{ l.barra(listado, marcador='Buscar por código, nombre o escuela…',
+           etiqueta='Buscar materias') }}
+
+{% if listado.filas %}
+<div class="tabla-envoltura">
+  <table class="tabla">
+    <caption class="visualmente-oculto">Listado de materias</caption>
+    <thead>
+      <tr>
+        {{ l.th('codigo', 'Código', listado) }}
+        {{ l.th('nombre', 'Nombre', listado) }}
+        <th scope="col">Escuela</th>
+        {{ l.th('semestre', 'Semestre', listado) }}
+        {{ l.th('estado', 'Estado', listado) }}
+        <th scope="col" class="columna-acciones">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in listado.filas %}
+      <tr>
+        <td data-etiqueta="Código"><span class="mono"><strong>{{ m.codigo }}</strong></span></td>
+        <td data-etiqueta="Nombre">{{ m.nombre }}</td>
+        <td data-etiqueta="Escuela">{{ m.escuela or '—' }}</td>
+        <td data-etiqueta="Semestre">{{ (m.semestre ~ 'º') if m.semestre is not none else '—' }}</td>
+        <td data-etiqueta="Estado"><span class="insignia insignia--{{ m.estado | lower }}">{{ m.estado }}</span></td>
+        <td data-etiqueta="Acciones" class="columna-acciones">
+          <div class="acciones-fila">
+            {% if puede('materias.write') %}
+            <a class="boton boton--secundario boton--pequeno"
+               href="{{ url_for('web.materia_editar', id_=m.id) }}">
+              {{ ic.icono('editar') }} Editar
+            </a>
+            {% endif %}
+            {% if puede('materias.delete') %}
+            <form method="post" class="formulario-eliminar"
+                  action="{{ url_for('web.materia_eliminar', id_=m.id) }}"
+                  data-confirmar="¿Eliminar la materia {{ m.codigo }} ({{ m.nombre }})?">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="boton boton--peligro boton--pequeno">
+                {{ ic.icono('eliminar') }} Eliminar
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{{ l.paginacion(listado) }}
+{% else %}
+{{ l.vacio(listado, 'Todavía no hay materias',
+           'Crea la primera materia para las asignaciones semestrales.',
+           'materias', url_for('web.materia_crear'), 'Crear la primera') }}
+{% endif %}
+{% endblock %}

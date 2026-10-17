@@ -32,7 +32,7 @@ from app.services.historial_service import HistorialService
 from app.services.laboratorio_service import LaboratorioService
 from app.services.prestamo_equipo_service import PrestamoEquipoService
 from app.services.prestatario_service import PrestatarioService
-from app.services.reservation_service import ReservationService
+from app.services.reservation_service import ReservaInvalida, ReservationService
 
 ESTADOS_RESERVA = ("CONFIRMADA", "ACTIVA", "FINALIZADA", "CANCELADA")
 TIPOS_HISTORIAL = ("TODOS", "RESERVA", "PRESTAMO", "DEVOLUCION")
@@ -98,6 +98,10 @@ def _contexto_reserva(registro=None):
     """Datos que necesita el formulario de reservas (listas de selección)."""
     from datetime import datetime
 
+    from app.config import DIAS_SEMANA
+    from app.services.materia_service import MateriaService
+    from app.services.seccion_service import SeccionService
+
     laboratorios = [
         lab for lab in filtrar_por_edicion(LaboratorioService.list_all())
         if lab["estado"] == "DISPONIBLE"
@@ -116,10 +120,30 @@ def _contexto_reserva(registro=None):
             f"{prestatario['cedula']} — {prestatario['nombre']} {prestatario['apellido']}"
         )
 
+    # Secciones y materias de la edición activa (para el horario semestral).
+    secciones = [
+        s for s in filtrar_por_edicion(SeccionService.list_all())
+        if s["estado"] == "ACTIVA"
+    ]
+    for s in secciones:
+        s["etiqueta"] = f"{s['codigo_seccion']} — {s['semestre']}º {s['carrera_o_escuela']}".strip()
+
+    materias = [
+        m for m in filtrar_por_edicion(MateriaService.list_all())
+        if m["estado"] == "ACTIVA"
+    ]
+    for m in materias:
+        m["etiqueta"] = f"{m['codigo']} — {m['nombre']}"
+
+    dias = [{"valor": i, "etiqueta": DIAS_SEMANA[i]} for i in range(0, 6)]  # Lunes..Sábado
+
     return {
         "registro": registro or {},
         "laboratorios": laboratorios,
         "prestatarios": prestatarios,
+        "secciones": secciones,
+        "materias": materias,
+        "dias": dias,
         # Mapa usado por JavaScript para autocompletar la duración estándar
         # del laboratorio seleccionado.
         "duraciones": {str(lab["id"]): lab["duracion_estandar_minutos"] for lab in laboratorios},
@@ -137,20 +161,31 @@ def reserva_crear():
         data = form_fields(
             "laboratorio_id", "prestatario_id", "fecha", "hora_inicio",
             "duracion_minutos", "observaciones",
-            empty_to_none=("observaciones",),
+            "tipo_reserva", "dia_semana", "periodo_academico",
+            "seccion_id", "materia_id", "cantidad_estudiantes",
+            empty_to_none=("observaciones", "dia_semana", "seccion_id",
+                           "materia_id", "cantidad_estudiantes"),
         )
         laboratorio_id = parse_int(data.get("laboratorio_id"))
         prestatario_id = parse_int(data.get("prestatario_id"))
         duracion = parse_int(data.get("duracion_minutos"))
+        tipo_reserva = (data.get("tipo_reserva") or "PUNTUAL").upper()
+        dia_semana = parse_int(data.get("dia_semana"))
+        seccion_id = parse_int(data.get("seccion_id"))
+        materia_id = parse_int(data.get("materia_id"))
+        cantidad = parse_int(data.get("cantidad_estudiantes"))
 
         error = None
-        sugerencias = []
+        sugerencias = []       # franjas horarias libres
+        alternativas = []      # laboratorios con cupo suficiente
         if laboratorio_id is None:
             error = "Debes seleccionar un laboratorio."
         elif prestatario_id is None:
             error = "Debes seleccionar un prestatario."
         elif duracion is None:
             error = "La duración debe ser un número entero de minutos."
+        elif tipo_reserva == "SEMESTRAL" and dia_semana is None:
+            error = "Para una asignación semestral debes indicar el día de la semana."
 
         if error is None:
             try:
@@ -165,11 +200,24 @@ def reserva_crear():
                     duracion,
                     data.get("observaciones") or "",
                     edicion_id=edicion_activa_id(),
+                    tipo_reserva=tipo_reserva,
+                    dia_semana=dia_semana,
+                    periodo_academico=(data.get("periodo_academico") or "").strip() or None,
+                    seccion_id=seccion_id,
+                    materia_id=materia_id,
+                    cantidad_estudiantes=cantidad,
                 )
-            except ValueError as exc:
+            except ReservaInvalida as exc:
                 error = str(exc)
+                alternativas = getattr(exc, "sugerencias", [])
                 # Si el problema es un choque de horario, se calculan alternativas
                 # reales en lugar de dejar al usuario sin salida.
+                if "superpone" in error.lower():
+                    sugerencias = ReservationService.sugerir_horarios(
+                        laboratorio_id, data["fecha"], duracion, data["hora_inicio"]
+                    )
+            except ValueError as exc:
+                error = str(exc)
                 if "superpone" in error.lower():
                     sugerencias = ReservationService.sugerir_horarios(
                         laboratorio_id, data["fecha"], duracion, data["hora_inicio"]
@@ -177,7 +225,7 @@ def reserva_crear():
             else:
                 registrar_accion(
                     "CREAR", "reserva", nuevo_id,
-                    f"Reserva de {data['fecha']} {data['hora_inicio']} "
+                    f"Reserva {tipo_reserva} de {data['fecha']} {data['hora_inicio']} "
                     f"({duracion} min) en el laboratorio #{laboratorio_id}",
                 )
                 flash("Reserva registrada correctamente.", "success")
@@ -188,12 +236,15 @@ def reserva_crear():
             render_template(
                 "reservas/form.html",
                 sugerencias=sugerencias,
+                alternativas=alternativas,
                 **_contexto_reserva(data),
             ),
             400,
         )
 
-    return render_template("reservas/form.html", sugerencias=[], **_contexto_reserva())
+    return render_template(
+        "reservas/form.html", sugerencias=[], alternativas=[], **_contexto_reserva()
+    )
 
 
 @web_bp.get("/reservas/<int:id_>/comprobante")

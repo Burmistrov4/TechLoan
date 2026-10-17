@@ -50,6 +50,69 @@
                  ayuda='Entre 1 y 1440 minutos.') }}
     </div>
 
+    {% if alternativas %}
+    <div class="aviso aviso--error" role="alert">
+      <strong>No hay cupo suficiente en el laboratorio elegido.</strong>
+      Estos laboratorios de la edición activa tienen capacidad suficiente:
+      <ul class="lista-simple" style="margin:var(--e-2) 0 0">
+        {% for a in alternativas %}
+        <li><strong>{{ a.codigo }}</strong> — {{ a.nombre }} (capacidad {{ a.capacidad }} estudiantes)</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="campo">
+      <label>Tipo de asignación</label>
+      <div class="grupo-radios" role="radiogroup" aria-label="Tipo de asignación">
+        <label class="opcion-radio">
+          <input type="radio" name="tipo_reserva" value="SEMESTRAL"
+                 {% if registro.tipo_reserva == 'SEMESTRAL' %}checked{% endif %}>
+          <span>Semestral (clase regular)</span>
+        </label>
+        <label class="opcion-radio">
+          <input type="radio" name="tipo_reserva" value="PUNTUAL"
+                 {% if not registro.tipo_reserva or registro.tipo_reserva == 'PUNTUAL' %}checked{% endif %}>
+          <span>Puntual (evento o examen)</span>
+        </label>
+      </div>
+      <p class="ayuda">Una asignación <em>semestral</em> se repite cada semana en el día indicado durante el periodo.</p>
+    </div>
+
+    <div id="grupo-semestral" class="grupo-condicional"{% if registro.tipo_reserva != 'SEMESTRAL' %} hidden{% endif %}>
+      <div class="rejilla-campos">
+        {{ f.lista_objetos('dia_semana', 'Día de la semana', dias, 'valor', 'etiqueta',
+                           registro.dia_semana, vacio='— Seleccione —',
+                           ayuda='Día en que se repite la clase durante el semestre.') }}
+        {{ f.texto('periodo_academico', 'Periodo académico', registro.periodo_academico,
+                   marcador='2026-2', largo_max=12) }}
+        {{ f.lista_objetos('seccion_id', 'Sección', secciones, 'id', 'etiqueta',
+                           registro.seccion_id, vacio='— Sin sección —') }}
+        {{ f.lista_objetos('materia_id', 'Materia', materias, 'id', 'etiqueta',
+                           registro.materia_id, vacio='— Sin materia —') }}
+      </div>
+    </div>
+
+    <div class="rejilla-campos">
+      {{ f.texto('cantidad_estudiantes', 'Cantidad de estudiantes',
+                 registro.cantidad_estudiantes, tipo='number', minimo=0, paso=1,
+                 ayuda='Opcional. Si se deja vacío se usa la cantidad estimada de la sección. '
+                       'Se valida contra la capacidad del laboratorio.') }}
+    </div>
+
+    <script>
+      (function () {
+        var radios = document.querySelectorAll('input[name="tipo_reserva"]');
+        var grupo = document.getElementById('grupo-semestral');
+        function actualizar() {
+          var sel = document.querySelector('input[name="tipo_reserva"]:checked');
+          grupo.hidden = !(sel && sel.value === 'SEMESTRAL');
+        }
+        radios.forEach(function (r) { r.addEventListener('change', actualizar); });
+        actualizar();
+      })();
+    </script>
+
     <div class="campo campo--calculado">
       <label for="campo-hora_fin_calculada">Hora de finalización (calculada)</label>
       <output id="campo-hora_fin_calculada" class="salida"

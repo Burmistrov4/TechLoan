@@ -1,17 +1,125 @@
 from datetime import datetime, timedelta
-from app.config import HORA_APERTURA, HORA_CIERRE
+from app.config import HORA_APERTURA, HORA_CIERRE, DEFAULT_RESERVATION_MINUTES
 from app.database import get_connection
 
 
 def _a_minutos(hora):
-    """Convierte 'HH:MM' en minutos desde medianoche."""
-    horas, minutos = hora.split(":")
+    """Convierte 'HH:MM' en minutos desde medianoche.
+
+    Normaliza formatos como '9:00' y '09:00' al mismo valor, de modo que las
+    comparaciones de solapamiento nunca se hagan comparando texto.
+    """
+    horas, minutos = str(hora).split(":")
     return int(horas) * 60 + int(minutos)
 
 
 def _a_hora(minutos):
     """Convierte minutos desde medianoche en 'HH:MM'."""
     return f"{minutos // 60:02d}:{minutos % 60:02d}"
+
+
+class ReservaInvalida(ValueError):
+    """Error de validación de una reserva que puede llevar sugerencias.
+
+    ``sugerencias`` es una lista de laboratorios alternativos (dicts) para el
+    caso de que el rechazo sea por capacidad insuficiente del laboratorio.
+    """
+
+    def __init__(self, mensaje, sugerencias=None):
+        super().__init__(mensaje)
+        self.sugerencias = sugerencias or []
+
+
+def _solapa(a_inicio, a_fin, b_inicio, b_fin):
+    """¿Se superponen dos intervalos [inicio, fin) dados en minutos?"""
+    return a_inicio < b_fin and b_inicio < a_fin
+
+
+def _weekday_de_fecha(fecha):
+    """Día de la semana de una fecha 'AAAA-MM-DD' (0=Lunes..6=Domingo)."""
+    return datetime.strptime(fecha, "%Y-%m-%d").weekday()
+
+
+def _mismo_dia_ocupado(candidata, nueva):
+    """¿Pueden caer en el MISMO día calendario dos reservas (ya activas)?
+
+    Reglas (choque cruzado incluido):
+    - Puntual vs Puntual: misma ``fecha``.
+    - Semestral vs Semestral: mismo ``dia_semana`` **y** mismo ``periodo_academico``.
+    - Puntual vs Semestral: la fecha de la puntual cae en el ``dia_semana`` de la
+      semestral **y** comparten ``periodo_academico``.
+    """
+    ct = candidata["tipo_reserva"]
+    nt = nueva["tipo_reserva"]
+
+    if ct == "PUNTUAL" and nt == "PUNTUAL":
+        return candidata["fecha"] == nueva["fecha"]
+
+    if ct == "SEMESTRAL" and nt == "SEMESTRAL":
+        return (candidata["dia_semana"] == nueva["dia_semana"]
+                and (candidata["periodo_academico"] or None)
+                == (nueva["periodo_academico"] or None))
+
+    # Cruce puntual/semestral.
+    if ct == "PUNTUAL":
+        puntual, semestral = candidata, nueva
+    else:
+        puntual, semestral = nueva, candidata
+    periodo_p = puntual.get("periodo_academico") or None
+    periodo_s = semestral.get("periodo_academico") or None
+    if periodo_p and periodo_s and periodo_p == periodo_s:
+        try:
+            return _weekday_de_fecha(puntual["fecha"]) == semestral["dia_semana"]
+        except (ValueError, TypeError):
+            return False
+    return False
+
+
+def _bloques_por_defecto():
+    """Bloques de 70 min entre HORA_APERTURA y HORA_CIERRE, en minutos."""
+    inicio = _a_minutos(HORA_APERTURA)
+    cierre = _a_minutos(HORA_CIERRE)
+    paso = DEFAULT_RESERVATION_MINUTES
+    bloques = []
+    t = inicio
+    while t + paso <= cierre:
+        bloques.append((t, t + paso))
+        t += paso
+    return bloques
+
+
+def _bloques_de_edicion(db, edicion_id):
+    """Bloques horarios de la edición desde ``edicion_configuracion`` (JSON).
+
+    Clave ``bloques_horarios`` = lista de cadenas «HH:MM-HH:MM». Si no está
+    configurada, se usa el conjunto por defecto de 70 minutos.
+    """
+    from app.services.edicion_service import EdicionService
+
+    try:
+        config = EdicionService.obtener_config(edicion_id)
+        crudo = (config or {}).get("bloques_horarios")
+    except Exception:
+        crudo = None
+    if not crudo:
+        return _bloques_por_defecto()
+
+    import json
+    try:
+        lista = json.loads(crudo)
+        bloques = []
+        for tramo in lista:
+            ini, fin = str(tramo).split("-")
+            bloques.append((_a_minutos(ini), _a_minutos(fin)))
+        return bloques or _bloques_por_defecto()
+    except (ValueError, TypeError):
+        return _bloques_por_defecto()
+
+
+def obtener_bloques_edicion(edicion_id):
+    """API pública: bloques horarios de una edición [(inicio_min, fin_min), ...]."""
+    with get_connection() as db:
+        return _bloques_de_edicion(db, edicion_id)
 
 
 class ReservationService:
@@ -37,24 +145,41 @@ class ReservationService:
 
     @staticmethod
     def create_reservation(laboratorio_id, prestatario_id, usuario_sistema_id,
-                           fecha, hora_inicio, duracion_minutos, observaciones="", edicion_id=1):
+                           fecha, hora_inicio, duracion_minutos, observaciones="",
+                           edicion_id=1, tipo_reserva="PUNTUAL", dia_semana=None,
+                           periodo_academico=None, seccion_id=None, materia_id=None,
+                           cantidad_estudiantes=None):
         if duracion_minutos <= 0 or duracion_minutos > 1440:
             raise ValueError("La duración debe estar entre 1 y 1440 minutos.")
 
+        tipo_reserva = (tipo_reserva or "PUNTUAL").upper()
+        if tipo_reserva not in ("PUNTUAL", "SEMESTRAL"):
+            raise ValueError("Tipo de reserva inválido.")
+        if tipo_reserva == "SEMESTRAL" and dia_semana is None:
+            raise ValueError("Una asignación semestral requiere el día de la semana.")
+
         try:
-            selected_date = datetime.strptime(fecha, "%Y-%m-%d").date()
             datetime.strptime(hora_inicio, "%H:%M")
         except ValueError as exc:
             raise ValueError("Fecha u hora inválida.") from exc
 
-        if selected_date < datetime.now().date():
+        try:
+            selected_date = datetime.strptime(fecha, "%Y-%m-%d").date()
+        except (ValueError, TypeError) as exc:
+            raise ValueError("Fecha inválida.") from exc
+
+        # Solo las PUNTUALES prohíben el pasado; las SEMESTRALES usan la fecha
+        # como referencia de inicio del periodo.
+        if tipo_reserva == "PUNTUAL" and selected_date < datetime.now().date():
             raise ValueError("No se puede crear una reserva para una fecha pasada.")
 
         hora_fin = ReservationService.calculate_end_time(hora_inicio, duracion_minutos)
+        ini = _a_minutos(hora_inicio)
+        fin = _a_minutos(hora_fin)
 
         with get_connection() as db:
             lab = db.execute(
-                "SELECT estado, duracion_estandar_minutos FROM laboratorios WHERE id=?",
+                "SELECT estado, capacidad FROM laboratorios WHERE id=?",
                 (laboratorio_id,)
             ).fetchone()
             if not lab:
@@ -63,13 +188,17 @@ class ReservationService:
                 raise ValueError("El laboratorio no está disponible.")
 
             prestatario = db.execute(
-                "SELECT estado FROM prestatarios WHERE id=?",
+                "SELECT estado, tipo FROM prestatarios WHERE id=?",
                 (prestatario_id,)
             ).fetchone()
             if not prestatario:
                 raise ValueError("El prestatario no existe.")
             if prestatario["estado"] != "ACTIVO":
                 raise ValueError("El prestatario no está activo.")
+            # El choque de profesor solo aplica a prestatarios de tipo PROFESOR:
+            # es la persona que no puede estar en dos laboratorios a la misma
+            # hora. Un estudiante u otro tipo no genera ese conflicto.
+            es_profesor = prestatario["tipo"] == "PROFESOR"
 
             usuario = db.execute(
                 "SELECT estado FROM usuarios_sistema WHERE id=?",
@@ -80,25 +209,86 @@ class ReservationService:
             if usuario["estado"] != "ACTIVO":
                 raise ValueError("El usuario del sistema no está activo.")
 
-            overlap = db.execute(
-                """SELECT id FROM reservas
-                   WHERE laboratorio_id=? AND fecha=?
-                     AND estado IN ('CONFIRMADA','ACTIVA')
-                     AND hora_inicio < ? AND hora_fin > ? LIMIT 1""",
-                (laboratorio_id, fecha, hora_fin, hora_inicio)
-            ).fetchone()
-            if overlap:
-                raise ValueError(
+            seccion = None
+            if seccion_id:
+                seccion = db.execute(
+                    "SELECT cantidad_estimada FROM secciones WHERE id=?", (seccion_id,)
+                ).fetchone()
+                if not seccion:
+                    raise ValueError("La sección indicada no existe.")
+
+            # --- Validación de capacidad (con laboratorios alternativos) ---
+            cantidad = cantidad_estudiantes
+            if cantidad in (None, ""):
+                cantidad = seccion["cantidad_estimada"] if seccion else None
+            if cantidad not in (None, ""):
+                cantidad = int(cantidad)
+                if cantidad > (lab["capacidad"] or 0):
+                    alternativas = [
+                        dict(a) for a in db.execute(
+                            """SELECT id, codigo, nombre, capacidad FROM laboratorios
+                               WHERE edicion_id=? AND estado='DISPONIBLE'
+                                 AND capacidad>=? AND id<>?
+                               ORDER BY capacidad""",
+                            (edicion_id, cantidad, laboratorio_id)
+                        ).fetchall()
+                    ]
+                    raise ReservaInvalida(
+                        f"La cantidad de estudiantes ({cantidad}) supera la capacidad "
+                        f"del laboratorio ({lab['capacidad']}). Elige un laboratorio "
+                        f"con mayor cupo.",
+                        sugerencias=alternativas,
+                    )
+
+            # --- Choques de laboratorio y de profesor (incl. cruce semestral) ---
+            nueva = {
+                "tipo_reserva": tipo_reserva,
+                "fecha": fecha,
+                "dia_semana": dia_semana,
+                "periodo_academico": periodo_academico,
+            }
+            filas = db.execute(
+                """SELECT id, laboratorio_id, prestatario_id, fecha, dia_semana,
+                          tipo_reserva, periodo_academico, hora_inicio, hora_fin
+                   FROM reservas
+                   WHERE edicion_id=? AND estado IN ('CONFIRMADA','ACTIVA')""",
+                (int(edicion_id),)
+            ).fetchall()
+
+            choque_lab = False
+            choque_prof = False
+            for r in filas:
+                candidata = dict(r)
+                if not _mismo_dia_ocupado(candidata, nueva):
+                    continue
+                if not _solapa(ini, fin, _a_minutos(r["hora_inicio"]), _a_minutos(r["hora_fin"])):
+                    continue
+                if r["laboratorio_id"] == laboratorio_id:
+                    choque_lab = True
+                elif es_profesor and r["prestatario_id"] == prestatario_id:
+                    choque_prof = True
+
+            if choque_lab:
+                raise ReservaInvalida(
                     "El laboratorio ya tiene una reserva que se superpone con ese horario."
+                )
+            if choque_prof:
+                raise ReservaInvalida(
+                    "El profesor o prestatario ya está asignado a otro laboratorio "
+                    "en ese horario."
                 )
 
             cur = db.execute(
                 """INSERT INTO reservas
                 (edicion_id, laboratorio_id,prestatario_id,usuario_sistema_id,fecha,hora_inicio,
-                 hora_fin,duracion_minutos,observaciones)
-                VALUES (?,?,?,?,?,?,?,?,?)""",
+                 hora_fin,duracion_minutos,observaciones,tipo_reserva,dia_semana,
+                 periodo_academico,seccion_id,materia_id,cantidad_estudiantes)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (int(edicion_id), laboratorio_id, prestatario_id, usuario_sistema_id, fecha, hora_inicio,
-                 hora_fin, duracion_minutos, (observaciones or "").strip() or None)
+                 hora_fin, duracion_minutos, (observaciones or "").strip() or None,
+                 tipo_reserva, dia_semana, (periodo_academico or "").strip() or None,
+                 seccion_id, materia_id,
+                 int(cantidad) if cantidad not in (None, "") else None)
             )
             return cur.lastrowid
 

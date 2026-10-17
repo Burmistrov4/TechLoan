@@ -87,3 +87,28 @@ class UsuarioEdicion:
     edicion_id: int
     rol_en_edicion: str = "OPERADOR"
     fecha_union: Optional[str] = None
+
+
+@dataclass
+class Seccion:
+    id: Optional[int]
+    codigo_seccion: str
+    semestre: int
+    periodo_academico: str
+    edicion_id: int = 1
+    carrera_o_escuela: str = ""
+    cantidad_estimada: Optional[int] = None
+    estado: str = "ACTIVA"
+    fecha_creacion: Optional[str] = None
+
+
+@dataclass
+class Materia:
+    id: Optional[int]
+    codigo: str
+    nombre: str
+    edicion_id: int = 1
+    escuela: str = ""
+    semestre: Optional[int] = None
+    estado: str = "ACTIVA"
+    fecha_creacion: Optional[str] = None

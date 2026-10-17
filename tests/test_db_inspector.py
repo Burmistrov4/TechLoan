@@ -67,8 +67,10 @@ def test_servicio_tablas_y_conteos():
 
     afirmar(DBInspectorService.contar_registros("ediciones") == 2,
             "Debe haber dos ediciones sembradas")
-    afirmar(DBInspectorService.contar_registros("prestatarios") == 4,
-            "Debe haber cuatro prestatarios sembrados (edición base)")
+    # El conteo es global (todas las ediciones): el seed añadió prestatarios a
+    # IUTEPI LABS. La cuenta de la edición base se verifica en la previsualización.
+    afirmar(DBInspectorService.contar_registros("prestatarios") >= 4,
+            "Debe haber al menos los 4 prestatarios de la edición base")
 
     try:
         DBInspectorService.contar_registros("tabla_inexistente")
@@ -88,9 +90,10 @@ def test_servicio_previsualizar_por_edicion():
     afirmar(len(base["filas"]) == 4, "La edición base tiene 4 prestatarios")
     afirmar("edicion_id" in base["columnas"], "Debe exponerse la columna edicion_id")
 
-    # IUTEPI LABS (2): sin datos sembrados ⇒ 0 filas.
+    # IUTEPI LABS (2): la semilla de Fase 2 añadió 2 profesores.
     iutepi = DBInspectorService.previsualizar("prestatarios", edicion_id=2)
-    afirmar(len(iutepi["filas"]) == 0, "IUTEPI LABS no tiene prestatarios sembrados")
+    afirmar(len(iutepi["filas"]) == 2,
+            f"IUTEPI LABS debe tener 2 prestatarios sembrados (tuvo {len(iutepi['filas'])})")
 
     # Tabla global (categorias): sin columna edicion_id ⇒ el filtro se ignora.
     cats = DBInspectorService.previsualizar("categorias", edicion_id=2)
@@ -169,7 +172,8 @@ def test_rutas_admin():
     afirmar(any(t["name"] == "prestatarios" for t in tablas["tablas"]),
             "Debe listarse la tabla de prestatarios")
     prestatarios = next(t for t in tablas["tablas"] if t["name"] == "prestatarios")
-    afirmar(prestatarios["registros"] == 4, "El conteo de prestatarios debe ser 4")
+    afirmar(prestatarios["registros"] >= 4,
+            "El conteo de prestatarios debe ser al menos 4 (edición base)")
 
     preview = cliente.get("/sistema/visor-sqlite/tablas/prestatarios?edicion_id=1").get_json()
     afirmar(len(preview["filas"]) == 4, "La previsualización filtrada debe dar 4 filas")

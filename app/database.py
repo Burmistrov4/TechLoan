@@ -86,6 +86,39 @@ def init_database():
                 UNIQUE (usuario_sistema_id, edicion_id)
             );
 
+            -- Secciones y materias por edición (Fase 2).
+            CREATE TABLE IF NOT EXISTS secciones (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                edicion_id INTEGER NOT NULL DEFAULT 1,
+                codigo_seccion TEXT NOT NULL,
+                semestre INTEGER NOT NULL CHECK (semestre BETWEEN 1 AND 10),
+                periodo_academico TEXT NOT NULL,
+                carrera_o_escuela TEXT NOT NULL DEFAULT '',
+                cantidad_estimada INTEGER CHECK (cantidad_estimada IS NULL OR cantidad_estimada >= 0),
+                estado TEXT NOT NULL DEFAULT 'ACTIVA'
+                    CHECK (estado IN ('ACTIVA', 'INACTIVA')),
+                fecha_creacion TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (edicion_id) REFERENCES ediciones(id) ON DELETE CASCADE,
+                UNIQUE (edicion_id, codigo_seccion, semestre, periodo_academico, carrera_o_escuela)
+            );
+
+            CREATE TABLE IF NOT EXISTS materias (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                edicion_id INTEGER NOT NULL DEFAULT 1,
+                codigo TEXT NOT NULL,
+                nombre TEXT NOT NULL,
+                escuela TEXT NOT NULL DEFAULT '',
+                semestre INTEGER CHECK (semestre IS NULL OR semestre BETWEEN 1 AND 10),
+                estado TEXT NOT NULL DEFAULT 'ACTIVA'
+                    CHECK (estado IN ('ACTIVA', 'INACTIVA')),
+                fecha_creacion TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (edicion_id) REFERENCES ediciones(id) ON DELETE CASCADE,
+                UNIQUE (edicion_id, codigo)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_secciones_edicion ON secciones (edicion_id);
+            CREATE INDEX IF NOT EXISTS idx_materias_edicion  ON materias  (edicion_id);
+
             -- Tokens de un solo uso para confirmar la cuenta o recuperar la
             -- contraseña. Caducan y se marcan como usados; nunca dan acceso.
             CREATE TABLE IF NOT EXISTS tokens_correo (
@@ -166,9 +199,20 @@ def init_database():
                     CHECK (estado IN ('CONFIRMADA', 'ACTIVA', 'FINALIZADA', 'CANCELADA')),
                 observaciones TEXT,
                 fecha_registro TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                tipo_reserva TEXT NOT NULL DEFAULT 'PUNTUAL'
+                    CHECK (tipo_reserva IN ('PUNTUAL', 'SEMESTRAL')),
+                seccion_id INTEGER,
+                materia_id INTEGER,
+                dia_semana INTEGER
+                    CHECK (dia_semana IS NULL OR dia_semana BETWEEN 0 AND 5),
+                periodo_academico TEXT,
+                cantidad_estudiantes INTEGER
+                    CHECK (cantidad_estudiantes IS NULL OR cantidad_estudiantes >= 0),
                 FOREIGN KEY (laboratorio_id) REFERENCES laboratorios(id),
                 FOREIGN KEY (prestatario_id) REFERENCES prestatarios(id),
-                FOREIGN KEY (usuario_sistema_id) REFERENCES usuarios_sistema(id)
+                FOREIGN KEY (usuario_sistema_id) REFERENCES usuarios_sistema(id),
+                FOREIGN KEY (seccion_id) REFERENCES secciones(id),
+                FOREIGN KEY (materia_id) REFERENCES materias(id)
             );
 
             CREATE TABLE IF NOT EXISTS prestamos_equipos (
@@ -309,6 +353,32 @@ def _migrar(db):
         ("auditoria", "idx_auditoria_edicion"),
     ):
         db.execute(f"CREATE INDEX IF NOT EXISTS {indice} ON {tabla} (edicion_id)")
+
+    # --- 2c. Columnas de horarios en reservas (Fase 2) ---
+    # ALTER TABLE ADD COLUMN es idempotente por chequeo de _columnas. tipo_reserva
+    # es NOT NULL, por lo que necesita DEFAULT para no romper las filas existentes.
+    columnas_reservas = (
+        ("tipo_reserva", "TEXT NOT NULL DEFAULT 'PUNTUAL' "
+                         "CHECK (tipo_reserva IN ('PUNTUAL', 'SEMESTRAL'))"),
+        ("seccion_id", "INTEGER"),
+        ("materia_id", "INTEGER"),
+        ("dia_semana", "INTEGER CHECK (dia_semana IS NULL OR dia_semana BETWEEN 0 AND 5)"),
+        ("periodo_academico", "TEXT"),
+        ("cantidad_estudiantes", "INTEGER CHECK (cantidad_estudiantes IS NULL OR cantidad_estudiantes >= 0)"),
+    )
+    cols_reservas = _columnas(db, "reservas")
+    for columna, definicion in columnas_reservas:
+        if columna not in cols_reservas:
+            db.execute(f"ALTER TABLE reservas ADD COLUMN {columna} {definicion}")
+
+    # Índices de la Fase 2 (las columnas ya existen tras el paso anterior).
+    for indice, definicion in (
+        ("idx_reservas_seccion", "reservas (seccion_id)"),
+        ("idx_reservas_materia", "reservas (materia_id)"),
+        ("idx_reservas_profesor_fecha", "reservas (prestatario_id, dia_semana)"),
+        ("idx_reservas_lab_dia", "reservas (laboratorio_id, dia_semana)"),
+    ):
+        db.execute(f"CREATE INDEX IF NOT EXISTS {indice} ON {definicion}")
 
     # --- 3. Seed de ediciones base e IUTEPI LABS ---
     if db.execute("SELECT COUNT(*) FROM ediciones").fetchone()[0] == 0:
