@@ -25,6 +25,24 @@ class DisponibilidadService:
         return True, "Laboratorio disponible."
 
     @staticmethod
+    def estado(edicion_id, laboratorio_id, prestatario_id, tipo_reserva, fecha, dia_semana,
+               periodo_academico, hora_inicio, hora_fin, cantidad_estudiantes=None):
+        """Evaluación completa de disponibilidad de una celda/reserva candidata.
+
+        A diferencia de :meth:`laboratorio` (que solo mira solapamiento puntual),
+        contempla reservas SEMESTRALES (por ``dia_semana`` + ``periodo_academico``)
+        y PUNTUALES (por ``fecha``), la disponibilidad del profesor (solo si es
+        PROFESOR) y la capacidad del laboratorio. Comparte la semántica de choques
+        con ``ReservationService``.
+        """
+        from app.services.reservation_service import ReservationService
+
+        return ReservationService.estado_reserva(
+            edicion_id, laboratorio_id, prestatario_id, tipo_reserva, fecha, dia_semana,
+            periodo_academico, hora_inicio, hora_fin, cantidad_estudiantes,
+        )
+
+    @staticmethod
     def equipo(equipo_id):
         with get_connection() as db:
             row = db.execute(

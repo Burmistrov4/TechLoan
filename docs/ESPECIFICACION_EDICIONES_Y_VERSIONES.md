@@ -63,7 +63,15 @@ Desplegado en `lorodev.pythonanywhere.com`.
     3 materias; laboratorios con capacidad 20/30/40; 1 asignación SEMESTRAL y 1
     reserva PUNTUAL de ejemplo.
 
-- **Fase 3 — Vista previa (rejilla semanal): EN CURSO** (ver §8 y §10).
+- **Fase 3 — Rejilla semanal y vista previa en vivo: COMPLETADA** (pendiente de
+  commit al cierre de esta sesión). Incluye `rejilla_service.construir(edicion_id)`
+  (días 0..5 × bloques, ocupación proyectada de semestrales y puntuales),
+  `ReservationService.estado_reserva(...)` (evaluación sin guardar),
+  `DisponibilidadService.estado(...)`, endpoint `GET /reservas/rejilla-semanal`
+  (filtrado por la edición de la sesión) y la previsualización en el formulario
+  (`pintarRejillaSemanal` en `static/js/main.js`) con celda fantasma y semáforo.
+  El **Visor SQLite3** ahora tiene enlace en el menú (Administración, solo
+  administrador). Verificado con 17/17 suites y Playwright.
 
 - **Fase 4 — PDF con fpdf2: PENDIENTE.**
 

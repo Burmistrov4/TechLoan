@@ -25,7 +25,8 @@
   <form method="post" class="formulario" data-validar id="formulario-reserva"
         action="{{ url_for('web.reserva_crear') }}"
         data-duraciones='{{ duraciones | tojson }}'
-        data-url-disponibilidad="{{ url_disponibilidad }}">
+        data-url-disponibilidad="{{ url_disponibilidad }}"
+        data-url-rejilla="{{ url_for('web.reservas_rejilla') }}">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
 
     <div class="rejilla-campos">
@@ -149,6 +150,30 @@
         {% endfor %}
       </div>
       {% endif %}
+    </div>
+
+    {#- Rejilla semanal interactiva con previsualización en vivo (Fase 3) -#}
+    <div class="campo" style="margin-bottom:var(--e-5)">
+      <label>Vista previa — Rejilla semanal</label>
+      <div class="grupo-radios" role="radiogroup" aria-label="Ver horario de">
+        <label class="opcion-radio"><input type="radio" name="rejilla-modo" value="laboratorio" checked> <span>Laboratorio</span></label>
+        <label class="opcion-radio"><input type="radio" name="rejilla-modo" value="seccion"> <span>Sección</span></label>
+        <label class="opcion-radio"><input type="radio" name="rejilla-modo" value="profesor"> <span>Profesor</span></label>
+      </div>
+      <div class="rejilla-auxiliar" style="display:flex;gap:var(--e-3);flex-wrap:wrap;align-items:flex-end;margin:var(--e-3) 0">
+        <div class="campo" style="margin:0">
+          <label for="selector-bloque">Bloque horario</label>
+          <select id="selector-bloque" class="campo__input" style="width:auto">
+            <option value="">— Elegir bloque —</option>
+          </select>
+        </div>
+      </div>
+      <p class="ayuda">
+        Elige qué horario ver y haz clic en una celda libre para fijar día y bloque.
+        La celda punteada es la <em>vista previa</em> de lo que estás cargando (aún sin guardar).
+      </p>
+      <p id="rejilla-estado" class="ayuda" role="status" aria-live="polite" style="font-weight:600"></p>
+      <div class="rejilla-semanal" id="rejilla-semanal" aria-live="polite"></div>
     </div>
 
     {{ f.area('observaciones', 'Observaciones', registro.observaciones, filas=3,

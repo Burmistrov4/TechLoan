@@ -293,6 +293,101 @@ class ReservationService:
             return cur.lastrowid
 
     @staticmethod
+    def estado_reserva(edicion_id, laboratorio_id, prestatario_id, tipo_reserva,
+                       fecha, dia_semana, periodo_academico, hora_inicio, hora_fin,
+                       cantidad_estudiantes=None, excluir_id=None):
+        """Evalúa (SIN guardar) si una reserva candidata sería válida.
+
+        Reutiliza la misma semántica de choques que ``create_reservation``
+        (``_mismo_dia_ocupado`` / ``_solapa``), de modo que la previsualización en
+        vivo, el endpoint de disponibilidad y el guardado nunca discrepan. Pensada
+        para la previsualización en vivo y para el visor de disponibilidad.
+        """
+        tipo_reserva = (tipo_reserva or "PUNTUAL").upper()
+        resultado = {
+            "disponible": False,
+            "laboratorio_disponible": False,
+            "choque_laboratorio": False,
+            "choque_profesor": False,
+            "capacidad_ok": True,
+            "motivo": "",
+            "sugerencias": [],
+        }
+        try:
+            ini = _a_minutos(hora_inicio)
+            fin = _a_minutos(hora_fin)
+        except (ValueError, TypeError, AttributeError):
+            resultado["motivo"] = "Horas inválidas."
+            return resultado
+
+        with get_connection() as db:
+            lab = db.execute(
+                "SELECT estado, capacidad FROM laboratorios WHERE id=?", (laboratorio_id,)
+            ).fetchone()
+            if not lab:
+                resultado["motivo"] = "El laboratorio no existe."
+                return resultado
+            resultado["laboratorio_disponible"] = lab["estado"] == "DISPONIBLE"
+
+            prestatario = db.execute(
+                "SELECT tipo FROM prestatarios WHERE id=?", (prestatario_id,)
+            ).fetchone()
+            es_profesor = bool(prestatario) and prestatario["tipo"] == "PROFESOR"
+
+            # Capacidad.
+            if cantidad_estudiantes not in (None, ""):
+                cantidad = int(cantidad_estudiantes)
+                if cantidad > (lab["capacidad"] or 0):
+                    resultado["capacidad_ok"] = False
+                    resultado["sugerencias"] = [
+                        dict(a) for a in db.execute(
+                            """SELECT id, codigo, nombre, capacidad FROM laboratorios
+                               WHERE edicion_id=? AND estado='DISPONIBLE'
+                                 AND capacidad>=? AND id<>?
+                               ORDER BY capacidad""",
+                            (edicion_id, cantidad, laboratorio_id)
+                        ).fetchall()
+                    ]
+
+            # Choques de laboratorio y de profesor.
+            nueva = {
+                "tipo_reserva": tipo_reserva,
+                "fecha": fecha,
+                "dia_semana": dia_semana,
+                "periodo_academico": periodo_academico,
+            }
+            filas = db.execute(
+                """SELECT laboratorio_id, prestatario_id, fecha, dia_semana, tipo_reserva,
+                          periodo_academico, hora_inicio, hora_fin
+                   FROM reservas
+                   WHERE edicion_id=? AND estado IN ('CONFIRMADA','ACTIVA') AND id<>?""",
+                (int(edicion_id), excluir_id or 0)
+            ).fetchall()
+            for r in filas:
+                if not _mismo_dia_ocupado(dict(r), nueva):
+                    continue
+                if not _solapa(ini, fin, _a_minutos(r["hora_inicio"]), _a_minutos(r["hora_fin"])):
+                    continue
+                if r["laboratorio_id"] == laboratorio_id:
+                    resultado["choque_laboratorio"] = True
+                elif es_profesor and r["prestatario_id"] == prestatario_id:
+                    resultado["choque_profesor"] = True
+
+        motivos = []
+        if not resultado["laboratorio_disponible"]:
+            motivos.append("el laboratorio no está disponible")
+        if resultado["choque_laboratorio"]:
+            motivos.append("el laboratorio ya tiene una clase en ese horario")
+        if resultado["choque_profesor"]:
+            motivos.append("el profesor ya está asignado a otro laboratorio en ese horario")
+        if not resultado["capacidad_ok"]:
+            motivos.append("la cantidad de estudiantes supera la capacidad del laboratorio")
+
+        resultado["motivo"] = "Conflicto: " + "; ".join(motivos) + "." if motivos else "Disponible."
+        resultado["disponible"] = not motivos
+        return resultado
+
+    @staticmethod
     def cancel(reservation_id):
         """Marca una reserva como CANCELADA.
 

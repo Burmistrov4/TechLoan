@@ -598,6 +598,248 @@
         }
       });
     });
+
+    // ========================================================================
+    // Rejilla semanal interactiva + vista previa en vivo (Fase 3)
+    // ------------------------------------------------------------------------
+    // Dibuja la matriz días(0..5) × bloques de la edición con las reservas ya
+    // existentes y una celda fantasma "En previsualización (Sin guardar)" con
+    // semáforo instantáneo (verde = válida, rojo = conflicto).
+    // ========================================================================
+    var contenedorRejilla = $("#rejilla-semanal");
+    var estadoRejilla = $("#rejilla-estado");
+    var selectorBloque = $("#selector-bloque");
+    var selectPrestatario = $("#campo-prestatario_id");
+    var selectSeccion = $("#campo-seccion_id");
+    var selectDia = $("#campo-dia_semana");
+    var campoCantidad = $("#campo-cantidad_estudiantes");
+    var urlRejilla = formulario.getAttribute("data-url-rejilla") || "";
+    var datosRejilla = null;
+
+    function weekdayDeFecha(f) {
+      var p = String(f || "").split("-");
+      if (p.length !== 3) return null;
+      var d = new Date(+p[0], +p[1] - 1, +p[2]);
+      return (d.getDay() + 6) % 7; // getDay: 0=Dom..6=Sáb → 0=Lunes..6=Domingo
+    }
+
+    function tipoReservaSel() {
+      var sel = formulario.querySelector('input[name="tipo_reserva"]:checked');
+      return sel ? sel.value : "PUNTUAL";
+    }
+
+    function modoRejillaSel() {
+      var sel = formulario.querySelector('input[name="rejilla-modo"]:checked');
+      return sel ? sel.value : "laboratorio";
+    }
+
+    function capacidadLab(id) {
+      if (!datosRejilla) return null;
+      for (var i = 0; i < datosRejilla.laboratorios.length; i++) {
+        if (String(datosRejilla.laboratorios[i].id) === String(id)) {
+          return datosRejilla.laboratorios[i].capacidad;
+        }
+      }
+      return null;
+    }
+
+    function chipear(texto, clase) {
+      var estilo = "";
+      if (clase === "ocupada") {
+        estilo = ' style="display:block;background:#eef2ff;border-left:3px solid #6366f1;' +
+                 'color:#3730a3;border-radius:4px;padding:2px 4px;margin:2px 0;font-size:11px"';
+      } else if (clase === "preview-ok") {
+        estilo = ' style="display:block;border:2px dashed #2563eb;color:#1d4ed8;' +
+                 'background:rgba(37,99,235,0.06);border-radius:4px;padding:2px 4px;margin:2px 0;' +
+                 'font-size:11px;font-style:italic"';
+      } else if (clase === "preview-conflicto") {
+        estilo = ' style="display:block;border:2px dashed #dc2626;color:#b91c1c;background:#fef2f2;' +
+                 'border-radius:4px;padding:2px 4px;margin:2px 0;font-size:11px;font-weight:600"';
+      }
+      return '<span class="rejilla-chip ' + clase + '"' + estilo + ">" + texto + "</span>";
+    }
+
+    function pintarRejillaSemanal() {
+      if (!contenedorRejilla) return;
+      if (!datosRejilla) {
+        contenedorRejilla.innerHTML = '<p class="ayuda">Cargando la rejilla semanal…</p>';
+        return;
+      }
+      var modo = modoRejillaSel();
+      var foco = modo === "laboratorio" ? (selectLaboratorio && selectLaboratorio.value)
+                : modo === "profesor" ? (selectPrestatario && selectPrestatario.value)
+                : (selectSeccion && selectSeccion.value);
+      // En modo laboratorio, si aún no hay selección, se usa el primer laboratorio
+      // de la edición para que la rejilla se pinte siempre (mejor experiencia).
+      if (modo === "laboratorio" && !foco && datosRejilla.laboratorios.length) {
+        foco = String(datosRejilla.laboratorios[0].id);
+        if (selectLaboratorio) selectLaboratorio.value = foco;
+      }
+      if (!foco) {
+        var msg = modo === "seccion" ? "Selecciona una sección para ver su horario."
+                 : modo === "profesor" ? "Selecciona un profesor para ver su horario."
+                 : "Selecciona un laboratorio para ver su horario.";
+        contenedorRejilla.innerHTML = '<p class="ayuda">' + msg + "</p>";
+        if (estadoRejilla) estadoRejilla.textContent = "";
+        return;
+      }
+
+      function esFoco(occ) {
+        if (modo === "laboratorio") return String(occ.laboratorio_id) === String(foco);
+        if (modo === "profesor") return String(occ.prestatario_id) === String(foco);
+        return String(occ.seccion_id) === String(foco);
+      }
+
+      // Previsualización (ghost) a partir de los inputs del formulario.
+      var tipo = tipoReservaSel();
+      var diaGhost = tipo === "SEMESTRAL"
+        ? (selectDia ? parseInt(selectDia.value, 10) : NaN)
+        : weekdayDeFecha(campoFecha ? campoFecha.value : "");
+      var iniGhost = aMinutos(campoHora ? campoHora.value : "");
+      var durGhost = parseInt(campoDuracion ? campoDuracion.value : "", 10);
+      var finGhost = (iniGhost !== null && !isNaN(durGhost) && durGhost > 0) ? iniGhost + durGhost : null;
+      var labId = selectLaboratorio ? selectLaboratorio.value : "";
+      var profId = selectPrestatario ? selectPrestatario.value : "";
+      var cant = campoCantidad ? parseInt(campoCantidad.value, 10) : NaN;
+      var cap = labId ? capacidadLab(labId) : null;
+
+      var ghostAplica = (diaGhost !== null && !isNaN(diaGhost) && finGhost !== null &&
+        ((modo === "laboratorio") ||
+         (modo === "profesor" && profId) ||
+         (modo === "seccion" && selectSeccion && selectSeccion.value)));
+
+      var ghostConflicto = false, ghostMotivos = [];
+      if (ghostAplica) {
+        (datosRejilla.ocupacion || []).forEach(function (occ) {
+          if (occ.dia !== diaGhost) return;
+          if (!(occ.inicio < finGhost && iniGhost < occ.fin)) return;
+          if (labId && String(occ.laboratorio_id) === String(labId)) {
+            ghostConflicto = true; ghostMotivos.push("laboratorio ocupado");
+          } else if (profId && String(occ.prestatario_id) === String(profId)) {
+            ghostConflicto = true; ghostMotivos.push("profesor en otro laboratorio");
+          }
+        });
+        if (!isNaN(cant) && cap !== null && cant > cap) {
+          ghostConflicto = true;
+          ghostMotivos.push("cantidad supera la capacidad (" + cap + ")");
+        }
+      }
+
+      var estiloTh = 'border:1px solid #d1d5db;padding:4px 6px;background:#f9fafb;text-align:center;font-size:11px';
+      var html = '<table style="border-collapse:collapse;width:100%;margin-top:8px;font-size:12px">' +
+                 "<thead><tr><th style='" + estiloTh + "'></th>";
+      datosRejilla.bloques.forEach(function (b) { html += "<th style='" + estiloTh + "'>" + b.etiqueta + "</th>"; });
+      html += "</tr></thead><tbody>";
+      datosRejilla.dias.forEach(function (dia) {
+        html += "<tr><th style='border:1px solid #d1d5db;padding:4px 6px;background:#f9fafb;" +
+                "text-align:left;white-space:nowrap;font-size:11px'>" +
+                (datosRejilla.nombres_dias[dia] || dia) + "</th>";
+        datosRejilla.bloques.forEach(function (b) {
+          var items = (datosRejilla.ocupacion || []).filter(function (occ) {
+            return esFoco(occ) && occ.dia === dia && occ.inicio < b.fin && b.inicio < occ.fin;
+          });
+          var celda = "";
+          items.forEach(function (occ) {
+            var quien = modo === "seccion"
+              ? (occ.laboratorio_codigo || "") + (occ.materia_codigo ? " · " + occ.materia_codigo : "")
+              : (occ.materia_codigo ? occ.materia_codigo + " · " : "") + (occ.profesor || occ.laboratorio_codigo || "");
+            celda += chipear(quien, "ocupada");
+          });
+          if (ghostAplica && dia === diaGhost && iniGhost < b.fin && b.inicio < finGhost) {
+            celda += chipear("En previsualización (Sin guardar)",
+                             ghostConflicto ? "preview-conflicto" : "preview-ok");
+          }
+          var tdEstilo = "border:1px solid #e5e7eb;padding:2px;vertical-align:top;min-width:92px;height:40px";
+          if (items.length === 0) tdEstilo += ";cursor:pointer";
+          html += "<td class='rejilla-celda' style='" + tdEstilo + "' data-dia='" + dia +
+                  "' data-ini='" + b.inicio + "' data-fin='" + b.fin + "'>" +
+                  (celda || '<span class="rejilla-vacia" style="color:#9ca3af">—</span>') + "</td>";
+        });
+        html += "</tr>";
+      });
+      html += "</tbody></table>";
+      contenedorRejilla.innerHTML = html;
+
+      if (estadoRejilla) {
+        if (ghostAplica) {
+          estadoRejilla.textContent = ghostConflicto
+            ? "Conflicto detectado en vista previa: " + ghostMotivos.join(", ") + "."
+            : "Vista previa válida: bloque libre, profesor disponible y hay cupo.";
+          estadoRejilla.style.color = ghostConflicto ? "#b91c1c" : "#15803d";
+        } else {
+          estadoRejilla.textContent = "";
+        }
+      }
+
+      // Clic en una celda libre → fija día y bloque en el formulario.
+      $$("#rejilla-semanal .rejilla-celda").forEach(function (td) {
+        td.addEventListener("click", function () {
+          var dia = parseInt(td.getAttribute("data-dia"), 10);
+          var ini = parseInt(td.getAttribute("data-ini"), 10);
+          var fin = parseInt(td.getAttribute("data-fin"), 10);
+          if (isNaN(dia) || isNaN(ini) || isNaN(fin)) return;
+          var radioSem = formulario.querySelector('input[name="tipo_reserva"][value="SEMESTRAL"]');
+          if (radioSem) radioSem.checked = true;
+          if (selectDia) selectDia.value = String(dia);
+          if (campoHora) campoHora.value = aHora(ini);
+          if (campoDuracion) campoDuracion.value = String(fin - ini);
+          if (selectorBloque) selectorBloque.value = ini + "-" + fin;
+          formulario.querySelectorAll('input[name="tipo_reserva"]').forEach(function (r) {
+            r.dispatchEvent(new Event("change"));
+          });
+          actualizarHoraFin();
+          pintarRejillaSemanal();
+        });
+      });
+    }
+
+    function cargarRejilla() {
+      if (!contenedorRejilla || !urlRejilla) return;
+      fetch(urlRejilla, { headers: { "X-Requested-With": "fetch" } })
+        .then(function (r) { return r.json(); })
+        .then(function (datos) {
+          datosRejilla = datos;
+          if (selectorBloque) {
+            (datos.bloques || []).forEach(function (b) {
+              var opt = document.createElement("option");
+              opt.value = b.inicio + "-" + b.fin;
+              opt.textContent = b.etiqueta;
+              selectorBloque.appendChild(opt);
+            });
+          }
+          pintarRejillaSemanal();
+        })
+        .catch(function () {
+          if (contenedorRejilla) {
+            contenedorRejilla.innerHTML = '<p class="ayuda">No se pudo cargar la rejilla semanal.</p>';
+          }
+        });
+    }
+
+    window.pintarRejillaSemanal = pintarRejillaSemanal;
+
+    if (selectorBloque) {
+      selectorBloque.addEventListener("change", function () {
+        var partes = (selectorBloque.value || "").split("-");
+        if (partes.length === 2 && campoHora && campoDuracion) {
+          var ini = parseInt(partes[0], 10), fin = parseInt(partes[1], 10);
+          campoHora.value = aHora(ini);
+          campoDuracion.value = String(fin - ini);
+          actualizarHoraFin();
+        }
+        pintarRejillaSemanal();
+      });
+    }
+
+    [selectLaboratorio, selectPrestatario, selectSeccion, selectDia, campoFecha,
+     campoHora, campoDuracion, campoCantidad].forEach(function (el) {
+      if (el) el.addEventListener("change", pintarRejillaSemanal);
+    });
+    $$('input[name="tipo_reserva"], input[name="rejilla-modo"]').forEach(function (r) {
+      r.addEventListener("change", pintarRejillaSemanal);
+    });
+
+    cargarRejilla();
   }
 
   /* ========================================================================

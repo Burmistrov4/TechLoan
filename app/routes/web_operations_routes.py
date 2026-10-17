@@ -247,6 +247,28 @@ def reserva_crear():
     )
 
 
+@web_bp.get("/reservas/rejilla-semanal")
+@permission_required("reservas.read")
+def reservas_rejilla():
+    """Matriz semanal de la edición activa (días 0..5 × bloques).
+
+    Devuelve la ocupación completa de la edición; el cliente filtra/resalta según
+    el modo elegido (laboratorio, sección o profesor) y añade la previsualización
+    en vivo. Reutilizable en la Fase 4 para el PDF.
+    """
+    edicion = edicion_activa_id()
+    modo = (request.args.get("modo") or "laboratorio").lower()
+    if modo not in ("laboratorio", "seccion", "profesor"):
+        modo = "laboratorio"
+    objetivo = request.args.get("id", type=int)
+
+    from app.services.rejilla_service import RejillaService
+    datos = RejillaService.construir(edicion)
+    datos["modo"] = modo
+    datos["objetivo_id"] = objetivo
+    return jsonify({"ok": True, **datos})
+
+
 @web_bp.get("/reservas/<int:id_>/comprobante")
 @permission_required("reservas.read")
 def reserva_comprobante(id_):

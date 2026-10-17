@@ -90,6 +90,10 @@
       <a class="lateral__enlace {% if request.endpoint == 'web.auditoria' %}activo{% endif %}"
          href="{{ url_for('web.auditoria') }}">{{ ic.icono('auditoria') }} Auditoría</a>
       {% endif %}
+      {% if puede('sistema.inspector') %}
+      <a class="lateral__enlace {% if request.endpoint and request.endpoint.startswith('web.visor') %}activo{% endif %}"
+         href="{{ url_for('web.visor_sqlite') }}">{{ ic.icono('visor') }} Visor SQLite3</a>
+      {% endif %}
 
       <p class="lateral__grupo">Ayuda</p>
       <a class="lateral__enlace {% if request.endpoint == 'web.ayuda' %}activo{% endif %}"
