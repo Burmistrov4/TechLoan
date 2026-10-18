@@ -11,7 +11,9 @@ Todas las reglas de negocio permanecen en los servicios; estas rutas solo
 traducen formularios a llamadas de servicio y errores a mensajes amigables.
 """
 
-from flask import flash, jsonify, redirect, render_template, request, url_for
+from io import BytesIO
+
+from flask import flash, jsonify, redirect, render_template, request, send_file, url_for
 
 from app.config import DIAS_PRESTAMO_LIMITE
 from app.routes.web_common import (
@@ -267,6 +269,53 @@ def reservas_rejilla():
     datos["modo"] = modo
     datos["objetivo_id"] = objetivo
     return jsonify({"ok": True, **datos})
+
+
+@web_bp.get("/reservas/horario-pdf")
+@permission_required("reservas.read")
+def reservas_horario_pdf():
+    """Descarga el PDF del horario (laboratorio → rejilla; sección → listado)."""
+    modo = (request.args.get("modo") or "laboratorio").lower()
+    objetivo = request.args.get("id", type=int)
+    edicion = edicion_activa_id()
+    if not objetivo:
+        flash("Selecciona un laboratorio o una sección para exportar el PDF.", "error")
+        return redirect(url_for("web.reservas"))
+
+    from app.services.pdf_service import comprobante_seccion_pdf, horario_maestro_pdf
+    try:
+        if modo == "seccion":
+            pdf = comprobante_seccion_pdf(edicion, objetivo)
+            nombre = f"horario-seccion-{objetivo}.pdf"
+            registrar_accion("EXPORTAR", "seccion", objetivo,
+                             "Exportación PDF del horario de la sección")
+        else:
+            pdf = horario_maestro_pdf(edicion, objetivo)
+            nombre = f"horario-laboratorio-{objetivo}.pdf"
+            registrar_accion("EXPORTAR", "laboratorio", objetivo,
+                             "Exportación PDF del horario del laboratorio")
+    except ValueError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("web.reservas"))
+
+    return send_file(BytesIO(pdf), mimetype="application/pdf",
+                     as_attachment=True, download_name=nombre)
+
+
+@web_bp.get("/reservas/<int:id_>/pdf")
+@permission_required("reservas.read")
+def reserva_pdf(id_):
+    """Comprobante de una reserva en PDF."""
+    from app.services.pdf_service import comprobante_reserva_pdf
+    try:
+        pdf = comprobante_reserva_pdf(id_, edicion_activa_id())
+    except ValueError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("web.reservas"))
+    registrar_accion("EXPORTAR", "reserva", id_,
+                     "Exportación PDF del comprobante de reserva")
+    return send_file(BytesIO(pdf), mimetype="application/pdf", as_attachment=True,
+                     download_name=f"comprobante-reserva-{id_}.pdf")
 
 
 @web_bp.get("/reservas/<int:id_>/comprobante")

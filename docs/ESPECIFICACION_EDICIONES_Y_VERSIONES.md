@@ -73,7 +73,18 @@ Desplegado en `lorodev.pythonanywhere.com`.
   El **Visor SQLite3** ahora tiene enlace en el menú (Administración, solo
   administrador). Verificado con 17/17 suites y Playwright.
 
-- **Fase 4 — PDF con fpdf2: PENDIENTE.**
+- **Fase 4 — Exportación a PDF con fpdf2: COMPLETADA** (pendiente de commit).
+  `app/services/pdf_service.py`: `horario_maestro_pdf(edicion_id, laboratorio_id)`
+  (rejilla semanal en A4 horizontal), `comprobante_seccion_pdf(edicion_id,
+  seccion_id)` (clases de la sección) y `comprobante_reserva_pdf(reserva_id,
+  edicion_id)`. Rutas `GET /reservas/horario-pdf?modo=laboratorio|seccion&id=` y
+  `GET /reservas/<id>/pdf` (con auditoría `EXPORTAR` y filtro por edición).
+  Botones «Descargar PDF» en la rejilla del formulario y en el comprobante.
+  **Portabilidad:** fuentes core de fpdf2 + texto normalizado a Latin-1 (los
+  bloques usan «–», que se sustituye), así funciona en Windows y PythonAnywhere
+  sin subir fuentes. `fpdf2==2.8.9` añadido a `requirements.txt`; en producción
+  hay que ejecutar `pip install -r requirements.txt` al desplegar.
+  Verificado con `tests/test_pdf_rejilla.py` (18/18 suites en verde).
 
 ---
 

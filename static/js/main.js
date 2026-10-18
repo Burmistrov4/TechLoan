@@ -614,6 +614,7 @@
     var selectDia = $("#campo-dia_semana");
     var campoCantidad = $("#campo-cantidad_estudiantes");
     var urlRejilla = formulario.getAttribute("data-url-rejilla") || "";
+    var urlHorarioPdf = formulario.getAttribute("data-url-horario-pdf") || "/reservas/horario-pdf";
     var datosRejilla = null;
 
     function weekdayDeFecha(f) {
@@ -674,6 +675,16 @@
       if (modo === "laboratorio" && !foco && datosRejilla.laboratorios.length) {
         foco = String(datosRejilla.laboratorios[0].id);
         if (selectLaboratorio) selectLaboratorio.value = foco;
+      }
+      var enlacePdf = $("#rejilla-pdf");
+      if (enlacePdf) {
+        if (foco) {
+          enlacePdf.href = urlHorarioPdf + "?modo=" + encodeURIComponent(modo) +
+                           "&id=" + encodeURIComponent(foco);
+          enlacePdf.style.display = "";
+        } else {
+          enlacePdf.style.display = "none";
+        }
       }
       if (!foco) {
         var msg = modo === "seccion" ? "Selecciona una sección para ver su horario."

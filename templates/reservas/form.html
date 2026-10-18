@@ -26,7 +26,8 @@
         action="{{ url_for('web.reserva_crear') }}"
         data-duraciones='{{ duraciones | tojson }}'
         data-url-disponibilidad="{{ url_disponibilidad }}"
-        data-url-rejilla="{{ url_for('web.reservas_rejilla') }}">
+        data-url-rejilla="{{ url_for('web.reservas_rejilla') }}"
+        data-url-horario-pdf="{{ url_for('web.reservas_horario_pdf') }}">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
 
     <div class="rejilla-campos">
@@ -167,6 +168,8 @@
             <option value="">— Elegir bloque —</option>
           </select>
         </div>
+        <a id="rejilla-pdf" class="boton boton--secundario boton--pequeno"
+           href="#" style="display:none;align-self:center">Descargar PDF</a>
       </div>
       <p class="ayuda">
         Elige qué horario ver y haz clic en una celda libre para fijar día y bloque.

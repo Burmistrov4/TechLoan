@@ -14,6 +14,9 @@
     <button type="button" class="boton boton--marca" id="boton-imprimir">
       {{ ic.icono('imprimir') }} Imprimir
     </button>
+    <a class="boton boton--secundario" href="{{ url_for('web.reserva_pdf', id_=reserva.id) }}">
+      {{ ic.icono('descargar') }} Descargar PDF
+    </a>
     <a class="boton boton--secundario" href="{{ url_for('web.reservas') }}">
       {{ ic.icono('chevron-izquierda') }} Volver al listado
     </a>
